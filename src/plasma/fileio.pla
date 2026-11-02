@@ -1,0 +1,668 @@
+//
+// fileio.pla -- the maux FILEIO module (milestone 3, docs/PLASMA-
+// PORT.md). Copied from Dave Schmenk's PLASMA
+// (~/src/PLASMA/src/libsrc/apple/fileio.pla) and retargeted for maux.
+// maux's SYS_* numbers ARE the ProDOS MLI numbers, and every call
+// here rides cmdsys:syscall(cmd, params) (rt.pla's syscall, already
+// retargeted to the raw $FF00 gate), so the whole a2*/a1*/a3* file --
+// open/close/read/write/create/destroy/GFI/SFI/GET_EOF/SET_EOF/
+// GET_MARK/SET_MARK/GET_PREFIX/SET_PREFIX -- maps UNCHANGED. Only
+// THREE things are retargeted, per docs/PLASMA-PORT.md M3:
+//
+// 1. io_buffers are KERNEL-owned on maux, not process-owned. The
+//    upstream a2open() reserves a 1024-byte heap buffer per open file
+//    and passes its address in the MLI OPEN parmlist's io_buffer
+//    field; on maux that field is REWRITTEN by the kernel (a process-
+//    bank address there points at garbage in main RAM once the MLI
+//    dereferences it outside the process's bank -- see src/bin/cat.s's
+//    header, and the ratified convention it cites, docs/USERLAND.md
+//    "ABI RESOLUTIONS"). So a2open() below always passes io_buffer =
+//    $0000, and there is no per-file iobuf_addr/iobuf_ref bookkeeping
+//    left to do -- a2close() and a23read()/a2write() etc. no longer
+//    need to hunt for "which slot owns this refnum" at all, they just
+//    pass the refnum straight through. a2iobufs() (fileio:iobufalloc,
+//    called by plasm.pla as `fileio:iobufalloc(2)`) becomes a true
+//    no-op that returns success without touching the heap -- maux
+//    needs no per-file buffers to reserve, and the caller (plasm.pla)
+//    discards its return value anyway.
+//
+// 2. maux has no MLI NEWLINE ($C9) -- the kernel's SYS_* table does
+//    not wire that call number (docs/SYSCALL.md), so a2newline() must
+//    NOT syscall it (it would come back ERR_P8_UNWIRE-shaped). Instead
+//    it records (emask, nlchar) per refnum in a small module-local
+//    table (nl_emask[]/nl_char[], indexed directly by refnum -- ProDOS
+//    ref_nums are small integers and maux's own open-file pool tops
+//    out at 8, docs/IOBUF-LENDING.md; NL_MAX=16 gives headroom). Then
+//    a23read() -- fileio:read, the ONLY read path plasm's lexer uses
+//    (toolsrc/lex.pla:352, `fileio:read(refnum, inptr, inlen)`) --
+//    checks that table: if a mode is set for the refnum, it does the
+//    plain MLI READ of up to `len` bytes, scans the bytes returned for
+//    the first where `(byte & emask) == nlchar`, and if found, calls
+//    the file back to just past that byte with SET_MARK ($CE) (via
+//    the already-present a23getmark/a23setmark helpers) and returns
+//    the length up to and including it; not found, or no mode set, is
+//    a plain read of the full transfer. This is EXACTLY the emulation
+//    proshimcr.s already does for the same reason on the same kernel
+//    (src/bin/proshimcr.s PS_NEWLIN/PS_READ) -- same mark arithmetic
+//    (mark_after_read - (trans_count - (index+1)) == mark_before_read
+//    + index + 1), reimplemented here in PLASMA instead of hand-rolled
+//    6502 because this module runs AS bytecode, not as an inline-asm
+//    MLI adapter.
+//
+// 3. No language-card pokes to remove -- there were none in the
+//    original file to begin with (no BIT ROMEN / LCRD / $C08x site;
+//    checked in full). maux runs this in main RAM regardless.
+//
+// 4. TEXT IS READ IN EITHER MAUX CONVENTION (PLASM-FIX, docs/PLASM-
+//    FIX-NOTES.md). plasm's lexer is Dave's UNMODIFIED source and
+//    compares against low-ASCII literals (`== ' '`, `>= '0'`, a
+//    line end of an unmasked `== $0D`); a file that `vi` or `cat >`
+//    wrote on maux is high-bit ASCII ending $8D (README "Text"), and
+//    every one of those comparisons failed: `INCLUDE "inc/..."` was
+//    "Missing INCLUDE file". ProDOS's NEWLINE call has no word for
+//    this because it never needed one -- but its MASK does: a mode
+//    armed with a mask that ignores bit 7 ($7F, the one plasm arms)
+//    is a request for TEXT, where bit 7 is not significant. So
+//    a23read() clears bit 7 of every byte it returns under such a
+//    mode, in the same pass that looks for the line end. A file in
+//    either convention reads as low ASCII with a $0D line end, and
+//    nothing that reads binary (no newline mode) is touched.
+//
+// 5. PLASM ONLY: `inc/NAME` FALLS BACK TO /usr/inc/NAME, READ ONLY.
+//    Dave's PLASMA finds `include "inc/cmdsys.plh"` relative to the
+//    PREFIX it runs from, where its distribution keeps inc/. A maux
+//    user's cwd is a project directory; the headers live in /usr/inc.
+//    The fallback is NOT in this file's code: it is ADDED, at the
+//    //@INCFB markers below, by scripts/splice_fileio.py from
+//    src/plasma/fileio.frag.pla, into the copy of FILEIO that plascut
+//    links into /bin/plasm (Makefile $(PLASMFIO_DIR)) and nowhere else.
+//    nas and every other tool link this file as it stands, with no
+//    fallback code at all (xplasm does not fold a `const` switch, so
+//    "off" used to cost 228 bytes of dead code in every cooked tool).
+//    In the plasm build, when an open of a relative `inc/...` path fails
+//    it is retried once as a READ-INTENT open ($83, OPEN-RO-2) of
+//    /usr/inc/..., keeping the first failure's error if that fails too.
+//    Read-only on purpose: a write must never land on a system header.
+//    And once plasm has tried to DESTROY or CREATE a file the fallback is
+//    off for the rest of the run, so `plasm src inc/cmdsys.plh` from a
+//    directory with no inc/ reports the open of its OUTPUT failing
+//    instead of "succeeding" into a read-only header.
+//
+// 6. NEWLINE MODE DIES WITH THE FILE. ProDOS resets a refnum's
+//    newline mode on CLOSE; the table below did not, and refnums are
+//    reused, so a later binary read on the same refnum was cut at the
+//    first $0D (already so on the base) and, since change 4, bit-
+//    stripped. a2open clears the entry on every successful open (that
+//    covers every reuse of a refnum); a2close does not need to.
+//
+// The exported table (fileio.plh's t_fileio struc / the `word
+// fileio[]` array below) is IDENTICAL in shape and order to upstream
+// -- plasm.mod imports it by that contract -- only the a2iobufs/
+// a2open/a2close/a2newline/a23read BODIES change.
+//
+include "inc/cmdsys.plh"
+include "inc/fileio.plh"
+//
+// SOS access modes
+//
+//
+//
+const O_READ       = 1
+const O_WRITE      = 2
+const O_READ_WRITE = 3
+//
+// External interface
+//
+predef a2getpfx(path), a2setpfx(path), a2getfileinfo(path, fileinfo), a2setfileinfo(path, fileinfo), a23geteof(refnum)#2, a23seteof(refnum, eofl, eofh), a2iobufs(iobufs), a2open(path), a2close(refnum)
+predef a23read(refnum, buf, len), a2write(refnum, buf, len), a2create(path, type, aux), a23destroy(path), a23rename(path, newpath)
+predef a2newline(refnum, emask, nlchar), a2online(unit, buf), a2readblock(unit, buf, block), a2writeblock(unit, buf, block)
+predef a23getmark(refnum)#2, a23setmark(refnum, eofl, eofh)
+//
+// Exported function table.
+//
+word fileio[]
+word = @a2getpfx, @a2setpfx, @a2getfileinfo, @a2setfileinfo, @a23geteof, @a23seteof, @a2iobufs, @a2open, @a2close
+word = @a23read, @a2write, @a2create, @a23destroy, @a23rename
+word = @a2newline, @a2online, @a2readblock, @a2writeblock, @a23getmark, @a23setmark
+//
+// SOS/ProDOS error code
+//
+export byte perr
+//
+// maux NEWLINE emulation table (change 2 above). Index 0 is unused
+// (refnum 0 is never a valid open file); nl_emask[r] == 0 means "no
+// newline mode for refnum r", which is also upstream ProDOS's own
+// sense of an all-zero enable mask, so no separate on/off flag is
+// needed.
+//
+//@INCFB-DECL@
+const NL_MAX = 16
+byte nl_emask[NL_MAX + 1]
+byte nl_char[NL_MAX + 1]
+//
+// ProDOS/SOS routines
+//
+def a1getpfx(path)
+    ^path = 0
+    return path
+end
+def a2getpfx(path)
+    byte params[3]
+
+    ^path    = 0
+    params.0 = 1
+    params:1 = path
+    perr     = syscall($C7, @params)
+    return path
+end
+def a3getpfx(path)
+    byte params[4]
+
+    params.0 = 2
+    params:1 = path
+    params.3 = 64
+    perr     = syscall($C7, @params)
+    return path
+end
+def a1setpfx(path)
+    return path
+end
+def a2setpfx(path)
+    byte params[3]
+
+    params.0 = 1
+    params:1 = path
+    perr     = syscall($C6, @params)
+    return path
+end
+def a3setpfx(path)
+    byte params[6]
+    byte fileinfo[2]
+    char fullpath[65]
+
+    if ^path and ^(path + 1) <> '/' and ^(path + 1) <> '.'
+        a3getpfx(@fullpath)
+        strcat(@fullpath, path)
+        path = @fullpath
+    fin
+    params.0 = 3
+    params:1 = path
+    params:3 = @fileinfo
+    params.5 = 2
+    if not syscall($C4, @params) and (fileinfo.1 == $00 or fileinfo.1 == $0F) // Make sure it's a directory
+        params.0 = 1
+        params:1 = path
+        syscall($C6, @params)
+    else
+        a3getpfx(path) // Get current path
+    fin
+    return path
+end
+def a1getfileinfo(path, fileinfo)
+    perr = $01
+    return perr
+end
+def a2getfileinfo(path, fileinfo)
+    byte params[18]
+
+    params.0 = 10
+    params:1 = path
+    perr     = syscall($C4, @params)
+    memcpy(fileinfo, @params + 3, 15)
+    return perr
+end
+def a3getfileinfo(path, fileinfo)
+    byte params[6]
+
+    params.0 = 3
+    params:1 = path
+    params:3 = fileinfo
+    params.5 = 15
+    perr     = syscall($C4, @params)
+    return perr
+end
+def a1setfileinfo(path, fileinfo)
+    perr = $01
+    return perr
+end
+def a2setfileinfo(path, fileinfo)
+    byte params[14]
+
+    params.0 = 7
+    params:1 = path
+    memcpy(@params + 3, fileinfo, 11)
+    perr     = syscall($C3, @params)
+    return perr
+end
+def a3setfileinfo(path, fileinfo)
+    byte params[6]
+
+    params.0 = 3
+    params:1 = path
+    params:3 = fileinfo
+    params.5 = 15
+    perr     = syscall($C3, @params)
+    return perr
+end
+def a1geteof(refnum)#2
+    return 0, 0
+end
+def a23geteof(refnum)#2
+    byte params[5]
+
+    params.0 = 2
+    params.1 = refnum
+    params:2 = 0
+    params.4 = 0
+    syscall($D1, @params)
+    return params:2, params.4
+end
+def a1seteof(refnum, eofl, eofh)
+    return -1
+end
+def a23seteof(refnum, eofl, eofh)
+    byte params[5]
+
+    params.0 = 2
+    params.1 = refnum
+    params:2 = eofl
+    params.4 = eofh
+    perr = syscall($D0, @params)
+    return perr
+end
+def a1getmark(refnum)#2
+    return 0, 0
+end
+def a23getmark(refnum)#2
+    byte params[5]
+
+    params.0 = 2
+    params.1 = refnum
+    params:2 = 0
+    params.4 = 0
+    syscall($CF, @params)
+    return params:2, params.4
+end
+def a1setmark(refnum, eofl, eofh)
+    return -1
+end
+def a23setmark(refnum, eofl, eofh)
+    byte params[5]
+
+    params.0 = 2
+    params.1 = refnum
+    params:2 = eofl
+    params.4 = eofh
+    perr = syscall($CE, @params)
+    return perr
+end
+def a1open(path)
+    return 0
+end
+//
+// (change 1) No per-file heap buffers on maux -- the kernel owns
+// io_buffers. Upstream reserved MAX_IOBUFS-1 extra 1024-byte buffers
+// via heapallocalign(); here there is nothing to allocate, and
+// plasm.pla's `fileio:iobufalloc(2)` discards the return value, so a
+// bare success return is the whole contract.
+//
+def a2iobufs(iobufs)
+    return 0
+end
+def a13iobufs(iobufs)
+    return 0
+end
+//
+// (change 1) a2open no longer hunts for an iobuf slot -- there are
+// none. io_buffer = $0000 (maux/kernel-owned; see file header).
+//
+def a2open(path)
+    byte params[6]
+    //@INCFB-LOCALS@
+
+    params.0 = 3
+    params:1 = path
+    params:3 = 0
+    params.5 = 0
+    perr     = syscall($C8, @params)
+    //@INCFB-BLOCK@
+    if params.5 and params.5 <= NL_MAX
+        nl_emask[params.5] = 0          // (change 6) a new file, no mode
+    fin
+    return params.5
+end
+def a3open(path)
+    byte params[7]
+
+    params.0 = 4
+    params:1 = path
+    params.3 = 0
+    params:4 = 0
+    params.6 = 0
+    perr = syscall($C8, @params)
+    return params.3
+end
+def a1close(refnum)
+    return perr
+end
+//
+// (change 1) a2close no longer checks an iobuf_ref table before
+// closing -- upstream REFUSED to close (leaving the file open!) when
+// the refnum did not match a tracked slot; on maux every open refnum
+// is real (the kernel, not this module, owns the buffer), so close it
+// unconditionally.
+//
+def a2close(refnum)
+    byte params[2]
+
+    params.0 = 1
+    params.1 = refnum
+    perr     = syscall($CC, @params)
+    return perr
+end
+def a3close(refnum)
+    byte params[2]
+
+    params.0 = 1
+    params.1 = refnum
+    perr     = syscall($CC, @params)
+    return perr
+end
+def a1read(refnum, buf, len)
+    return perr
+end
+//
+// (change 2) fileio:read -- the ONLY read path plasm's lexer calls.
+// Plain MLI READ, then if a NEWLINE mode is armed for this refnum
+// (nl_emask[refnum] <> 0), scan the bytes just transferred for the
+// first where (byte & emask) == nlchar; if found, wind the file mark
+// back to just past it (GET_MARK was already advanced by the READ, so
+// the new mark is mark_after - (trans - (index+1))) and return
+// index+1 instead of the full transfer count. (change 4) Under a
+// mask that ignores bit 7, bit 7 is cleared on the way past.
+//
+def a23read(refnum, buf, len)
+    byte params[8]
+    byte emask, nlchar, b, text
+    word i, marklo, delta
+    byte markhi
+
+    params.0 = 4
+    params.1 = refnum
+    params:2 = buf
+    params:4 = len
+    params:6 = 0
+    perr     = syscall($CA, @params)
+    len      = params:6
+    if len and refnum <= NL_MAX
+        emask = nl_emask[refnum]
+        if emask
+            nlchar = nl_char[refnum]
+            //
+            // (change 4) a mask that ignores bit 7 asks for TEXT:
+            // return it low-ASCII whichever convention the file is in.
+            //
+            text = (emask & $80) == 0
+            i = 0
+            while i < len
+                b = ^(buf + i)
+                if text
+                    b = b & $7F
+                    ^(buf + i) = b
+                fin
+                b = b & emask
+                if b == nlchar
+                    marklo, markhi = a23getmark(refnum)
+                    delta = len - (i + 1)
+                    if isult(marklo, delta)
+                        markhi--
+                    fin
+                    marklo = marklo - delta
+                    a23setmark(refnum, marklo, markhi)
+                    return i + 1
+                fin
+                i++
+            loop
+        fin
+    fin
+    return len
+end
+def a1write(refnum, buf, len)
+    return perr
+end
+def a2write(refnum, buf, len)
+    byte params[8]
+
+    params.0 = 4
+    params.1 = refnum
+    params:2 = buf
+    params:4 = len
+    params:6 = 0
+    perr     = syscall($CB, @params)
+    return params:6
+end
+def a3write(refnum, buff, len)
+    byte params[6]
+
+    params.0 = 3
+    params.1 = refnum
+    params:2 = buff
+    params:4 = len
+    perr     = syscall($CB, @params)
+    return perr ?? 0 :: len
+end
+def a1create(path, type, aux)
+    return perr
+end
+def a2create(path, type, aux)
+    byte params[12]
+
+    params.0  = 7
+    params:1  = path
+    params.3  = $C3
+    params.4  = type
+    params:5  = aux
+    params.7  = type == $0F ?? $0D :: $01
+    params:8  = 0
+    params:10 = 0
+    //@INCFB-STOP@
+    perr      = syscall($C0, @params)
+    return perr
+end
+def a3create(path, type, aux)
+    byte params[6]
+    byte options[4]
+
+    params.0  = 3
+    params:1  = path
+    params:3  = @options
+    params.5  = 4
+    options.0 = type
+    options:1 = aux
+    options.3 = type == $0F ?? $0D :: $01
+    perr      = syscall($C0, @params)
+    return perr
+end
+def a1destroy(path)
+    perr = $01
+    return perr
+end
+def a23destroy(path)
+    byte params[3]
+
+    params.0 = 1
+    params:1 = path
+    //@INCFB-STOP@
+    perr     = syscall($C1, @params)
+    return perr
+end
+def a1rename(oldpath, newpath)
+    perr = $01
+    return perr
+end
+def a23rename(path, newpath)
+    byte params[5]
+
+    params.0 = 2
+    params:1 = path
+    params:3 = newpath
+    perr     = syscall($C2, @params)
+    return perr
+end
+def a1newline(refnum, emask, nlchar)
+    return perr
+end
+//
+// (change 2) a2newline no longer syscalls $C9 -- maux's kernel does
+// not wire MLI NEWLINE. It just arms the per-refnum table a23read()
+// checks. emask == 0 (upstream's own "off" sentinel) leaves the entry
+// clear.
+//
+def a2newline(refnum, emask, nlchar)
+    if refnum <= NL_MAX
+        nl_emask[refnum] = emask
+        nl_char[refnum]  = nlchar
+    fin
+    perr = 0
+    return perr
+end
+def a3newline(refnum, emask, nlchar)
+    byte params[4]
+
+    params.0 = 3
+    params.1 = refnum
+    params.2 = emask ?? $FF :: $00
+    params.3 = nlchar
+    perr     = syscall($C9, @params)
+    return perr
+end
+def a1online(unit, buf)
+    perr = $27 // IOERR
+    return perr
+end
+def a2online(unit, buf)
+    byte params[4]
+
+    params.0 = 2
+    params.1 = unit
+    params:2 = buf
+    perr     = syscall($C5, @params)
+    return perr
+end
+def a3volume(unit, volname)
+    byte devname[17]
+    byte info[11]
+    byte params[9]
+
+    ^volname = 0
+    params.0 = 4
+    params.1 = unit
+    params:2 = @devname
+    params:4 = @info
+    params.6 = 11
+    if syscall($85, @params) == 0
+        params.0 = 4
+        params:1 = @devname
+        params:3 = volname
+        params:5 = 0
+        params:7 = 0
+        return syscall($C5, @params)
+    fin
+    return -1
+end
+def a3online(unit, buf)
+    byte info[11]
+    byte volname[17]
+    byte i
+
+    if unit == 0
+        for i = $01 to $0F
+            if a3volume(i, buf) == 0
+                ^buf = ^buf | (i << 4)
+            fin
+            buf = buf + 16
+        next
+    else
+        return a3volume(unit, buf)
+    fin
+    return 0
+end
+def a13readblock(unit, buf, block)
+    perr = $27  // IOERR
+    return perr
+end
+def a2readblock(unit, buf, block)
+    byte params[6]
+
+    params.0 = 3
+    params.1 = unit
+    params:2 = buf
+    params:4 = block
+    perr     = syscall($80, @params)
+    return perr
+end
+def a13writeblock(unit, buf, block)
+    perr = $27  // IOERR
+    return perr
+end
+def a2writeblock(unit, buf, block)
+    byte params[6]
+
+    params.0 = 3
+    params.1 = unit
+    params:2 = buf
+    params:4 = block
+    perr     = syscall($81, @params)
+    return perr
+end
+//
+// Machine specific initialization. maux's MACHID ($B0, IIe|128K --
+// rt.pla) matches neither MACHID_III nor MACHID_I, so it falls
+// through `otherwise` unchanged, same as real Apple II ProDOS: the
+// default a2*/a23* table above stands.
+//
+when MACHID & MACHID_MODEL
+    is MACHID_III
+        fileio:getpfx      = @a3getpfx
+        fileio:setpfx      = @a3setpfx
+        fileio:getfileinfo = @a3getfileinfo
+        fileio:setfileinfo = @a3setfileinfo
+        fileio:iobufalloc  = @a13iobufs
+        fileio:open        = @a3open
+        fileio:close       = @a3close
+        fileio:write       = @a3write
+        fileio:create      = @a3create
+        fileio:newline     = @a3newline
+        fileio:online      = @a3online
+        fileio:readblock   = @a13readblock
+        fileio:writeblock  = @a13writeblock
+        break
+    is MACHID_I
+        fileio:getpfx      = @a1getpfx
+        fileio:setpfx      = @a1setpfx
+        fileio:getfileinfo = @a1getfileinfo
+        fileio:setfileinfo = @a1setfileinfo
+        fileio:geteof      = @a1geteof
+        fileio:seteof      = @a1seteof
+        fileio:getmark     = @a1getmark
+        fileio:setmark     = @a1setmark
+        fileio:iobufalloc  = @a13iobufs
+        fileio:open        = @a1open
+        fileio:close       = @a1close
+        fileio:read        = @a1read
+        fileio:write       = @a1write
+        fileio:create      = @a1create
+        fileio:destroy     = @a1destroy
+        fileio:rename      = @a1rename
+        fileio:newline     = @a1newline
+        fileio:online      = @a1online
+        fileio:readblock   = @a13readblock
+        fileio:writeblock  = @a13writeblock
+        break
+    otherwise // Apple ][ (and maux)
+wend
+//
+// Keep module in memory
+//
+return modkeep
+done

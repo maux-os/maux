@@ -1,0 +1,101 @@
+.\" timeout.1 -- maux's timeout(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic timeout(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as env.1. Rendered at build
+.\" time to build/man/TIMEOUT.TXT and staged on the play image as
+.\" /usr/man/TIMEOUT: `more /usr/man/TIMEOUT`.
+.TH TIMEOUT 1 "September 15, 2026" maux
+.SH NAME
+timeout \- run a utility, kill it if it outruns a deadline
+.SH SYNOPSIS
+.B timeout
+[
+.B \-fp
+] [
+.B \-k
+.I time
+] [
+.B \-s
+.I signal
+]
+.I duration utility
+[
+.I argument
+] ...
+.SH DESCRIPTION
+.I Timeout
+runs
+.I utility
+and waits up to
+.I duration
+seconds for it to exit. If it has not exited by then,
+.I signal
+(default TERM) is sent to it, and
+.I timeout
+exits 124 once it is reaped.
+.I Duration
+and
+.I time
+are decimal integers with an optional trailing
+.BR s ,
+.BR m ,
+or
+.B h
+suffix (default seconds).
+.PP
+.I Utility
+is resolved against
+.B PATH
+exactly as a shell resolves a bare command word (execvp), and
+its
+.IR argv [0]
+is the word as typed, not the resolved path.
+.TP
+.B \-f
+Foreground: accepted and does nothing. There is no process-group
+concept on this machine for it to skip.
+.TP
+.B \-k \fItime\fR
+If
+.I signal
+alone does not reap
+.I utility
+within
+.I time
+more seconds, send it KILL as well.
+.TP
+.B \-p
+Preserve status: exit with
+.IR utility 's
+own status even after a timeout, instead of 124.
+.TP
+.B \-s \fIsignal\fR
+Send
+.I signal
+instead of TERM. A decimal number or one of the names TERM,
+KILL, HUP, INT, QUIT.
+.SH FILES
+/usr/man/TIMEOUT  this page
+.SH "SEE ALSO"
+sh(1), kill(1), nohup(1), sleep(1)
+.SH DIAGNOSTICS
+If
+.I utility
+was invoked, its own exit status, unless it timed out and
+.B \-p
+was not given, in which case 124. Otherwise: 125 on a bad
+.I duration
+or option, or if fewer than two operands remain after options;
+126 if
+.I utility
+was found but could not be run; 127 if it could not be found on
+.BR PATH .
+.SH BUGS
+There is no interval timer on this machine: the deadline is a
+tick count sampled and polled, backed by an AppleMouse VBL or
+Mockingboard tick source. A machine with neither refuses with a
+diagnostic (exit 125) rather than hanging. A fractional
+.I duration
+(such as
+.BR 1.5 )
+is refused rather than truncated or rounded.

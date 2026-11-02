@@ -1,0 +1,64 @@
+title: grep, written with ed
+description: grep is named for the ed command g/re/p. Type it again in vi, run it on the Federalist Papers, and compare it with the real one.
+demo: fedgrep
+---
+<div class="band demo">
+<h1>grep, written with ed</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / fedgrep</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/fedgrep.py; docs/DEMO-FEDGREP-NOTES.md -->
+<p class="lead">grep is named after an ed command, <code>g/re/p</code>: global,
+regular expression, print. The demo types it again into <code>vi</code> as a
+six-line shell script that hands a here-document to <code>ed</code>, and runs
+it on the Federalist Papers: all 85 are on the disk, one file each, as plain
+public-domain text. It runs the script on Madison's No. 10, the paper on
+faction, runs the real <code>grep</code> on the same paper, and lets
+<code>cmp</code> say nothing. Then it runs the script over the 26 papers this
+edition heads MADISON, with <code>xargs</code>, sped up (the badge under the
+screen says by how much), and checks the bytes.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>Why the 26 papers this edition heads MADISON, and not all 85</h2>
+<!-- src: docs/DEMO-FEDGREP-NOTES.md; docs/man/ed.1 -->
+<p><code>ed</code> keeps the whole file in memory and sizes that memory when it
+starts. At the revision this was filmed on (63fb62c2), 462 lines of No. 83
+(28,613 bytes) load and 463 lines (28,682 bytes) are refused. No. 83, the
+longest paper, is 34,200 bytes, so <code>ed</code> answers its
+<code>r</code> command with <code>?</code> and the script prints that question
+mark, where the real <code>grep</code> prints nothing. The film does not hide
+it; it picks the papers this edition heads MADISON, none of which is near the
+limit. The headings are the edition's, not the authors': who wrote the
+disputed papers is a question this film does not settle.</p>
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; docs/VERIFICATION.md (check-demos, check-recorder) -->
+<p>This film is made by <code>site/demos/fedgrep.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that the script
+reads back from <code>vi</code> as typed, that <code>wc</code> counts the papers
+on the disk, that <code>head</code> shows No. 10 as headed MADISON, dated 22
+November 1787, that <code>grep.sh</code> prints exactly the lines of No. 10 that
+hold the word, in order, as the host finds them in the same bytes, that the real
+<code>grep</code> prints the same lines, and that <code>cmp</code> on the two
+captures prints nothing. For the papers headed MADISON it requires that the
+guest finds 26 of them; that <code>cksum</code> of the list, of the
+<code>grep.sh</code> output and of the <code>grep</code> output equals the
+host's checksum of the bytes each must hold; that <code>cmp</code> says the
+<code>grep.sh</code> output and the list differ (a positive control, so a
+<code>cmp</code> that always says nothing cannot pass); and that
+<code>cmp</code> on the two outputs prints nothing. The checks themselves were tested:
+with <code>ed</code>, <code>grep</code>, <code>cmp</code>, <code>xargs</code>,
+<code>head</code> or <code>wc</code> replaced by a copy of <code>cat</code>,
+with <code>cmp</code>, <code>xargs</code>, <code>cksum</code> or
+<code>vi</code> replaced by <code>true</code>, the demo fails at the row that
+uses it.</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

@@ -1,0 +1,50 @@
+.\" cksum.1 -- maux's cksum(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as cut.1/head.1.
+.\" Rendered at build time to build/man/CKSUM.TXT and staged on the
+.\" play image as /usr/man/CKSUM: `more /usr/man/CKSUM`.
+.TH CKSUM 1 "September 14, 2026" maux
+.SH NAME
+cksum \- write a file checksum and byte count
+.SH SYNOPSIS
+.B cksum
+[ file ] ...
+.SH DESCRIPTION
+.I Cksum
+computes a cyclic redundancy check for each named
+.I file
+(standard input if none is given) and writes, for each one, the
+checksum, the number of octets read, and \(em if an operand
+named it \(em the file's own pathname, one line per file.  A
+run with no operands prints no pathname at all, matching every
+other checksum-shaped tool in this tree
+.RI ( sum (1)).
+Unlike
+.IR sum (1),
+.I cksum
+prints a pathname for EVERY named operand, even a single one.
+.PP
+The checksum is the CRC used by the POSIX
+.I cksum
+utility: a 32-bit CRC (polynomial
+.BR 04C11DB7 ,
+most-significant bit first, initial value zero) computed over
+the file's own bytes, then over the octets of the file's length
+itself (least significant octet first, stopping the instant the
+remaining length is zero \(em an empty file folds in none), and
+finally complemented.  This is
+.B not
+the same algorithm as
+.IR zlib 's
+CRC-32.
+.SH FILES
+/usr/man/CKSUM  this page
+.SH "SEE ALSO"
+sum(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if a file named on the command line could
+not be opened \(em that file is skipped, a diagnostic naming it
+is written to standard error, and the remaining operands are
+still processed.
+.SH BUGS
+None known.

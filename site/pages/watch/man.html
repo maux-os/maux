@@ -1,0 +1,27 @@
+title: man and more
+description: man sh, SPACE for the next page, / to search, q to quit. The manual is on the disk.
+demo: man
+---
+<div class="band demo">
+<h1>man and more</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / man</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/man.py -->
+<p class="lead">The manual is on the disk. <code>man sh</code> opens the shell page on the alternate screen, SPACE shows the next page, <code>/</code> searches, and <code>q</code> brings the shell screen back exactly as it was.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/man.py; docs/DEMOS-W1-NOTES.md -->
+<p>This film is made by <code>site/demos/man.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that the title row is the first line of the page, that the second page starts one screenful on, that the search puts the matching line on the top row, and that after <code>q</code> the shell screen is back untouched. The rows are computed on the host from the bytes of the manual page on the image. The checks themselves were tested: with <code>more</code> replaced by a copy of <code>cat</code>, or <code>man</code> by <code>true</code>, the demo fails at "the first page is up".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

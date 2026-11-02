@@ -1,0 +1,32 @@
+*---------------------------------------------------------------
+* sc.fdact.equ -- fdactions opcodes (ABI FRICTION item 10):
+* the 3-byte spawn()-time fd-inheritance records sh's pipeline
+* redirection builds and the kernel's PRC_FDACTIONS (in
+* procfile2.s) replays. Split out of inc/syscall.equ (task
+* #8, docs/SELFHOST-CONVERSION.md phase 1) -- reference-set scan
+* shows only sh.s among src/bin/*.s programs needs this; every
+* other utility program neither builds nor replays an fdactions
+* list. See docs/SYSCALL.md "Item 10" for the full design.
+*
+* `put`-only file (no code/org/dsk), same precondition
+* discipline as memmap.equ -- the top-level file must `put`
+* this directly.
+*---------------------------------------------------------------
+
+* -- fdactions opcodes (ABI FRICTION item 10, DEFINED here).
+* Each record -- is 3 bytes: [opcode][target fd][source fd or
+* 0]. See docs/SYSCALL.md -- "Item 10" for the full design and
+* the sh pipeline worked example. -- Unaffected by the ProDOS
+* ruling (fd numbers are still 0/1/2 + kernel- -- assigned small
+* integers at this layer, translated to MLI refnums --
+* internally -- fdactions never sees a refnum).
+FDACT_END   equ   0     ;list terminator (also: a NULL fdactions
+                        ;pointer means "no actions" without
+                        ;needing even one byte)
+FDACT_DUP   equ   1     ;child[target fd] = dup(parent[source
+                        ;fd]), source always resolved against
+                        ;the PARENT's table as of spawn() time
+                        ;(never a fd a prior action in the SAME
+                        ;list just created)
+FDACT_CLOSE equ   2     ;child[target fd] = closed (source fd
+                        ;byte unused, reserved 0)

@@ -1,0 +1,177 @@
+.\" diff.1 -- maux's diff(1), in the V7 man(1) shape. An original
+.\" page (this project's own text, written against src/bin/diff.s
+.\" and src/bin/diffctx.s), so it carries no third-party notice --
+.\" MIT like the code, same posture as env.1/man.1/tsort.1.
+.TH DIFF 1 "October 8, 2026" maux
+.SH NAME
+diff \- compare two text files, or two directory trees, line by line
+.SH SYNOPSIS
+.B diff
+[
+.B \-rb
+] [
+.B \-e
+|
+.B \-u
+|
+.B \-c
+] [
+.BI \-U " n"
+] [
+.BI \-C " n"
+]
+.I file1 file2
+.SH DESCRIPTION
+.I Diff
+reports the lines that must change to turn
+.I file1
+into
+.IR file2 .
+The edit script it reports is MINIMAL: both files are read
+whole, a longest\-common\-subsequence table is filled over
+whole lines, and the script is recovered by backtracking that
+table \(em not a heuristic that may report more changes than
+are needed.
+.PP
+With no option the output is the classic ed\-script\-compatible
+form:
+.RI \(lq 2c2 \(rq
+style commands, with the deleted lines marked
+.RB \(lq "< " \(rq
+and the added lines marked
+.RB \(lq "> " \(rq
+around a
+.RB \(lq \-\-\- \(rq
+separator.
+.PP
+If both operands are directories, the entries of the two are
+compared in the byte order of their names (the C locale, so
+.RB \(lq Banana \(rq
+precedes
+.RB \(lq apple \(rq):
+a name in only one is reported as
+.RB \(lq "Only in \fIdir\fP: \fIname\fP" \(rq,
+a pair of plain files is compared, and a pair of directories is
+named as
+.RB \(lq "Common subdirectories: \fId1\fP and \fId2\fP" \(rq
+(or, with
+.BR \-r ,
+compared in turn).  A name that is a directory in one and a
+plain file in the other is reported as
+.RB \(lq "File \fId1\fP is a directory while file \fId2\fP is a regular file" \(rq
+and counts as a difference.  Each pair of files that differs is
+preceded by a line
+.RB \(lq "diff \fIoptions d1/x d2/x\fP" \(rq
+with the options as they were typed.
+If only one operand is a directory, the other is compared with
+the file of the same name in it.
+.SH OPTIONS
+.TP
+.B \-r
+Compare directories recursively.
+.TP
+.B \-b
+Treat trailing white space as nothing, and any run of white
+space as equal to any other run.
+.TP
+.B \-e
+Write a pure
+.BR ed (1)
+script \(em commands only, no marked context lines \(em with
+the hunks in REVERSE order, so that earlier line numbers are
+still valid as
+.I ed
+applies each edit in turn.
+.TP
+.B \-u
+Write a UNIFIED context diff: two header lines naming the
+files, then one
+.RB \(lq "@@ \-l,s +l,s @@" \(rq
+hunk header per group of changes, followed by the changed and
+surrounding lines interleaved, prefixed
+.RB \(lq "\ " \(rq
+(context),
+.RB \(lq \- \(rq
+(deleted) and
+.RB \(lq + \(rq
+(added).  This is the form
+.BR patch (1)
+prefers.
+.TP
+.B \-c
+Write a CONTEXT diff: two header lines, then per group a
+.RB \(lq *************** \(rq
+separator, the
+.I file1
+section (lines prefixed
+.RB \(lq "\ \ " \(rq,
+.RB \(lq "\- " \(rq
+or
+.RB \(lq "! " \(rq)
+and the
+.I file2
+section (prefixed
+.RB \(lq "\ \ " \(rq,
+.RB \(lq "+ " \(rq
+or
+.RB \(lq "! " \(rq).
+A section whose own side has no changed line at all is written
+as its header line alone, with no body \(em what every other
+.I diff
+does for a pure insertion or a pure deletion.
+.TP
+.BI \-U " n"
+.TP
+.BI \-C " n"
+Select the unified or context form AND set the number of
+copied context lines to
+.IR n ,
+instead of the default 3.  Two groups of changes are printed
+as ONE hunk exactly while at most 2\fIn\fR unchanged lines
+separate them.
+.SH FILES
+.br
+/usr/man/DIFF  this page
+.SH "SEE ALSO"
+cmp(1), comm(1), ed(1), patch(1)
+.SH DIAGNOSTICS
+Exit status is 0 if the files are identical (and nothing is
+written at all), 1 if differences were found, and 2 for a usage
+error, a file that cannot be opened, or an input too large for
+the tables or the name arena (see BUGS), which is reported as
+.RI \(lq "diff: input too large" \(rq
+on standard error.  A directory tree is never compared from a
+truncated listing: it is refused whole.
+.SH BUGS
+Capacity is fixed at build time and a file past it is REFUSED,
+never silently truncated: 120 lines per file, 6000 bytes of
+text across both files, and a comparison table bounded by
+(lines1+1)\(mu(lines2+1) \(<= 10000 \(em roughly 99 lines
+against 99.
+.PP
+The
+.B \-u
+and
+.B \-c
+header lines carry the pathname alone.  POSIX leaves the
+timestamp that usually follows it unspecified, and a ProDOS
+file has no meaningful modification time on a machine that
+booted without a clock, so none is written.
+.BR patch (1)
+here reads the name to a tab OR to end of line, so both forms
+apply.
+.PP
+.B \-r
+reads each directory whole into a 12000\-byte name arena (17
+bytes an entry, both listings of every level still being walked
+live in it) and closes it before anything else opens, so the walk
+never holds more than the two files being compared.  A tree whose
+listings do not fit, one more than 16 directories deep, or one
+whose pathname passes the 64 characters ProDOS allows, is
+refused with exit status 2.  Each pair of files is still bounded
+as above.
+.PP
+Where the hosts disagree the page follows POSIX: a file
+against a directory of the same name is a difference, exit 1
+(GNU says 1, BSD says 0).  The same file named twice is
+identical and is not opened twice.

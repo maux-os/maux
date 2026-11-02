@@ -1,0 +1,557 @@
+/* maux site: set like a book, not styled like an app. No script beyond the
+   <video> element, except on a page that offers a second demo display, which
+   loads one small optional script. Standing choices: two faces, Spectral for
+   prose and IBM Plex Mono for everything that belongs to the machine (brand,
+   navigation, heading labels, table heads, man pages), each falling back to
+   the system's own so a page opened from disk offline still reads; one accent
+   colour, amber; hairline and heavy rules instead of boxes; square corners;
+   at 64rem and up the navigation is a left rail and the text keeps a book's
+   measure while tables and films use the width. The phosphor band (.band) is
+   the machine's screen: home, /watch/ and each film page open on one, and a
+   reading page is the same dark ground without the glow. THE SITE IS DARK
+   AT ALL TIMES, by ruling -- there is no light scheme and no
+   prefers-color-scheme switch, so a value here is the value a reader gets. */
+:root {
+  color-scheme: dark;
+  --bg: #14130f; --fg: #ece8da; --dim: #b4af9f; --rule: #4a463a; --heavy: #ece8da;
+  --link: #f0b45a; --visited: #d39a5a; --code-bg: #24221a; --accent: #e3a43a;
+  --term-bg: #17130e; --term-fg: #f2cf80; --warn: #ffd9a0; --warn-bg: #3a2a10;
+  /* the warm white the `paper` phosphor is named for (scripts/demo_phos.py
+     picks it as "the site's own paper token"). The page is no longer paper,
+     but the token is, and the swatch and the films still use this value. */
+  --paper: #f8f4ea;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --serif: "Spectral", "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Charter, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --measure: 40rem; --wide: 62rem; --rail: 13.5rem;
+  /* the phosphor screen: the same in both colour schemes, it is always dark */
+  --ph-bg: #1b1712; --ph-fg: #efe5cf; --ph-dim: #b9ad94; --ph-amber: #e9a640;
+  --ph-glow: #f4d27c; --ph-green: #7ccf86; --ph-rule: #3a3227;
+  /* main's padding, named so the band can bleed to the edges of it */
+  --pt: 16px; --pr: 16px; --pl: 16px;
+}
+* { box-sizing: border-box; }
+html { font-size: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 1.125rem/1.6 var(--serif);
+  hyphens: manual; text-rendering: optimizeLegibility;
+}
+a { color: var(--link); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+a:visited { color: var(--visited); }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 8px; top: 8px; background: var(--bg); padding: 4px 8px; z-index: 9; }
+
+/* chrome: all monospace. Below 64rem a bar across the top; at 64rem and up a rail. */
+.top { padding: 10px 16px 8px; border-bottom: 3px double var(--heavy); font-family: var(--mono); }
+.brand { font: bold 1.6rem/1 var(--mono); text-decoration: none; color: var(--fg) !important; letter-spacing: -0.02em; }
+.brand::after { content: ""; display: inline-block; width: 0.42em; height: 0.78em; margin-left: 0.08em;
+  vertical-align: -0.04em; background: var(--accent); animation: cursor 1.1s steps(1) infinite; }
+@keyframes cursor { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .brand::after { animation: none; } }
+nav { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 8px; font-size: 0.88rem; }
+nav a { text-decoration: none; padding: 2px 0; color: var(--fg); border-bottom: 2px solid transparent; }
+nav a:visited { color: var(--fg); }
+nav a:hover { border-bottom-color: var(--rule); }
+nav a[aria-current] { border-bottom-color: var(--accent); font-weight: bold; }
+
+/* the repository, in the chrome of every page including each man page.
+   It is deliberately NOT a nav item: a nav item is another page of this
+   site, and this one leaves it, so it is a bordered affordance set
+   below the list rather than a word in it. The mark is GitHub's own,
+   inlined -- a remote image would make every reader's browser call a
+   third party for a 15px icon. */
+.src { display: inline-flex; align-items: center; gap: 0.45em; margin-top: 10px;
+  padding: 5px 9px; border: 2px solid var(--rule); font: 500 0.8rem/1 var(--mono);
+  color: var(--fg); text-decoration: none; }
+.src:visited { color: var(--fg); }
+.src:hover, .src:focus-visible { border-color: var(--accent); color: var(--accent); }
+.src svg { display: block; flex: none; }
+
+main { max-width: var(--wide); margin: 0 auto; padding: var(--pt) var(--pr) 8px var(--pl); }
+/* prose keeps a book's measure; tables, films, galleries and man pages use the page */
+main > :where(p, ul, ol, dl, h1, h3, h4, .crumb, .limits, details, blockquote, pre) { max-width: var(--measure); }
+main > .films, main > .doors, main > .mangrid { max-width: var(--wide); }
+h1 { font: 300 clamp(2.2rem, 4.2vw, 3.2rem)/1.08 var(--serif); letter-spacing: -0.025em; margin: 1.6rem 0 0.9rem; }
+h2 {
+  font: 700 0.92rem/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.09em;
+  margin: 2.6rem 0 0.7rem; padding-top: 0.55rem; border-top: 3px solid var(--heavy);
+}
+h2::before { content: "\00a7\00a0"; color: var(--accent); }
+h3 { font: italic 700 1.1rem/1.3 var(--serif); margin: 1.6rem 0 0.2rem; }
+p, li { text-wrap: pretty; }
+code, pre, kbd { font-family: var(--mono); font-size: 0.86em; }
+code { background: none; padding: 0; font-size: 0.84em; }
+pre {
+  background: var(--term-bg); color: var(--term-fg); padding: 16px 18px;
+  overflow-x: auto; line-height: 1.5; border: 0; border-radius: 8px;
+  box-shadow: 0 0 0 1px #3a3127, inset 0 0 28px rgba(0,0,0,0.65);
+  text-shadow: 0 0 6px rgba(244,210,124,0.35);
+  font-size: 0.86rem; margin: 1.2rem 0;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+.tablewrap { overflow-x: auto; margin: 1.2rem 0; }
+table { border-collapse: collapse; font-size: 0.93rem; font-family: var(--serif); }
+th, td { border: 0; border-bottom: 1px solid var(--rule); padding: 5px 10px 5px 0; vertical-align: top; text-align: left; }
+thead th { font: 700 0.74rem/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.08em;
+  border-top: 2px solid var(--heavy); border-bottom: 2px solid var(--heavy); background: none; white-space: nowrap; }
+th[scope="row"] { font-family: var(--mono); font-size: 0.85rem; background: none; }
+tbody tr:last-child td, tbody tr:last-child th { border-bottom: 2px solid var(--heavy); }
+video, img, svg { max-width: 100%; height: auto; }
+figure { margin: 1.2rem 0; }
+figcaption { font: 0.85rem/1.4 var(--mono); color: var(--dim); margin-top: 6px; }
+.hero video { width: 100%; background: #000; border: 1px solid #000; box-shadow: 4px 4px 0 var(--rule); }
+.hero pre { font-size: 0.92rem; }
+.lead { font-size: 1.3rem; line-height: 1.45; font-style: italic; color: var(--dim); }
+
+/* the three ways in: a contents list, not three boxes */
+.doors { display: block; margin: 1.6rem 0; border-top: 3px solid var(--heavy); counter-reset: door; }
+.doors a {
+  display: grid; grid-template-columns: 3rem 11rem 1fr; gap: 0 12px; align-items: baseline;
+  padding: 12px 0; border-bottom: 1px solid var(--rule); text-decoration: none; color: var(--fg);
+  counter-increment: door;
+}
+.doors a::before { content: counter(door, decimal-leading-zero); font: 0.85rem var(--mono); color: var(--accent); }
+.doors a strong { font: 700 1.1rem var(--mono); }
+.doors a:hover, .doors a:focus-visible { background: var(--code-bg); }
+.doors a:hover strong { color: var(--accent); }
+/* the figures: big numerals set between rules, no cells */
+.strip { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); margin: 1.4rem 0;
+  border-top: 3px solid var(--heavy); border-bottom: 1px solid var(--rule); font-size: 0.9rem; line-height: 1.4; }
+.strip div { padding: 10px 14px 12px 0; margin-right: 14px; border-right: 1px solid var(--rule); }
+.strip div:last-child { border-right: 0; }
+.strip b { display: block; font: bold 2rem/1.1 var(--mono); color: var(--accent); letter-spacing: -0.03em; margin-bottom: 4px; }
+.badge {
+  display: inline-block; border: 1px solid var(--warn); background: var(--warn-bg);
+  color: var(--warn); padding: 4px 10px; font: 0.88rem var(--mono);
+}
+.badge.stub { text-transform: none; }
+.limits { border-top: 2px solid var(--heavy); border-bottom: 1px solid var(--rule); padding: 4px 0; margin: 1.4rem 0; }
+.limits, .limits a { color: var(--fg); }
+.button, .button:visited {
+  display: inline-block; padding: 10px 18px; border: 0; background: var(--accent); color: var(--bg);
+  font: 500 0.95rem var(--mono); text-decoration: none;
+}
+.button:hover { background: var(--fg); color: var(--bg); }
+/* the demo display selector: used only by a page that offers two
+   displays, where a small script adds the buttons (without it the page
+   shows the default film and the .display-alt link); a page with one
+   display has none of these elements, so these rules match nothing */
+[hidden] { display: none !important; }
+.display-pick { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 0 0 8px; }
+.display-pick button {
+  font: 0.9rem var(--mono); padding: 6px 14px; min-height: 2.5rem; cursor: pointer;
+  border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
+}
+.display-pick button[aria-pressed="true"] { background: var(--fg); color: var(--bg); font-weight: bold; }
+.display-pick button:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+.display-alt, .display-note { font-size: 0.9rem; color: var(--dim); margin: 6px 0; }
+.crumb { font: 0.82rem var(--mono); color: var(--dim); margin: 0; }
+.crumb a { color: var(--dim); }
+
+/* manual pages: set in the machine's own face, like a printed manual */
+.man { overflow-x: auto; font: 0.95rem/1.5 var(--mono); max-width: 54rem; }
+.man table { font-family: var(--mono); font-size: inherit; }
+.man table.head, .man table.foot { width: 100%; border: 0; }
+.man table.head td, .man table.foot td { border: 0; padding: 0; }
+.man table.head { border-bottom: 1px solid var(--rule); margin-bottom: 1rem; color: var(--dim); }
+.man table.foot { border-top: 1px solid var(--rule); margin-top: 1.4rem; color: var(--dim); }
+.man td.head-vol, .man td.foot-os { text-align: center; }
+.man td.head-rtitle, .man td.foot-date { text-align: right; }
+.man h2.Sh { font: 700 0.95rem var(--mono); text-transform: none; border: 0; padding: 0; margin: 1.6rem 0 0.3rem; letter-spacing: 0; }
+.man h2.Sh::before { content: none; }
+.man h2.Sh a, .man h2.Sh a:visited { color: var(--fg); text-decoration: none; }
+.man h2.Sh a:hover { color: var(--accent); }
+.man p { margin: 0.5rem 0; }
+.man dl.Bl-tag dt { font-weight: bold; margin-top: 0.6rem; }
+.man dd { margin-left: 2rem; }
+.man code { background: none; padding: 0; }
+.mangrid { list-style: none; padding: 0; columns: 14rem; column-gap: 16px; font-family: var(--mono); }
+.mangrid li { break-inside: avoid; margin-bottom: 4px; font-size: 0.88rem; }
+.notice { border-top: 1px solid var(--rule); padding: 0; margin-top: 2.4rem; font-size: 0.88rem; max-width: 54rem; }
+.notice h2 { margin-top: 1rem; }
+.notice pre { font-size: 0.78rem; white-space: pre-wrap; }
+
+/* the film index: a contact sheet. The posters are mostly dark terminal, and
+   the writing sits in the top-left of the picture, so each is shown twice as
+   large, anchored top-left, inside a bezel */
+.cards { list-style: none; padding: 0; margin: 1.6rem 0; display: grid; gap: 34px 32px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); }
+.cards a { display: block; text-decoration: none; color: var(--fg); }
+.cards a strong { display: block; font: 600 1.2rem/1.3 var(--serif); margin-top: 10px; }
+.cards a:hover strong { color: var(--accent); text-decoration: underline; }
+.cards .gate { font: 0.78rem var(--mono); color: var(--dim); }
+.cards .gate code { background: none; padding: 0; font-size: inherit; }
+.thumb { display: block; position: relative; aspect-ratio: 5 / 3; overflow: hidden; background: #050805;
+  border: 1px solid #000; box-shadow: inset 0 0 18px #000, 3px 3px 0 var(--rule); }
+.thumb img { display: block; position: absolute; left: 0; top: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: left top; }
+.thumb::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px #223322;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 3px); pointer-events: none; }
+.cards a:hover .thumb, .cards a:focus-visible .thumb { box-shadow: inset 0 0 18px #000, 4px 4px 0 var(--accent); }
+.gates { columns: 20rem; font-size: 0.9rem; }
+.gates li { break-inside: avoid; margin-bottom: 3px; }
+.diagram { margin: 1.2rem 0; overflow-x: auto; }
+.diagram svg { width: 100%; min-width: 600px; height: auto; background: none; border: 0; font-family: var(--mono); }
+/* the diagrams are inlined, so the site's palette can repaint them */
+.diagram [fill="#ffffff"] { fill: var(--bg); }
+.diagram [fill="#111"], .diagram [fill="#111111"] { fill: var(--fg); }
+.diagram [stroke="#111"] { stroke: var(--fg); }
+.diagram [fill="#444"] { fill: var(--dim); }
+.diagram [stroke="#999999"] { stroke: var(--rule); }
+.diagram [fill="#e8eefc"] { fill: var(--code-bg); }
+.diagram [fill="#fdf0d5"], .diagram [fill="#ffe9c4"] { fill: #f1d9a6; }
+.diagram [fill="#e4f4e4"] { fill: #e2e4c9; }
+.diagram [fill="#eeeeee"] { fill: var(--code-bg); }
+/* the diagrams ship with paper-coloured fills; the page is dark, so they
+   are repainted here rather than redrawn in every svg */
+.diagram [fill="#fdf0d5"], .diagram [fill="#ffe9c4"] { fill: #4a3a1c; }
+.diagram [fill="#e4f4e4"] { fill: #2e3424; }
+.diagram figcaption { position: sticky; left: 0; }
+.transcript { font-size: 0.8rem; max-height: 28rem; }
+footer.foot { max-width: var(--wide); margin: 3rem auto 0; padding: 12px 16px 32px; border-top: 3px double var(--heavy);
+  font: 0.78rem/1.5 var(--mono); color: var(--dim); }
+footer.foot p { max-width: 52rem; }
+/* lesson pages (docs/EXAMPLES.md): the session is a transcript with the
+   typed lines marked, the files are included verbatim */
+.session { font-size: 0.82rem; }
+.session .typed { color: var(--ph-green); font-weight: 600; }
+.session .note { color: #9fc8ff; font-style: italic; }
+.srcfile pre { font-size: 0.82rem; }
+.srcfile figcaption { margin-bottom: 4px; }
+.lessonnav { margin-top: 2rem; padding-top: 0.6rem; border-top: 3px solid var(--heavy); font-family: var(--mono); font-size: 0.9rem; }
+.ladder { padding-left: 1.4rem; }
+.ladder li { margin-bottom: 6px; }
+
+/* a wide screen: the navigation becomes a rail down the left, the way a
+   manual has its contents beside the text. The page is a two-column grid. */
+@media (min-width: 64rem) {
+  body { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); grid-template-areas: "top main" "top foot"; align-items: start; }
+  .top { grid-area: top; position: sticky; top: 0; height: 100vh; padding: 28px 20px; border-bottom: 0;
+    border-right: 3px double var(--heavy); }
+  .brand { font-size: 2.1rem; }
+  nav { flex-direction: column; flex-wrap: nowrap; gap: 0; margin-top: 22px; font-size: 0.95rem; }
+  nav a { padding: 5px 0 5px 1.3rem; border-bottom: 0; position: relative; }
+  nav a:hover { background: var(--code-bg); }
+  nav a[aria-current]::before { content: ">"; position: absolute; left: 0; color: var(--accent); }
+  .src { align-self: flex-start; margin-top: 20px; }
+  :root { --pt: 20px; --pr: 48px; --pl: 44px; }
+  main { grid-area: main; width: 100%; max-width: none; margin: 0; }
+  main > * { max-width: var(--wide); }
+  main > :where(p, ul, ol, dl, h1, h3, h4, .crumb, .limits, details, blockquote, pre) { max-width: var(--measure); }
+  main > .films, main > .doors, main > .mangrid { max-width: var(--wide); }
+  footer.foot { grid-area: foot; margin: 3rem 0 0; padding: 12px 48px 32px 44px; max-width: none; }
+}
+@media (min-width: 90rem) {
+  :root { --pl: 64px; }
+  footer.foot { padding-left: 64px; }
+}
+@media (max-width: 40rem) {
+  .doors a { grid-template-columns: 2rem 1fr; }
+  .doors a::before { grid-row: span 2; }
+  .strip div { border-right: 0; border-bottom: 1px solid var(--rule); margin-right: 0; }
+}
+@media (max-width: 30rem) {
+  body { font-size: 1.0625rem; }
+  h1 { font-size: 1.65rem; }
+  .lead { font-size: 1.15rem; }
+  nav { gap: 0 14px; }
+  nav a { padding: 6px 0; }
+  .cards { gap: 24px; }
+  .cards a strong { font-size: 1.05rem; }
+  .strip { grid-template-columns: 1fr 1fr; }
+  .strip div { padding-right: 8px; }
+}
+/* demo captions (static/captions.js). The .film wrapper holds the video, a
+   dim layer over the picture and the caption plate. The picture is the top
+   432 of the film's 468 rows (the key strip is the rest), so the plate's
+   centre is 40% of the picture = 36.92% of the film. Without the script
+   the browser draws the track itself, centred by the cues' own settings. */
+:root {
+  /* the film is always dark: the caption ignores the site's theme */
+  --cap-plate: rgba(14, 14, 18, 0.92); --cap-fg: #f2f2f2;
+  --cap-accent: #c88a18; --cap-dim: rgba(0, 0, 0, 0.34);
+  --cap-edge: rgba(255, 255, 255, 0.08);
+  --cap-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  --pic: 92.3077%; --cap-top: 36.9231%;
+}
+.film { position: relative; line-height: 0; }
+.film video { display: block; width: 100%; }
+.film-dim {
+  position: absolute; left: 0; right: 0; top: 0; height: var(--pic);
+  background: var(--cap-dim); opacity: 0; pointer-events: none;
+  transition: opacity 220ms ease-in;
+}
+.film.is-narrating .film-dim { opacity: 1; transition: opacity 280ms ease-out; }
+.film-cap {
+  position: absolute; left: 50%; top: var(--cap-top); width: 80%;
+  transform: translate(-50%, -50%); display: flex; justify-content: center;
+  pointer-events: none; line-height: 1.4;
+}
+.film-plate {
+  max-width: 100%; text-align: center; opacity: 0;
+  padding: 0.7em 1.1em 0.8em; border-radius: 10px;
+  background: var(--cap-plate); color: var(--cap-fg);
+  box-shadow: var(--cap-shadow); border: 1px solid var(--cap-edge);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  font: 500 clamp(0.95rem, 2.3vw, 1.55rem)/1.4 var(--sans);
+  letter-spacing: 0.015em;
+}
+.film-plate:empty { display: none; }
+.film-plate::before {
+  content: ""; display: block; width: 2.6em; height: 2px;
+  margin: 0 auto 0.6em; background: var(--cap-accent);
+}
+.film-plate.is-in { animation: cap-in 280ms ease-out forwards; }
+.film-plate.is-out { animation: cap-out 220ms ease-in forwards; }
+@keyframes cap-in {
+  from { opacity: 0; transform: translateY(8px); filter: blur(3px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes cap-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .film-plate.is-in { animation-name: cap-in-fade; }
+  .film-plate.is-out { animation-name: cap-out-fade; }
+  @keyframes cap-in-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes cap-out-fade { from { opacity: 1; } to { opacity: 0; } }
+}
+@media (max-width: 30rem) {
+  .film-cap { width: 94%; }
+  .film-plate {
+    padding: 0.45em 0.7em 0.55em; font-size: 0.8rem; line-height: 1.3;
+    letter-spacing: 0.01em;
+  }
+  .film-plate::before { margin-bottom: 0.4em; }
+}
+/* no JavaScript: the browser draws the track, on a dark plate; with the
+   script the overlay draws it, and the native rendering is suppressed so
+   a cue is never drawn twice (.film-ov is set by captions.js, and unset in
+   fullscreen, where only the native renderer is visible) */
+video::cue { background: rgba(14, 14, 18, 0.88); color: #f2f2f2; }
+.film-ov video::cue { opacity: 0; background: transparent; color: transparent; }
+/* a SHA-256 or a long command must wrap on a phone, not widen the page */
+p code { overflow-wrap: anywhere; }
+/* Conformance page: the gaps are rows, the utility list is a grid inside a
+   disclosure, and the tool table becomes a stack of cards on a phone */
+.gaps, .tallies { list-style: none; padding: 0; margin: 0.4rem 0 1rem; }
+.gaps li { display: grid; grid-template-columns: 12rem 1fr; gap: 2px 12px;
+  padding: 5px 0; border-bottom: 1px solid var(--rule); }
+.gaps li code { align-self: start; overflow-wrap: anywhere; color: var(--accent); }
+.tallies { display: grid; gap: 4px 12px;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.tallies li { border: 1px solid var(--rule); padding: 4px 8px; }
+.gapnote { display: block; font-size: 0.85rem; color: var(--dim); }
+details.utils { margin: 0.6rem 0 1rem; }
+details.utils summary { cursor: pointer; font-weight: bold; padding: 4px 0; }
+@media (max-width: 40rem) {
+  .gaps li { grid-template-columns: 1fr; }
+  table.conf, table.conf tbody, table.conf tr, table.conf th, table.conf td {
+    display: block; }
+  table.conf thead { position: absolute; left: -9999px; }
+  table.conf tr { border: 1px solid var(--rule); margin: 0 0 12px; padding: 0; }
+  table.conf th[scope="row"] { border: 0; border-bottom: 1px solid var(--rule);
+    font-size: 1.05rem; }
+  table.conf td { border: 0; padding: 4px 8px; }
+  table.conf td::before { content: attr(data-label); display: block;
+    font-size: 0.8rem; color: var(--dim); text-transform: uppercase;
+    letter-spacing: 0.04em; }
+}
+/* /conformance/'s at-a-glance block: a two-column summary whose left
+   column is a label, then every compared utility named in running text
+   so the breadth is visible without opening anything */
+table.glance { width: 100%; }
+table.glance th { text-align: left; font-weight: normal; background: none; }
+table.glance td { font: bold 1.1rem var(--mono); text-align: right; white-space: nowrap; }
+.toolnames { line-height: 1.9; }
+
+.tryhome { margin: 1.5rem 0; }
+.tryhome .button { margin-right: .6rem; }
+
+/* the phosphor band: the machine's screen at the top of home, /watch/ and
+   each film. It bleeds to main's edges; its scanlines sit under the text and
+   under the film, never over either. */
+.band {
+  position: relative; overflow: hidden; isolation: isolate;
+  margin: calc(-1 * var(--pt)) calc(-1 * var(--pr)) 2.2rem calc(-1 * var(--pl));
+  padding: 2.4rem var(--pr) 2.8rem var(--pl);
+  background: var(--ph-bg); color: var(--ph-fg);
+}
+.band::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.16) 0 1px, transparent 1px 4px);
+}
+main > .band { max-width: none; }
+.band > * { max-width: var(--wide); }
+.band > :where(p, h1) { max-width: var(--measure); }
+.band h1 { font: 300 clamp(2.4rem, 5.4vw, 4.6rem)/1.03 var(--serif); letter-spacing: -0.03em; margin: 0.2rem 0 1.2rem; max-width: 14em; }
+.band.home h1 { max-width: none; font-size: clamp(2.1rem, 4.4vw, 3.6rem); margin-bottom: 0.8rem; }
+.band.demo h1 { font-size: clamp(2rem, 3.6vw, 3rem); margin-bottom: 1.4rem; }
+.band h1 em { font-style: italic; }
+.band .kicker { font: 500 0.74rem/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ph-amber); margin: 0 0 1.4rem; }
+.band .kicker::before { content: "$ "; color: var(--ph-green); letter-spacing: 0; }
+.band .lead { color: var(--ph-dim); font-size: 1.3rem; margin: 0; }
+.band a, .band a:visited { color: var(--ph-glow); }
+.band .crumb, .band .crumb a { color: var(--ph-dim); }
+.band .crumb { margin-bottom: 0.4rem; }
+.band code { background: rgba(255,255,255,0.07); }
+.band .button { background: var(--ph-amber); border-color: var(--ph-amber); color: #1b1712; }
+.band .button:visited { color: #1b1712; }
+.band .button:hover { background: var(--ph-glow); border-color: var(--ph-glow); color: #1b1712; }
+.band .tryhome { margin: 0 0 14px; display: flex; justify-content: flex-end; }
+.trylink { font: 500 0.9rem var(--mono); text-decoration: none; }
+.trylink:hover { text-decoration: underline; text-underline-offset: 0.25em; }
+.trylink::after { content: " \2197"; }
+.band .trylink, .band .trylink:visited { color: var(--ph-amber); }
+.band .trylink:hover { color: var(--ph-glow); }
+.band .hero { margin: 2.4rem 0 0; }
+.band figcaption { color: var(--ph-dim); }
+.band .badge { background: transparent; border-color: var(--ph-amber); color: var(--ph-glow); }
+.band .display-note, .band .display-alt { color: var(--ph-dim); }
+.band .display-pick button { background: transparent; color: var(--ph-fg); border-color: var(--ph-dim); }
+.band .display-pick button[aria-pressed="true"] { background: var(--ph-amber); border-color: var(--ph-amber); color: #1b1712; }
+@media (min-width: 64rem) {
+  .band { padding-top: 3.6rem; padding-bottom: 3.6rem; }
+}
+
+/* home: the key points beside the film */
+.band > .split { max-width: 76rem; display: grid; gap: 2rem 3.5rem; margin-top: 2.4rem; align-items: start; }
+.split .hero { margin: 0; }
+.watchcol { min-width: 0; }
+.points { list-style: none; padding: 0; margin: 0; }
+.points li:first-child { padding-top: 0; }
+.points li { padding: 16px 0 18px; border-bottom: 1px solid var(--ph-rule); font-size: 1.02rem; line-height: 1.5; color: var(--ph-fg); }
+.points b { display: block; font: 600 0.8rem/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ph-amber); margin-bottom: 4px; }
+.points code { background: none; padding: 0; color: var(--ph-glow); font-size: 0.92em; }
+@media (min-width: 56rem) {
+  .band > .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); }
+}
+.pointcol { min-width: 0; }
+
+/* the film as a monitor: a case, a recessed screen with rounded glass, a
+   vignette, scanlines and a reflection over the picture, and a power lamp */
+.band .hero {
+  position: relative; padding: 20px 22px 34px; border-radius: 16px;
+  background: linear-gradient(180deg, #2e2822 0%, #1f1a15 60%, #18140f 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -2px 0 rgba(0,0,0,0.5),
+    0 1px 0 #000, 0 24px 60px rgba(0,0,0,0.55);
+}
+.band .hero::after {
+  content: ""; position: absolute; right: 24px; bottom: 13px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ph-amber); box-shadow: 0 0 6px var(--ph-amber), 0 0 14px rgba(233,166,64,0.5);
+}
+.band .hero .film, .band .hero > pre {
+  position: relative; overflow: hidden; border-radius: 18px / 22px; background: #0b0906;
+  box-shadow: 0 0 0 3px #0a0806, 0 0 0 5px #3a3127, 0 0 36px rgba(233,166,64,0.10);
+}
+.band .hero video { display: block; width: 100%; border: 0; filter: contrast(1.08) brightness(1.06) saturate(1.1); }
+.band .hero .film::after, .band .hero > pre::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3; border-radius: inherit;
+  background:
+    radial-gradient(120% 90% at 30% 12%, rgba(255,255,255,0.07), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.55) 100%);
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.7), inset 0 0 3px rgba(0,0,0,0.9);
+}
+.band .hero > pre {
+  margin: 0; padding: 26px 28px; border: 0; color: var(--ph-glow); font-size: 0.95rem; line-height: 1.6;
+  text-shadow: 0 0 6px rgba(244,210,124,0.55), 0 0 18px rgba(233,166,64,0.25);
+}
+.band.demo { display: flex; flex-direction: column; }
+.band.demo .crumb { order: -1; }
+.band.demo .hero { width: 100%; max-width: 48rem; }
+.band .hero > pre { aspect-ratio: 4 / 3; overflow: hidden; }
+/* the contact sheet: each poster in a small monitor, the same case as the film */
+.cards .thumb {
+  aspect-ratio: 4 / 3; border: 0; border-radius: 14px / 17px; background: #0b0906;
+  box-shadow: 0 0 0 3px #0a0806, 0 0 0 12px #241e18, 0 0 0 13px #3a3127, 0 14px 30px rgba(27,23,18,0.35);
+  margin: 13px;
+}
+.cards .thumb::after {
+  border-radius: inherit; box-shadow: inset 0 0 30px rgba(0,0,0,0.75);
+  background:
+    radial-gradient(120% 90% at 30% 12%, rgba(255,255,255,0.07), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.55) 100%);
+}
+.cards a:hover .thumb, .cards a:focus-visible .thumb {
+  box-shadow: 0 0 0 3px #0a0806, 0 0 0 12px #241e18, 0 0 0 13px var(--accent), 0 14px 30px rgba(27,23,18,0.35);
+}
+.cards a strong { margin-top: 18px; }
+/* Buy Me a Coffee's own button, top right of the page. The positioning
+   context is NARROW-WIDTH ONLY: at >= 64rem the header is the left rail
+   and is `position: sticky` (see the rail block above), the button goes
+   static in its flex column, and a bare `.top { position: relative }`
+   here would silently out-specify the rail's sticky -- same one-class
+   weight, later in the file -- and set the whole rail scrolling. */
+@media (max-width: 63.99rem) {
+  /* and the button is OVER the header's own words unless the header
+     keeps its width clear: it is out of flow, so the navigation wraps
+     as though the right-hand 146px were empty and then runs under it.
+     Reserve the strip rather than trusting the nav to stay short. */
+  .top { position: relative; padding-right: 158px; }
+}
+.bmc { position: absolute; top: 50%; right: 16px; transform: translateY(-50%); line-height: 0; }
+.bmc img { display: block; width: 130px; height: 36px; filter: sepia(0.4) saturate(0.8) hue-rotate(-10deg) brightness(0.96); }
+.bmc:hover img { filter: none; }
+@media (min-width: 64rem) {
+  .top { display: flex; flex-direction: column; }
+  .bmc { position: static; transform: none; margin-top: auto; align-self: flex-start; }
+}
+/* On a phone that strip is a third of the screen, so the button comes
+   back into flow and stacks under the source link instead. */
+@media (max-width: 40rem) {
+  .top { padding-right: 16px; }
+  .bmc { position: static; transform: none; display: block; margin-top: 10px; }
+}
+.band { background: #0f0d0a; border-bottom: 1px solid var(--ph-rule); }
+.band .hero { background: linear-gradient(180deg, #2a241e 0%, #1c1813 60%, #15120e 100%); }
+
+/* the monitor's chin: display and phosphor (static/display.js). The
+   film is not restyled here: every phosphor is a film that was
+   RECORDED in that colour, where the tint is an exact palette map of a
+   two-level picture rather than a filter's approximation of one
+   (docs/DEMO-PHOSPHOR.md). So the picture carries no filter and the
+   swatches below are the only thing CSS colours. */
+.band .hero:has(.monctl) { padding-bottom: 14px; }
+.band .hero:has(.monctl)::after { bottom: 25px; }
+.monctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+  margin-top: 14px; padding-right: 30px; min-height: 30px;
+  font: 500 0.72rem/1 var(--mono); letter-spacing: 0.04em; color: var(--ph-dim); }
+.monctl .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: #110e0a;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.05); }
+.monctl .seg button { appearance: none; border: 0; background: none; font: inherit; letter-spacing: inherit; cursor: pointer;
+  padding: 6px 13px; border-radius: 999px; color: var(--ph-dim); transition: color 120ms, background 120ms; }
+.monctl .seg button:hover { color: var(--ph-fg); }
+.monctl .seg button[aria-pressed="true"] { background: #2f2821; color: var(--ph-glow);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.6); }
+.monctl .phos { display: inline-flex; align-items: center; gap: 9px; }
+.monctl .sw { appearance: none; border: 0; padding: 0; cursor: pointer; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--c); opacity: 0.45; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.45); transition: opacity 120ms, box-shadow 120ms; }
+.monctl .sw:hover { opacity: 0.8; }
+.monctl .sw[aria-pressed="true"] { opacity: 1; box-shadow: 0 0 0 2px #1c1813, 0 0 0 3px var(--c), 0 0 10px var(--c); }
+.monctl .sw-paper { --c: #f8f4ea; }   /* scripts/demo_phos.py */
+.monctl .sw-green { --c: #40ff30; }   /* scripts/demo_phos.py */
+.monctl .sw-amber { --c: #d88a14; }   /* scripts/demo_phos.py */
+.monctl button:focus-visible { outline: 2px solid var(--ph-glow); outline-offset: 2px; }
+.cards .blurb { display: block; margin-top: 4px; font-size: 0.98rem; line-height: 1.45; color: var(--dim); }
+.cards a:hover .blurb { color: var(--fg); }
+
+/* the emulator, in the page (static/tryemu.js, site/build.py gen_tryemu).
+   Before the click the .emu block is a dark panel with one button in it,
+   and the button is a plain link to the same configured emulator. After
+   it, the same box holds the frame the machine runs in. */
+.band.emuband .hero { max-width: 56rem; }
+.emu { aspect-ratio: 4 / 3; display: flex; }
+.emustart { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 2rem 1.5rem; text-align: center; text-decoration: none; line-height: 1.5; }
+.emubtn { display: inline-block; padding: 0.65em 1.5em; border: 1px solid var(--ph-amber);
+  border-radius: 6px; background: var(--ph-amber); color: #1b1712;
+  font: 600 1.05rem var(--mono); letter-spacing: 0.02em; }
+.emustart:hover .emubtn { background: var(--ph-glow); border-color: var(--ph-glow); }
+.emustart:focus-visible { outline: 2px solid var(--ph-glow); outline-offset: 3px; border-radius: 10px; }
+.emu.emulive { display: block; }   /* the frame fills the screen itself */
+.emuframe { display: block; width: 100%; height: 100%; border: 0; background: #000;
+  filter: contrast(1.08) brightness(1.06) saturate(1.1); }
+.emuout { margin: 14px 2px 0; font: 500 0.8rem var(--mono); color: var(--ph-dim); }
+.monctl .monname { color: var(--ph-dim); }

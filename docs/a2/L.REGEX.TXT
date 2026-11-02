@@ -1,0 +1,179 @@
+regex.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+THE GRAMMAR (this header IS the spec -- nothing outside this
+file may silently redefine it):
+
+  ^          anchor: pattern matches only starting at the true beginning
+             of the line. Only special as the FIRST character of the
+             whole pattern; a '^' anywhere else is an ordinary literal.
+  $          anchor: matches only at the true end of the line (i.e. only
+             the empty position right before the line's NUL terminator).
+             Only special as the LAST character of the whole pattern; a
+             '$' anywhere else is an ordinary literal.
+  .          matches any single character (never matches "no character"
+             at end of line -- it still consumes one byte).
+  *          zero-or-more repetition of the SINGLE ATOM immediately
+             preceding it (a literal char, '.', or a [...] class) --
+             GREEDY with full backtrack (try the longest run first, back
+             off one character at a time until the rest of the pattern
+             also matches, per Kernighan's classic matchhere/matchstar
+             algorithm, ~ Software Tools / "A Regular Expression
+             Matcher"). A '*' with no preceding atom to repeat (i.e. as
+             literally the first character of the pattern, or doubled
+             as in "a**") is NOT an operator there -- it is an ordinary
+             literal '*' atom, exactly as classic ed/grep BRE treats it.
+  [...]      bracket expression: matches one character that is a member
+             of the class. An optional leading '^' (immediately after
+             '[') negates the whole class. An optional ']' immediately
+             after '[' or '[^' is a LITERAL member (the classic "close
+             bracket as first char" idiom), not the terminator -- so
+             "[]]" matches only ']' and "[^]]" matches anything but ']'.
+             Otherwise the first unescaped ']' terminates the class.
+             "a-z" (a byte, then '-', then a byte, with a real member
+             byte on both sides -- not immediately before the
+             terminator) is an inclusive range; a '-' that is the first
+             member, the last member (immediately before the
+             terminator), or otherwise not sandwiched between two real
+             members, is a literal '-'. Ranges where c1 > c2 never match
+             anything (cheap, safe fallback -- not an assembly error).
+             Bracket expressions do NOT support POSIX character classes
+             ([:alpha:] etc) or collating symbols -- not part of this
+             subset.
+  \X         literal escape: matches the literal character X, for ANY X
+             -- including the metacharacters above (\. \* \[ \] \^ \$ \\)
+             AND for any other character, including digits, '(', ')',
+             '{', '}', '|'. This is the deliberate mechanism by which
+             this engine has NO backreferences, NO \(...\) subexpressions,
+             NO \{m,n\} intervals, and NO \| alternation, per the
+             operator's ruling: those sequences are simply "escaped
+             literal char" under this grammar (e.g. \( matches a literal
+             '(' character, nothing more -- there is no grouping
+             construct to escape INTO). A trailing lone '\' at the very
+             end of a pattern (nothing to escape) matches a literal '\'.
+             Backslash has NO special meaning INSIDE a [...] bracket
+             expression (true classic/POSIX BRE behavior) -- '\' there
+             is just an ordinary class member character.
+  &          (replacement-text only, not the match grammar -- see ed.s's
+             SUBST_EXPAND) expands to the whole matched substring.
+
+NOT SUPPORTED, BY DESIGN (the operator's ruling): backreferences
+(\1-\9), \(...\) subexpressions/grouping, \{m,n\} bounded
+repetition, \| alternation, POSIX bracket classes, case folding,
+multiline/DOTALL modes. This is the historical "Thompson subset"
+(regexp(3) circa V6/V7 Unix, minus even BRE's optional grouping)
+-- exactly what classic ed shipped, on purpose.
+
+ENCODING: every text and pattern byte is a liba string byte (bit
+7 set, NUL-terminated -- docs/USERLAND.md). Metacharacter
+comparisons below use merlin32's `#"X"` double-quoted char-
+literal immediate syntax, which already emits the high-bit-set
+byte (learning:01KW1GTYGZ9TE2ZGCDG0V2CNE0 -- "asc \"STR\" and
+#\"X\" emit |$80 bytes"), so every comparison in this file is
+against the SAME high-bit byte a liba string actually contains
+-- no MAKEHI/STRIPHI conversion needed anywhere in the matcher.
+
+NO RE_COMPILE -- DIRECT INTERPRETATION (judgment call, task
+explicitly leaves this open: "RE_COMPILE optional... your call,
+justify"). This engine re-parses one "atom" (a literal char,
+'.', or a whole [...] class) directly out of the pattern STRING
+on every attempt, rather than compiling to an intermediate
+bytecode/node array first. Justification: (1) ed's patterns are
+typed by a human at a prompt and are realistically under ~80
+bytes; lines are capped at LINE_MAXLEN (ed.s) around 250 bytes
+-- the total re-parse work across even a pathological backtrack
+is trivially small next to what a 1MHz-class 6502 spends
+elsewhere per command. (2) A bytecode compiler is a SECOND
+representation of the same grammar that has to be kept in
+lockstep with the interpreter, doubling the surface this header
+has to stay honest about, for a 6502 code- size cost this
+project doesn't have to spend. (3) The classic reference
+implementation this engine is modeled on (Kernighan's 27-line
+matcher) is itself a direct interpreter, not a compiler, for
+exactly this reason at exactly this scale.
+
+RECURSION / STACK BUDGET: matching a plain (non-starred) atom
+sequence is an ITERATIVE loop (RE_MATCHHERE), not recursion --
+equivalent to the reference algorithm's tail call. Only a
+STARRED atom recurses (via RE_MATCHSTAR calling back into
+RE_MATCHHERE once per backtrack candidate), and nested recursion
+depth is bounded by the number of '*' atoms encountered along
+the path being tried, not by pattern or line length. Each such
+recursion level spills ~15 zero-page bytes to the 6502 hardware
+stack (RE_MATCHSTAR's PHA/PLA save-set) plus one JSR frame. A
+pattern with a pathological number of '*' atoms (dozens) could
+in principle approach the 256-byte hardware stack's limit; ed's
+commands are human-typed one- liners, so this is a documented,
+accepted v1 limitation, not a guarded one -- no depth
+counter/abort is implemented.
+
+ZERO PAGE: this module owns a SELF-CONTAINED 34-byte private
+window, $B0-$D1, defined below rather than added to
+inc/zp.equ -- this task's scope is src/liba/regex.s
+specifically, not liba's shared zp.equ file (owned by an earlier
+task, out of bounds here). $B0-$D1 is chosen clear of zp.equ's
+own $E0-$EB (PTR0-2/U2DEC_*) and clear of ed.s's own private
+window ($30-$5F, see ed.s's header) -- verified by inspection,
+not by any assembler-enforced range check (none exists in this
+toolchain). PTR0/PTR1/PTR2 (zp.equ) remain this module's PUBLIC
+calling convention (its inputs), consistent with every other
+liba routine.
+----------------------------------------------------------------
+
+-- private working state (see header) --
+
+----------------------------------------------------------------
+REMATCH -- search a line for
+----------------------------------------------------------------
+----------------------------------------------------------------
+RE_MATCH -- search a line for the leftmost match of a pattern,
+starting the search no earlier than a given position (the
+position-parameter is what lets ed.s's s///g re-invoke this for
+a second, third, ... match on the same line without re- matching
+an anchored ^ pattern past position 0, exactly like real ed: ^
+can only ever match the line's true start).
+
+IN:  PTR0/PTR0+1 = line start (NUL-terminated liba string)
+     PTR1/PTR1+1 = pattern (NUL-terminated liba string, already isolated
+                   from its /.../ or command delimiters by the caller)
+     PTR2/PTR2+1 = search-from position, >= PTR0 and <= the line's NUL
+                   (pass == PTR0 for an ordinary/first search)
+OUT: carry clear: RE_MSTART/RE_MSTART+1 and RE_MEND/RE_MEND+1
+(this
+     file's own zero page, see above) point into the CALLER's line
+     buffer, marking the matched substring [MSTART,MEND).
+     carry set: no match anywhere from PTR2 to end of line.
+CLOBBERS: A, X, Y, PTR0, PTR1, PTR2 (liba convention -- inputs,
+not
+     preserved), plus this whole module's private $B0-$D1 window.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+REMATCHHERE -- try to match starting
+----------------------------------------------------------------
+----------------------------------------------------------------
+RE_MATCHHERE -- try to match starting exactly at RE_REP/RE_RET
+(both zero page, set by the caller -- RE_MATCH above or
+RE_MATCHSTAR below). Iterates in place for ordinary atoms (no
+recursion); hands off to RE_MATCHSTAR (a JMP, not a JSR -- true
+tail call) the moment it finds a starred atom, so THIS routine's
+own stack frame never needs to survive a backtrack. OUT: carry
+set, RE_RET = pointer just past the match -- carry clear = no
+     match starting exactly here.
+CLOBBERS: A, X, Y, RE_REP, RE_RET, RE_NEWREP,
+RE_AKIND/ACHAR/ANEG/
+     ACLS/ACLSEND, RE_SCAN, RE_TESTCH (all this module's transient cells).
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+REATOMTEST -- does character A match
+----------------------------------------------------------------
+----------------------------------------------------------------
+RE_ATOM_TEST -- does character A match the atom currently
+described by RE_AKIND/ACHAR/ANEG/ACLS/ACLSEND? IN: A = character
+to test (caller guarantees it is not the string's own
+    NUL sentinel -- this routine never special-cases NUL itself).
+OUT: carry set = match, carry clear = no match.
+----------------------------------------------------------------

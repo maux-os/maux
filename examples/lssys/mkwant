@@ -1,0 +1,2 @@
+touch WANT
+ls | tr a-z A-Z > WANT

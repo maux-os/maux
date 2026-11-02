@@ -1,0 +1,91 @@
+.\" Original maux page, MIT, 2026-09-21.
+.\" Historical-source decision: cloned from GNO/ME's chtyp(1) (Greg
+.\" Thompson), mechanism not spelling -- no Research UNIX or early BSD
+.\" counterpart exists, ProDOS types having no Unix equivalent.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH CHTYP 1 "September 21, 2026" maux
+.SH NAME
+chtyp \- change a file's ProDOS type and auxiliary type
+.SH SYNOPSIS
+.B chtyp
+.RB [ \-t
+.IR type ]
+.RB [ \-a
+.IR aux ]
+.I file ...
+.SH DESCRIPTION
+Set the ProDOS file type, the auxiliary type, or both.
+At least one of the two options is required; naming neither is an error
+rather than a command that rewrites each file with its own current
+values.
+.PP
+The type is not decoration.
+On ProDOS it is where "can this be run?" lives, and this system loads a
+program at the address in its auxiliary type, so a binary built here
+needs both set before it will run.
+.TP
+.B \-t type
+The file type, written as a decimal number, a
+.B $
+followed by hexadecimal digits, or one of the mnemonics
+.BR TXT ,
+.BR BIN ,
+.BR DIR ,
+.BR SYS ,
+.BR BAS ,
+.BR INT ,
+.BR VAR ,
+.BR REL ,
+.BR RELM ,
+.BR PAS ,
+.BR ATK ,
+.BR S16 .
+Mnemonics may be typed in either case.
+A value that does not fit in one byte is refused.
+.TP
+.B \-a aux
+The auxiliary type, as a decimal or
+.B $
+hexadecimal number from 0 to 65535.
+.PP
+Everything else the directory entry holds \- the access byte, the
+modification date and time, the length \- is read before the change and
+written back unaltered.
+.SH EXAMPLES
+Stamp an assembled program so it can be run:
+.PP
+.B chtyp -t BIN -a '$0800' MYPROG
+.PP
+Mark a file as text again after editing it as data:
+.PP
+.B chtyp -t TXT NOTES
+.SH FILES
+/usr/man/CHTYP  this page
+.SH "SEE ALSO"
+.IR chmod (1),
+.IR file (1),
+.IR ls (1)
+.SH DIAGNOSTICS
+Exit status is 0 if every named file was changed, 1 if any file could
+not be read or written, and 2 for a usage error.
+A file that cannot be reached is reported and the remaining files are
+still changed.
+.SH BUGS
+A
+.B $
+must be quoted, because the shell would otherwise expand it:
+write
+.B '$F8'
+or
+.BR \e$F8 .
+An unquoted
+.B $F8
+usually reaches this program as nothing at all, which is a usage error
+here rather than a silent change to type zero.
+.PP
+There is no
+.B \-l
+option to stamp a file for a language.
+GNO/ME's version has one, naming ORCA and APW compilers; those are
+auxiliary-type conventions of a toolchain that does not exist on this
+machine.

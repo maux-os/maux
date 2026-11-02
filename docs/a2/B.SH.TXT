@@ -1,0 +1,145 @@
+sh.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+CONTRACT (docs/SH-DESIGN.md "The loop" + "Scope"): read a line
+from fd 0, split into whitespace-delimited words plus three one-
+character operator tokens (`<` `>` `|`), build a pipeline of
+commands, spawn it with fdactions wiring redirection/pipes
+(ruling 10), wait for every child (count-N pattern, ruling 9),
+loop. Builtin: EXIT. NO job control (no `&`, `fg`/`bg`, `^Z`),
+no quoting beyond whole-word, no environment variables, no
+globbing, no `$?` expansion. Non-interactive-first: sh reads its
+script from fd 0 -- nothing here assumes a keyboard is attached
+(a tty driver, when it exists, is just another thing that can be
+fd 0).
+
+INPUT ENCODING (sh.s-time ruling, liba/sh scope -- SYSCALL.md
+deferred this exact question to task #10/liba, same as line-
+endings/text-encoding in docs/USERLAND.md "ABI RESOLUTIONS"
+#13/#14): sh reads a byte-for-byte HIGH-BIT-SET Apple II text
+stream from fd 0, CR ($8D) terminated -- the SAME convention
+every other liba text boundary already uses (asc literals, the
+text page, a polled keyboard read -- docs/USERLAND.md "string
+encoding"). This is not a new policy; it just states explicitly
+that a script FILE staged for sh to read is written the same way
+a human typing at a keyboard would produce bytes, so a future
+tty fd 0 requires zero change here. A consequence: because the
+whole line buffer is already high-bit-set NUL-in- place-
+terminated liba-string-shaped bytes once split into words, sh's
+parsed words are immediately valid liba strings usable directly
+as SC_SPAWN's argv/path pointers and as MKPATH's input for
+`<`/`>` targets -- no conversion pass between "parsed token" and
+"liba string."
+
+PATH RESOLUTION (sh.s-time ruling -- SH-DESIGN.md's own
+pseudocode writes `cmd.path` without saying how a parsed word
+becomes one, and nothing else in the ABI rules on this either,
+so it is ruled here, explicitly, same as SH-DESIGN's own rulings
+5-10 rule on liba/sh-scope questions SYSCALL.md correctly left
+open): a command word beginning with `/` (high- bit `$AF`) is
+used AS-IS as the spawn path (no copy needed -- it is already a
+NUL-terminated liba string pointing straight into the line
+buffer). Any other word is treated as a bare name and resolved
+by prepending the fixed prefix `/BASIC/` -- there is no PATH
+variable (v1 scope: "no environment variables"), and `/BASIC/`
+matches every existing maux test harness's own on-disk
+convention (echo/cat already live there -- see
+scripts/build_fileprocess_image.py). A later round can replace
+this with a real PATH search without changing anything about how
+a command word gets SPLIT out of a line.
+
+CASE (sh.s-time ruling): command words and the `EXIT` builtin
+keyword are matched byte-for-byte, uppercase, matching the
+uppercase-only on-disk names every maux binary already uses
+(ECHO, CAT, ...) -- classic ProDOS pathnames are conventionally
+uppercase and there is no case-folding anywhere in this ABI, so
+scripts must spell command names in the same case as the file on
+disk (documented, not silently assumed).
+
+PIPELINE/FDACTIONS DESIGN: builds fdactions for each pipeline
+stage k (0-indexed, NCMD stages total) as follows -- this is
+docs/SYSCALL.md ruling 10's worked 2-command example,
+generalized to N stages and to coexist with `<`/`>` file
+redirection at the pipeline's own edges (the two never conflict:
+a pipe only ever wires a MIDDLE fd -- stage k's stdin from a
+pipe only happens for k>0, stdout to a pipe only for k<NCMD-1 --
+so file redirection, which SH-DESIGN only ever shows on a
+single, unpiped command, is free to apply exactly at k==0
+(stdin) and k==NCMD-1 (stdout), the two positions a pipe never
+touches):
+  fd 0: if k==0 and a `<` target was parsed, open it O_RDONLY and
+        FDACT_DUP(0,thatfd)+FDACT_CLOSE(thatfd); elif k>0, dup from
+        PIPE_RFD[k-1] (defensively also FDACT_CLOSE the pipe's OWN
+        write end, PIPE_WFD[k-1] -- ruling 10's worked example closes
+        the OPPOSITE end a stage never should see, not the one it just
+        dup'd; generalized here per-pipe rather than per-stage-pair);
+        else nothing (fd 0 stays whatever sh's own default was).
+  fd 1: symmetric, `>` at k==NCMD-1, else dup+defensive-close against
+        PIPE_WFD[k]/PIPE_RFD[k] for k<NCMD-1.
+sh closes its OWN copies of every pipe fd only after ALL stages
+have been spawned (ruling 10: "the pipe stays held open... until
+every fd pointing at it, including sh's, is closed") and its own
+copies of any `<`/`>` redirect fd immediately after the one
+spawn that consumed it. wait() is called exactly NCMD times
+(ruling 9's count-N pattern, regardless of pipeline length,
+including NCMD==1); sh matches each reaped pid against the LAST
+stage's remembered pid to track $? (not currently surfaced
+anywhere -- no `$?` expansion is in v1 scope -- but tracked for
+spec fidelity per SH-DESIGN's own worked example, and ready for
+whenever a later round wants it).
+
+ARGV: sh builds a full, NUL/zero-padded argv pointer array per
+command (MAXARGV slots, real Unix-style NULL-pointer termination
+after the last real argument). task #13 generalized
+`PROC_STAGE_ARGV` to consume that array up to ARGV_MAX_COUNT, so
+multi-argument commands such as `ECHO HI BYE` and `CP SRC DST`
+are part of the normal shell surface.
+
+Uses ONLY liba (src/liba) -- no direct syscalls, no raw gate
+address, no equates outside src/liba -- see docs/USERLAND.md and
+syscalls.s's header for why (mechanically enforced for src/bin/*
+by `make check-userland`'s grep gate).
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+BUILDFDACTIONSSTAGE -- build FDABUF (a FDACTEN
+----------------------------------------------------------------
+----------------------------------------------------------------
+BUILD_FDACTIONS_STAGE -- build FDABUF (a FDACT_END-terminated
+fdactions list) for pipeline stage STAGEI, per this file's
+header design. Sets CMD_INFD/CMD_OUTFD to whichever fds sh
+itself opened for `<`/`>` on this stage (0 = none), for
+RUN_PIPELINE to close after the spawn. OUT: carry clear, FDABUF
+ready; carry set = a REQUIRED `<`/`>` target
+     failed to open (sh already closed anything it DID open) -- caller
+     must skip spawning this stage.
+CLOBBERS: A, X, Y, PTR0/PTR1 (MKPATH's own clobbers via
+OPEN_REDIR_*).
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+OPENREDIRREAD -- open a  target
+----------------------------------------------------------------
+----------------------------------------------------------------
+OPEN_REDIR_READ -- open a `<` target O_RDONLY.
+IN:  PTR0 = filename word (liba string). OUT: carry clear, A = fd;
+     carry set = open failed.
+CLOBBERS: A, X, Y, PTR0/PTR1/PTR2 (MKPATH's clobbers).
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+OPENREDIRWRITE -- unlink an existing target
+----------------------------------------------------------------
+----------------------------------------------------------------
+OPEN_REDIR_WRITE -- unlink an existing target, then CREATE and
+OPEN a `>` target. This gives shell redirection its normal
+overwrite/truncate behavior even though the v1 syscall surface
+has no O_TRUNC flag. CREATE+OPEN is still the genuine two-step
+MLI dance (docs/USERLAND.md "Consumer-reality findings": CREATE
+has no ref_num result).
+IN:  PTR0 = filename word (liba string). OUT: carry clear, A = fd;
+     carry set = open failed.
+CLOBBERS: A, X, Y, PTR0/PTR1/PTR2.
+----------------------------------------------------------------

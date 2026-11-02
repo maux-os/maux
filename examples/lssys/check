@@ -1,0 +1,6 @@
+sort GOT > GOT.S
+sort WANT > WANT.S
+cmp GOT.S WANT.S
+st=$?
+rm GOT.S WANT.S
+exit $st

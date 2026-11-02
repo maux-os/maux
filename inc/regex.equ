@@ -1,0 +1,127 @@
+*---------------------------------------------------------------
+* regex.equ -- the RE_* zero-page equates regex.s and regex2.s
+* both need. Split out 2026-09-02 alongside the regex.s/
+* regex2.s split (self-hosting source-window budgets:
+* check_librel.py's MERLIN_SOURCE_BUDGET=41215 resident+
+* largest-put rule; build_librelas_image.py's as WINDOW=16126).
+* The matcher's CODE splits cleanly at the RE_ATOM_PARSE global
+* boundary (RE_MATCHSTAR's last `rts` falls through to nothing),
+* but its STATE does not: RE_ATOM_PARSE/RE_CLASS_TEST/
+* RE_GROUPNUM/RE_GSTAR (regex2.s) write cells RE_MATCH/
+* RE_MATCHHERE/RE_MATCHSTAR (regex.s) read, and vice versa, so
+* nearly every one of these equates became a cross-module
+* reference the moment the file split -- and a REL module cannot
+* export an equate (Merlin-8 ENT is code labels only). Same rule
+* that already moved CPT_EDUP/CPT_STYPVOL to cptree.equ when
+* cptree2.s split off cptree.s -- see that file's header.
+* `put` this file BEFORE both regex.s and regex2.s in every
+* consumer (ed.s, ex.s, grep.s, sed.s). Byte-neutral: an `equ`
+* emits nothing.
+*
+* RE_MSTART/RE_MEND, the PUBLIC match-output registers, are NOT
+* here -- they live in zp.equ (since 2026-08-29: edsubst.s and
+* sedexec.s reference them too, for the same reason).
+*---------------------------------------------------------------
+
+RE_REP      equ   $B0        ;2  current pattern ptr,
+                             ;RE_MATCHHERE's loop var
+RE_RET      equ   $B2        ;2  current text ptr,
+                             ;RE_MATCHHERE's loop var / also the
+                             ;match-end OUTPUT channel on
+                             ;success
+RE_NEWREP   equ   $B4        ;2  pattern ptr just past the atom
+                             ;just parsed
+RE_AKIND    equ   $B6        ;1  0=literal 1=dot 2=class
+                             ;3=malformed
+RE_ACHAR    equ   $B7        ;1  literal char, if AKIND=0
+RE_ANEG     equ   $B8        ;1  class negate flag, if AKIND=2
+RE_ACLS     equ   $B9        ;2  class member-list start ptr, if
+                             ;AKIND=2
+RE_ACLSEND  equ   $BB        ;2  ptr AT the class's terminating
+                             ;']'
+RE_SCAN     equ   $BD        ;2  scratch scan ptr (atom-parse
+                             ;class scan; reused, non-
+                             ;overlapping in time, by
+                             ;RE_MATCHSTAR's greedy run scan)
+RE_TESTCH   equ   $BF        ;1  char under test, RE_ATOM_TEST's
+                             ;own input
+RE_CONTPAT  equ   $C0        ;2  RE_MATCHSTAR: pattern ptr after
+                             ;the '*'
+RE_TRYPTR   equ   $C2        ;2  RE_MATCHSTAR: current backtrack
+                             ;candidate
+RE_STARTTXT equ   $C4        ;2  RE_MATCHSTAR: text ptr where
+                             ;the star began (the i=0 backtrack
+                             ;floor)
+RE_SCANPOS  equ   $C6        ;2  RE_MATCH's own top-level "try
+                             ;this start position" loop var
+RE_MSCAN    equ   $C8        ;2  RE_CLASS_TEST's own member-scan
+                             ;ptr -- DELIBERATELY separate from
+                             ;RE_SCAN: a starred [...] atom's
+                             ;RE_MATCHSTAR greedy loop calls
+                             ;RE_ATOM_TEST->RE_CLASS_TEST WHILE
+                             ;RE_SCAN (its own greedy pointer)
+                             ;is still live -- sharing one cell
+                             ;between the two would corrupt the
+                             ;outer loop.
+RE_TMP      equ   $CA        ;1  RE_CLASS_TEST scratch: c1
+RE_TMP2     equ   $CB        ;1  RE_CLASS_TEST scratch: c2
+RE_TMPPTR   equ   $CC        ;2  RE_CLASS_TEST scratch:
+                             ;candidate c2 ptr
+* RE_MSTART ($CE, 2) / RE_MEND ($D0, 2): PUBLIC OUTPUT match
+* registers -- ptr to first byte matched / ptr just PAST the
+* last (== RE_MSTART for a zero-length match, e.g. an unstarred
+* empty pattern). DEFINED IN zp.equ since 2026-08-29: edsubst.s
+* and sedexec.s reference them, and a REL module cannot export
+* an equate (Merlin-8 ENT is code labels only).
+* window: $B0-$D1, 34 bytes.
+
+* -- \( \) \1-\9 window (W5), a SECOND regex.s zero-page
+* -- range: $90-$A0, 17 bytes. Checked free of ed.s ($30-$7C),
+* -- sed.s's CBPTR ($D2), ex.s ($30-$77) and zp.equ ($E0-$F1)
+* -- before picking it -- NOT contiguous with $B0-$D1 because
+* -- $D2 is already sed.s's CBPTR.
+RE_GNTARG   equ   $90        ;2  RE_GROUPNUM: target ptr
+RE_GNKIND   equ   $92        ;1  RE_GROUPNUM: AKIND to tally
+                             ;(also RE_FINDCLOS's depth
+                             ;counter -- the two never run
+                             ;at once)
+RE_GNCNT    equ   $93        ;1
+RE_GSTOPPTR equ   $94        ;2  RE_GSTAR: ptr temp-NUL'd to
+                             ;bound one bounded submatch
+RE_GSAVE    equ   $96        ;1  RE_GSTAR: byte saved from
+                             ;under that temp NUL
+RE_GS       equ   $97        ;2  RE_GSTAR: group content start
+RE_GE       equ   $99        ;2  RE_GSTAR: matching \)'s ptr
+RE_GCONT    equ   $9B        ;2  RE_GSTAR: pattern ptr past
+                             ;the '*'
+RE_GNUM     equ   $9D        ;1  RE_GSTAR: this group's number
+RE_GCOUNT   equ   $9E        ;1  RE_GSTAR: successful-rep
+                             ;count so far
+RE_GSTART0  equ   $9F        ;2  RE_GSTAR: text ptr where the
+                             ;star began (the 0-rep floor)
+RE_GMARK    equ   $A1        ;2  \(/\) dispatch: a pattern ptr
+                             ;saved before RE_FINDCLOS/
+                             ;RE_GROUPNUM's own RE_ATOM_PARSE
+                             ;calls clobber RE_NEWREP (\('s
+                             ;own position for RE_GROUPNUM's
+                             ;target; \)'s NEWREP to resume at)
+
+* -- \{n,m\} \+ \? interval window (W5b, 2026-09-08), a THIRD
+* -- regex.s zero-page range: $D4-$DA, 7 bytes. Checked free of
+* -- every non-kernel `equ` in src/ (sed.s's CBPTR ends at $D3,
+* -- zp.equ's PTR0 starts at $E0, vi.s's own window is $80-$AF)
+* -- before picking it. RE_REPOP writes the first three, once
+* -- per repetition operator; RE_MATCHSTAR consumes them in its
+* -- greedy scan BEFORE any recursion, so they are never saved
+* -- across a backtrack. RE_GSTAR copies them into its own
+* -- three because the group's CONTENT is matched by the same
+* -- RE_MATCHHERE and overwrites RE_R* with its own operators.
+RE_RMIN     equ   $D4        ;1  RE_REPOP OUT: repetition floor
+RE_RMAX     equ   $D5        ;1  ceiling (unread when RE_RINF)
+RE_RINF     equ   $D6        ;1  nonzero = no ceiling (*, \+,
+                             ;\{n,\})
+RE_RCNT     equ   $D7        ;1  RE_MATCHSTAR: reps matched so
+                             ;far in the counted greedy scan
+RE_GRMIN    equ   $D8        ;1  RE_GSTAR's own copy of RE_RMIN
+RE_GRMAX    equ   $D9        ;1  .. of RE_RMAX
+RE_GRINF    equ   $DA        ;1  .. of RE_RINF

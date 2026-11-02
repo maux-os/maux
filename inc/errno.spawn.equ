@@ -1,0 +1,34 @@
+*---------------------------------------------------------------
+* errno.spawn.equ -- ERR_2BIG (argv too large for spawn()),
+* docs/SYSCALL.md ruling on ABI FRICTION item 4 / docs/LIMITS.
+* md. Split out of inc/errno.equ (task #8, docs/SELFHOST-
+* CONVERSION.md phase 1) -- reference-set scan shows this is the
+* ONLY errno.equ code any src/bin/*.s program (sh.s, for its own
+* spawn() error handling) references directly; every other code
+* is kernel-internal (inc/errno.krn.equ). Kept its own
+* file rather than folded into errno.krn.equ so sh.s -- and
+* the kernel's own spawn path (procspawn.s/procspawn2.s), which
+* also produces this code -- never has to PUT the whole
+* kernel-only error table for one code.
+*
+* `put`-only file (no code/org/dsk), same precondition
+* discipline as memmap.equ -- the top-level file must `put`
+* this directly.
+*---------------------------------------------------------------
+
+ERR_NOEXEC        equ   $EB   ;spawn named a file not
+                              ;BIN ($06) or SYS ($FF): V7's
+                              ;ENOEXEC. Executability is decided
+                              ;by inspection at spawn, no exec
+                              ;bit (docs/EXEC-SHEBANG.md)
+ERR_2BIG          equ   $E7   ;argument list too long --
+                              ;spawn()'s argv exceeded ARG_MAX
+                              ;bytes of packed strings, or
+                              ;ARGV_PTR_LIM bytes of pointer
+                              ;array (inc/memmap.equ). The
+                              ;E2BIG role docs/LIMITS.md asked
+                              ;for: a too-large argv must FAIL,
+                              ;because the alternative -- stage
+                              ;what fits, drop the rest -- runs
+                              ;a DIFFERENT command than the one
+                              ;asked for and says nothing.

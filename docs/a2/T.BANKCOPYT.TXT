@@ -1,0 +1,94 @@
+bankcopytest.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+Unlike src/test/syscalltest.s/probetest.s (which observe results
+via screen_text banners), this harness is driven almost entirely
+by scripts/check_bankcopy.py directly poking/peeking emulator
+state -- per the task's own explicit warning ("screen-clean is
+NOT sufficient, wrong-bank writes can be screen-invisible"),
+this gate does not rely on the 40-col screen at all. The only
+thing 6502 code here does that Python cannot do itself is (a)
+actually WRITE the softswitch triggers ($C000/$C001/$C054-$C057
+aren't POKE-able -- verilogapple's poke tool writes the raw DRAM
+array directly with no MMU remap, so it cannot trigger a soft
+switch, only real CPU STA/LDA bus cycles can) and (b) call
+BankCopy itself. Every OTHER part of the test -- seeding the
+"before" patterns in source bank / dest bank / bank-0 video /
+main memory, and reading them back afterward -- is done by
+scripts/check_bankcopy.py via direct peek/poke
+(bank="aux"/"main", aux_bank=N), which is possible here
+specifically BECAUSE source and dest are both non-zero, non-
+adjacent banks with no code of this harness's own living inside
+the video-hole address ranges (see below).
+
+PRECONDITION note: this file does NOT `put` src/kernel/ffpage.s
+and does NOT stamp a process bank's $FFxx page or enter a "fake
+process" -- task #4 is the exec loader's COPY CORE, not a
+syscall-ABI consumer; BankCopy is called directly from flat
+kernel code at boot, exactly the shape the real exec loader will
+use ("staging MLI reads from main into the child bank" --
+docs/TASKS.md #4's V1-SCOPE ruling). K_DISPATCH_LO/ HI/COUNT and
+K_IRQ_HOOK below are dummy stubs satisfying entry.s's own `put`
+precondition (this harness never calls KERNEL_ENTRY at all).
+
+WHY THE COPY RANGE ($0300-$21FF, see COPY_ADDR/COPY_LEN below)
+DOES NOT COLLIDE WITH THIS HARNESS'S OWN CODE: the loader lives
+at $0800-$09FF (block 0) and MAIN_ENTRY's own code/data start at
+$0A00 (block 1+) -- entirely below $0400-$07FF (before it) or
+comfortably above it and far short of $2000 (entry.s +
+bankcopy.s + this file's own driver code is under 2KB, nowhere
+near $2000). So even if BankCopy were BUGGY and misrouted a
+video-hole write into MAIN's $0400-$07FF or $2000-$21FF (the
+exact bug this gate exists to catch), it would land in memory
+this harness's own code never occupies -- corrupting the
+SENTINEL bytes Python poked there, not crashing the test. This
+is what makes "peek main afterward" a safe, meaningful check
+rather than a self-defeating one.
+
+THE FOUR ASSERTION LOCATIONS (per docs/TASKS.md #4's A4
+amendment -- "screen-clean is NOT sufficient"), all driven by
+scripts/check_bankcopy.py via peek, for EACH of the 8 combos:
+  1. source bank (aux_bank=SRC_BANK) at COPY_ADDR..+LEN -- must be
+     UNCHANGED (still the ramp pattern Python seeded) -- BankCopy must
+     never clobber its own source.
+  2. dest bank (aux_bank=DST_BANK) at COPY_ADDR..+LEN -- must EQUAL the
+     source's ramp pattern -- the copy actually happened, correctly.
+  3. bank-0 video memory (aux_bank=0) at COPY_ADDR..+LEN -- must still
+     be the $EE sentinel Python seeded -- the classic 80STORE+PAGE2=1
+     misroute-to-bank-0 failure mode never fired.
+  4. main memory (bank="main") at COPY_ADDR..+LEN -- must still be the
+     $EE sentinel -- the 80STORE+PAGE2=0 misroute-to-main failure mode
+     never fired either.
+PLUS: softswitches on exit (RD80STORE/RDPAGE2/RDHIRES, all
+three) must equal the incoming combo exactly (BankCopy's
+restore-exact contract, see src/kernel/bankcopy.s's header
+CONTRACT section).
+----------------------------------------------------------------
+
+ADDENDUM 2026-08-23 (S4, task #4 console/video amendment): a THIRD
+range, COPY3_ADDR $3F00 length $0500 ($3F00-$43FF), crosses OUT of
+the $2000-$3FFF 80STORE+HIRES override window INTO hires page 2
+($4000-$5FFF). Hires page 2 itself is never 80STORE-routed -- the
+override covers only $0400-$07FF and (with HIRES) $2000-$3FFF
+(learning:01KW1GTYHGXMBZNR6DMQB2F712) -- so the range's teeth are
+at the $3FFF/$4000 boundary it straddles: the tail redirects under
+80STORE+HIRES, the head never does, and a bracket bug shows as a
+PARTIAL (256-byte) dest-bank miss confined to $3F00-$3FFF.
+Sabotage-verified (see docs/STICKY.md): deleting bankcopy.s's
+`sta CLR80STORE` reds exactly the 80STORE=1/PAGE2=0 rows; the
+80STORE=1/PAGE2=1 rows route to the SELECTED bank and still pass
+(learning:01M0NWQ090D36KN4QNSVGHTDA3), which is why the harness
+must SET each combo's switches itself.
+
+CALIBRATION (adversarial review, same day): bankcopy.s has no
+address-conditional logic -- one unconditional CLR80STORE spans
+the whole call -- so on today's implementation COPY3's red
+condition is a strict subset of COPY2's; no combo can red COPY3
+while COPY1 and COPY2 are both green, and the sabotage table
+above shows exactly that. What COPY3 adds: the amendment's named
+range is actually exercised ($4000-$43FF -- 1KB of HGR2's 8KB,
+the $3FFF/$4000 edge only, not $5FFF/$6000), and the boundary is
+pinned should bracketing ever become address-conditional, the
+one implementation shape under which this range could red alone.

@@ -1,0 +1,73 @@
+.\" unexpand.1 -- maux's unexpand(1), in the V7 man(1) shape. An
+.\" original page (this project's own text), so it carries no
+.\" third-party notice -- MIT like the code, same posture as
+.\" cut.1/fold.1. Rendered at build time to build/man/UNEXPAND.TXT
+.\" and staged on the play image as /usr/man/UNEXPAND:
+.\" `more /usr/man/UNEXPAND`.
+.TH UNEXPAND 1 "September 14, 2026" maux
+.SH NAME
+unexpand \- convert spaces to tabs
+.SH SYNOPSIS
+.B unexpand
+[
+.B \-a
+] [
+.BI \-t " tablist"
+] [
+.I file
+] ...
+.SH DESCRIPTION
+.I Unexpand
+copies each named
+.I file
+(standard input if none is given) to standard output, replacing
+runs of two or more blanks that reach a tab stop with a tab.
+.PP
+Without
+.B \-a
+or
+.BR \-t ,
+only a
+.I leading
+run \(em one starting at the very first column of the line \(em
+is a candidate; the instant a non\-blank byte is seen, the rest
+of that line is copied through untouched.
+.B \-a
+converts a qualifying run anywhere in the line, not just a
+leading one; a bare
+.B \-t
+implies
+.BR \-a .
+.PP
+.I Tablist
+is as for
+.IR expand (1):
+a single number sets periodic stops that many columns apart (8
+by default); two or more increasing numbers set explicit stops,
+past which no further run can qualify.
+.PP
+A run that crosses more than one stop collapses one tab per
+stop crossed, not one tab for the whole run; any blanks left
+over that never reach a stop stay literal.  A run of exactly one
+blank is never converted, even sitting exactly on a stop \(em
+there is no length saved.  A backspace counts as a member of the
+current run (its own column effect is \-1, never below 0)
+without itself ending the run.  The column resets at the start
+of each operand.
+.SH FILES
+/usr/man/UNEXPAND  this page
+.SH "SEE ALSO"
+expand(1), fold(1), cut(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if a file named on the command line could
+not be opened \(em that file is skipped, a diagnostic naming it
+is written to standard error, and the remaining operands are
+still processed; 2 for a usage error, including a malformed or
+non\-increasing
+.I tablist
+or a stop over 120.
+.SH BUGS
+An explicit tab stop is capped at 120 columns, the same ceiling
+as
+.IR expand (1)'s
+own.

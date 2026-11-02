@@ -1,0 +1,35 @@
+*---------------------------------------------------------------
+* mm.lseg.equ -- the play-only LOW SEGMENT (docs/LOOP-S1.md,
+* ruling 2026-10-10): main RAM $1300-$1FFF, loaded at boot from
+* the boot volume's LSEG file by KSEG_LOAD. Code and cells fill
+* the first pages; the caches sit above them and are NOT in the
+* file. The image file's io_buffer is NOT here: it is one of the
+* kernel pool's eight (PRC_ALLC_IBF): the pool IS ProDOS's
+* eight-FCB ceiling and a ninth open file made the kernel's own
+* spawns fail ("command not found" at the seventh held file,
+* measured) -- see docs/LOOP-S1-NOTES.md sec 9. Layout is pinned
+* by scripts/check_lseg.py.
+*---------------------------------------------------------------
+LSEG_ORG    equ   $1300
+LSEG_MAXPG  equ   8             ;code + cells, $1300-$1AFF
+LP_MAST     equ   $1B00         ;master index, 128 lo + 128 hi
+LP_IDX0     equ   $1C00         ;index block 0, pinned (2 pages)
+LP_SLOT     equ   $1E00         ;one more index block (2 pages)
+LSEG_TOP    equ   $2000         ;first byte above the region
+
+*-- refusals (kernel codes, clear of the MLI's $01-$5F and the
+*-- kernel's own $E0-$F1; mount maps each to its message)
+LPE_SPARSE  equ   $D1           ;a zero pointer below EOF
+LPE_2MG     equ   $D2           ;a 2IMG container
+LPE_NOTTREE equ   $D3           ;not a tree file
+LPE_NOROOM  equ   $D4           ;DEVLST is full
+LPE_PRODOS  equ   $D6           ;not the ProDOS 2.4 pinned cells
+LPE_NOSAVED equ   $D7           ;bye left no loop to re-attach
+
+*-- ProDOS 2.4 MLI cells (docs/LOOP-S2-NOTES.md sec 2), LC
+*-- common
+*-- bmaStat: bit 7 = bitmap needs writing
+BMA_STAT    equ   $FE99
+BMA_DEV     equ   $FE9A         ;bmaDev: the unit that owns it
+*-- UpdateBitMap (CLC LDA BMA_STAT ...)
+BMA_PIN     equ   $EB42

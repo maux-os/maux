@@ -1,0 +1,34 @@
+# edasm-ed.patch -- EDASM.ED: the read-ROM->read-RAM sweep PLUS five
+# bytes that defeat EDASM's 80-column detection and point its console
+# default at the monitor leaves proshim redirects to fd ($FDF0 / $FD1B).
+#
+# File offsets are the load address - $9900 + $1000 (EDASM.ED's $1000:
+# half runs at $9900), derived from scripts/patch_edasm.py, which
+# applied these to a real EDASM disk. The `expect` lines guard the
+# EDASM version: bpatch refuses (and writes nothing) rather than corrupt
+# if a byte is not what we expect here.
+#
+# Contains NO Apple bytes -- only offsets and the transform. Run on a
+# maux volume holding a REAL EDASM disk's EDASM.ED:
+#     bpatch edasm-ed.patch EDASM.ED
+#
+# Commons: learning:01M1XH5NKEKR7VN47ZMZQFKE26.
+
+# $A75C: the 80-column detector's slot-3 probe byte -> $00 ("none")
+expect 1E5C C3
+set 1E5C 00
+
+# $A7E1/$A7E3: default console CSW = $FDF0 (proshim's fd 1)
+expect 1EE1 D9
+set 1EE1 F0
+expect 1EE3 B3
+set 1EE3 FD
+
+# $A7E9/$A7ED: default console KSW = $FD1B (proshim's fd 0)
+expect 1EE9 24
+set 1EE9 1B
+expect 1EED A6
+set 1EED FD
+
+# the read-ROM -> read-RAM sweep (same as edasm-lc.patch)
+flip-lc

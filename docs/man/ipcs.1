@@ -1,0 +1,18 @@
+.\" ipcs.1 -- maux's stub for the POSIX ipcs(1) utility, which this
+.\" tree does not provide. An original page (this project's own
+.\" text), so it carries no third-party notice -- MIT like the code,
+.\" same posture as env.1/man.1. Recorded in docs/POSIX-GAPS.md sec
+.\" 5 ("Not applicable, and why") so the omission is not re-
+.\" litigated. Rendered at build time to build/man/IPCS.TXT and
+.\" staged on the play image as /usr/man/IPCS.
+.TH IPCS 1 "September 17, 2026" maux
+.SH NAME
+ipcs \- report interprocess communication facility status
+.SH DESCRIPTION
+.I Ipcs
+is not provided on maux.
+maux has no clock-interrupt job scheduler (for at, batch, and
+crontab) and no System V interprocess communication (for ipcrm
+and ipcs). Its 14-slot round-robin scheduler has no priority
+concept for nice and renice to adjust, and the same absence of
+scheduling and IPC infrastructure covers fuser and logger.

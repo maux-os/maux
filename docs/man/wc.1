@@ -1,0 +1,46 @@
+.\" Derived from Research UNIX V1 wc(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/wc
+.\" Retrieved 2026-09-19; archived response SHA256: ec938a5f8790fe29af7807084cbbd48c7f5ebb4cbc5410b2fc0563c2bacd0d00
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH WC 1 "September 19, 2026" maux
+.SH NAME
+wc \- count lines, words and bytes
+.SH SYNOPSIS
+.B wc
+.RB [ \-lwcm ]
+.RI [ file ...]
+.SH DESCRIPTION
+.I Wc
+provides a count of the words and text lines for each argument file;
+maux also counts bytes, and does not separately count roff control lines.
+A word is a sequence of characters bounded by a space, a tab,
+a newline or the beginning or end of input.
+.TP
+.B \-l
+Count newline bytes. A final unterminated line does not add one.
+.TP
+.B \-w
+Count words.
+.TP
+.B \-c
+Count bytes.
+.TP
+.B \-m
+Same as -c on this single-byte system.
+.PP
+The selected columns are printed in line, word, byte order.
+Without options all three are printed.
+Without files the standard input is read.
+Two or more file operands also produce a total line.
+A file which cannot be opened is reported and skipped.
+.SH FILES
+/usr/man/WC  this page
+.SH "SEE ALSO"
+cat(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 if any file cannot be opened, 2 for usage errors.
+.SH BUGS
+Counts saturate at 65535. Text whitespace is maux high-bit space, tab and CR; low-ASCII LF files need conversion before their line/word counts have Unix meaning.

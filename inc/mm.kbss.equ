@@ -1,0 +1,61 @@
+*---------------------------------------------------------------
+* mm.kbss.equ -- kernel buffers homed in LOW MAIN RAM, outside
+* the flat image (docs/KSPACE.md, KSPACE-NOTES.md).
+* Each manifest sets KBSS (its first free address) BEFORE
+* putting this file; every cell is chained off the one before
+* it, so none can overlap. ADD NEW CELLS AT THE END.
+*
+* CONTENTS ARE NOT ZEROED AT BOOT (the region holds ProDOS boot
+* leftovers), so every cell is written before it is read. Two
+* kinds of cell live here:
+*   SCRATCH (K_BOUNCEBUF .. LZ_PATHBUF): filled and consumed
+*     inside one kernel call; nothing relies on it surviving.
+*   STATE (LZ_OFTARM, LZ_MT0..3; KFIX, 2026-10): kept ACROSS
+*     syscalls. LZ_OFTARM[obj] is the lazy-free slot an open fd
+*     is armed against (LZ_ARM writes it, PALOBJ_FILE clears it
+*     when the entry is allocated, LZ_DIRTY reads it); LZ_MT0..3
+*     are a tagged slot's raw mtime (LZ_TAG writes them,
+*     LZ_TRY_WARM reads them for a non-FREE slot only). So
+*     nothing may zero, reuse or overlay this chain at run time;
+*     `bye` carries it through its $0200-$BEFF save and restore
+*     with the rest of main memory.
+*   STATE (LP_PATH; KFIX9, 2026-10): the loop device's image
+*     path. LP_ATTACH writes it BEFORE LP_ATT is set; its only
+*     reader, LP_BYEDET, runs only with LP_ATT set. So it needs
+*     no initial value, and it survives `bye` with the rest of
+*     main memory (the LSEG file pages themselves are rewritten
+*     by KSEG_RELOAD, so it is NOT a `ds` in the file).
+*   STATE (K_WAIT_SHD; WAKE-1, 2026-10): one byte per pid, the
+*     wait channel while the pid's PCB is BLOCKED, else 0 (every
+*     writer: docs/WAKE-1-NOTES.md sec 4). Replaced K_WAKE_BUF,
+*     whose scratch job died when SCH_WAKEUP stopped buffering
+*     pids. SCH_INIT zeroes it at boot, so it DOES need an
+*     initial value and gets one before anything reads it.
+*   STATE (K_SLP_DL; SLEEP-1, 2026-10): the earliest sleep
+*     deadline, a 32-bit tick count (docs/SLEEP-1-NOTES.md
+*     sec 3). Its armed flag K_SLP_ARM is a `ds 1` in sched.s
+*     (this chain may not pass $0FF0, the tenant stall stub),
+*     zeroed by SCH_INIT. K_SLP_DL is read only while K_SLP_ARM
+*     is set and is written first: no initial value needed.
+* A new STATE cell says here who writes it first, and why it
+* needs no initial value.
+*---------------------------------------------------------------
+K_BOUNCEBUF equ   KBSS              ;256 BankCopy staging
+SER_RING    equ   K_BOUNCEBUF+256  ;256 serial RX ring
+TTY_OUTBUF  equ   SER_RING+256     ;254 (TTY_OWBUF_SZ)
+TT9_RBUF    equ   TTY_OUTBUF+254   ;80 tty9 row scratch
+VCS_ROWBUF  equ   TT9_RBUF+80        ;80 tty8 N8 blit row
+UT_ROWBUF   equ   VCS_ROWBUF+80      ;80 UltraTerm row cells
+PRC_PATHBUF equ   UT_ROWBUF+80       ;130 two 65 B path slots
+PRC_TMPPATH equ   PRC_PATHBUF+130    ;66 PRC_ABSPATH composition
+K_CWD_BUF   equ   PRC_TMPPATH+66     ;64 (CWD_ENT_SIZE) cwd copy
+K_WAIT_SHD  equ   K_CWD_BUF+64       ;STATE 48 wait shadow
+LZ_PATHBUF  equ   K_WAIT_SHD+48      ;65 (LZ_PTH_SIZE) tag path
+LZ_OFTARM   equ   LZ_PATHBUF+65      ;STATE 16 (OFT_COUNT)
+LZ_MT0      equ   LZ_OFTARM+16       ;STATE 14 mod_date lo
+LZ_MT1      equ   LZ_MT0+14          ;STATE 14 mod_date hi
+LZ_MT2      equ   LZ_MT1+14          ;STATE 14 mod_time lo
+LZ_MT3      equ   LZ_MT2+14          ;STATE 14 mod_time hi
+LP_PATH     equ   LZ_MT3+14      ;STATE 65 loop image's path
+K_SLP_DL    equ   LP_PATH+65     ;STATE 4 sleep deadline
+KBSS_END    equ   K_SLP_DL+4

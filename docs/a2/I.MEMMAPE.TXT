@@ -1,0 +1,247 @@
+memmap.equ -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+Every address/size named in docs/MEMMAP.md appears here under
+the same name and the same value -- this file IS the machine-
+checkable half of that document. `make check-memmap` proves
+merlin32 accepts it as-is.
+
+Merlin idiom: plain `equ` for fixed addresses and byte-count
+constants; `dum`/`dend` for structure layouts where the
+interesting fact is the OFFSET of a field, not an absolute
+address (PCB entry, inode-cache entry, pipe-ring metadata). The
+$FFxx page is dum'd at its real address ($FF00) instead, since
+every label in it IS the absolute address code jumps to.
+
+Intended use: `use memmap.equ` (one-time include -- see
+learning:01KW1GTYGZ9TE2ZGCDG0V2CNE0 on `put` vs `use`; this file
+defines labels only, no code/org/dsk, so it is safe to pull into
+any module).
+----------------------------------------------------------------
+
+==== 1. Main 64K -- kernel home (docs/MEMMAP.md #1)
+=======================
+
+-- 1.1 flat layout --
+
+----------------------------------------------------------------
+KSTACKFLOOR (task #13 CODEXCODEREVIEW.mds stac
+----------------------------------------------------------------
+K_STACK_FLOOR (task #13, the code review's stack-floor
+finding): COPYIN_ENTRY ($0100, 48B) and COPYOUT_ENTRY ($0140,
+48B, ending $016F) are resident CODE living in the SAME physical
+page as this kernel stack -- the entry/exit doors relocate them
+there (docs/SYSCALL.md sec 5) specifically because ProDOS's own MLI
+occupies main LC, the copy primitives' original task #3 home.
+The kernel's `LDX #$FF: TXS` stack top is unchanged ($FF), but
+SP must never descend to or below $016F (COPYOUT_ENTRY's last
+byte) or a deep enough call chain starts CLOBBERING the resident
+copy-stub code it may itself still need later in the same call.
+K_STACK_FLOOR is the chosen invariant: SP >= $80 (absolute
+$0180) at every instant main-context kernel code executes -- 16
+bytes of margin above COPYOUT_ENTRY's actual end, a round
+boundary, not a tight fit. This gives a USABLE kernel-stack
+BUDGET of K_STACK_BUDGET = $01FF-$0180+1 = 128 bytes -- HALF of
+the page-1 window's nominal 256 bytes, matching
+the code review's own framing ("the page-1 copy stubs
+halved the kernel stack") exactly, since $0180 is the page's
+exact midpoint. docs/MEMMAP.md's own invariant table (sec 1.1b) has
+the measured worst-case depth (11 bytes, comfortably inside this
+128-byte budget) and the ProDOS TRM sec 5.2.1 citation for the
+MLI's own additional stack-use headroom requirement. `make
+check-syscall` (scripts/check_syscall.py) mechanically asserts
+COPYOUT_ENTRY+COPYOUT_LC_LEN <= K_STACK_FLOOR from the assembled
+symbol table, every run -- see that script's own comment for why
+this is a check-time, not assemble-time, assertion (an assemble-
+time `ds` guard would EMIT stray padding bytes into the live
+kernel image on the slack side of the invariant, not just fail
+loudly on a violation).
+
+----------------------------------------------------------------
+2. Aux bank 0 -- the
+----------------------------------------------------------------
+==== 2. Aux bank 0 -- the kernel annex (docs/MEMMAP.md #2)
+================
+
+----------------------------------------------------------------
+2.2a Open File Table (OFT) object
+----------------------------------------------------------------
+----------------------------------------------------------------
+2.2a Open File Table (OFT) object graph -- task #13 amendment
+(code review C3). `src/kernel/process.s` (task #12)
+implements fork/dup/close-style fd semantics via a real
+indirection layer, not the "pipe slots directly in PCB fd bytes"
+shape earlier task documents (including this file's own
+PCB_FDTABLE comment, before this amendment) described. The
+graph, one fd all the way down to bytes on the wire:
+
+  PCB_FDTABLE[fd] (byte, 0-7)          -- per-process, PCB_FDTABLE above
+    -> OFT index (1..OFT_COUNT-1; 0 = unused)   -- GLOBAL, not per-process
+         OFT_TYPE[idx]   -- OFT_FREE / OFT_PIPE_R / OFT_PIPE_W / OFT_FILE
+         OFT_REFCNT[idx] -- how many fds (across ALL processes, e.g.
+                            after fork-style fd inheritance at spawn())
+                            currently point at this ONE OFT entry --
+                            close() decrements; the entry (and, for
+                            OFT_FILE, the underlying ProDOS refnum +
+                            MLI iobuf) is only actually torn down at 0
+         -- if OFT_TYPE is OFT_PIPE_R or OFT_PIPE_W:
+              OFT_PIPE[idx] -> pipe slot index (1..PIPE_COUNT), see below
+         -- if OFT_TYPE is OFT_FILE:
+              OFT_REFNUM[idx] -- the raw ProDOS MLI reference number
+                                 (MLI's OWN allocation, kernel-wide, NOT
+                                 the same namespace as fd numbers --
+                                 docs/SYSCALL.md item 5's own ruling)
+              OFT_IOBUF[idx]  -- which of the MLI_IOBUF_COUNT page-aligned
+                                 1024-byte I/O buffers (docs/MEMMAP.md
+                                 sec 1.3, `MLI_IOBUF_*`) this open file owns
+                                 for its whole open lifetime
+
+  pipe slot (1..PIPE_COUNT, 0 = unused; a SEPARATE index space from OFT,
+  one pipe() call allocates exactly one slot, then TWO OFT entries --
+  OFT_PIPE_R and OFT_PIPE_W -- both pointing at that ONE slot):
+    PIPE_USED[slot]  -- 0/1 allocated
+    PIPE_RDP[slot]/PIPE_WRP[slot] -- read/write cursor into the slot's
+                            OWN 256-byte ring (PROC_PIPE_RING_BASE +
+                            (slot-1)*PIPE_RING_SIZE, in the aux bank-0
+                            ANNEX -- the ring BYTES are the one piece of
+                            this graph that still lives where sec 2.1/sec 2.2's
+                            original "256-byte rings in the bank-0 annex"
+                            text said; everything else on this page is
+                            ordinary MAIN kernel memory, not annex)
+    PIPE_BYTES[slot] -- bytes currently buffered (0 = empty, $FF = full --
+                            the ring's 256-byte capacity, one byte of
+                            headroom kept by construction, never a
+                            separate wrap flag)
+    PIPE_RREFS[slot]/PIPE_WREFS[slot] -- live READER/WRITER refcounts
+                            (independent of OFT_REFCNT -- these track
+                            "how many OFT_PIPE_R/W entries reference this
+                            SLOT," which is what write()/EOF and
+                            write()/ERR_PIPE decisions key off; OFT_REFCNT
+                            tracks "how many fds reference this ONE OFT
+                            entry," a level up)
+
+All six PIPE_* arrays and all five OFT_* arrays are struct-of-
+arrays (parallel-indexed, NOT one array of 8-byte-struct records
+the way the superseded PIPE_META block above was shaped), and
+are declared directly in `src/kernel/process.s` (`ds OFT_COUNT`
+/ `ds PIPE_COUNT+1`) as ordinary MAIN kernel memory --
+read/written via plain absolute addressing, no BANKSEL/ALTZP
+bracket needed, unlike the PCB array (which stays annex-
+resident, sec 2.2 above) or the pipe RING bytes (which stay annex-
+resident too, reached via COPYIN_ENTRY/COPYOUT_ENTRY with
+BANKSEL=0 -- see PROC_PIPE_GET_BYTE/PROC_PIPE_PUT_BYTE).
+
+HARD LIMITS (the budget half of C3's finding -- all `make check-
+memmap`- verified via `src/check.memmap.s` referencing
+OFT_COUNT):
+  - fds per process:       8   (PCB_FDTABLE above; indices 0/1/2 reserved
+                                for stdin/stdout/stderr per docs/
+                                SYSCALL.md item 5, never forwarded to the
+                                OFT at all for the tty case)
+  - OFT entries (global):  OFT_COUNT = 16  (index 0 never allocated,
+                                15 usable slots system-wide)
+  - pipe slots (global):   PIPE_COUNT = 8  (below, sec 2.2 -- one pipe()
+                                call consumes one slot + two OFT entries)
+  - pipe ring size:        PIPE_RING_SIZE = 256 bytes/slot (below, sec 2.2)
+  - MLI I/O buffers:       MLI_IOBUF_COUNT = 4  (sec 1.3 above -- one
+                                consumed per concurrently-OPEN ProDOS
+                                file, for that file's whole open lifetime)
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+3. Canonical process-bank layout (docs/MEMMAP.
+----------------------------------------------------------------
+==== 3. Canonical process-bank layout (docs/MEMMAP.md #3)
+=================
+
+----------------------------------------------------------------
+3b. Shared hardware/firmware addresses (one ow
+----------------------------------------------------------------
+==== 3b. Shared hardware/firmware addresses (one owner, here)
+============ Moved here 2026-08-16 (task #8a, `make check-
+modules`). Each of these was declared IDENTICALLY by two kernel
+modules, which a whole-tree `PUT` build tolerates (last
+definition wins, and they agreed) but a link of separately
+assembled REL objects would reject as a symbol collision.
+Declaring them once, here, is the fix -- the module-boundary
+gate now enforces that they are not re-declared.
+
+----------------------------------------------------------------
+4. Canonical kernel softswitch steady state
+----------------------------------------------------------------
+==== 4. Canonical kernel softswitch steady state (docs/MEMMAP.md
+#4) ====== Standard //e soft-switch addresses this document's
+invariant table and every downstream task's code refer to by
+these names.
+
+----------------------------------------------------------------
+-- 1.1a Main-context kernel zero-page
+----------------------------------------------------------------
+-- 1.1a Main-context kernel zero-page allocation map
+(code review -- C2, task #13). The 256-byte K_ZP
+window above is claimed piecemeal by -- whichever kernel
+module needs main-context ZP scratch while ALTZP=main -- (task
+#3's entry/exit machinery, task #6's scheduler, task #12's --
+process/file-call bridge). Each module's own `equ` statements
+-- (src/kernel/entry.s $F3-$FC, src/kernel/sched.s $E0-$EE,
+-- src/kernel/process.s $D0-$DF) remain the single source of
+truth for -- the ACTUAL per-cell addresses -- duplicating
+every individual symbol -- here would just create a second
+copy to keep in sync by hand. This -- table instead names each
+module's CLAIMED RANGE as machine-checkable -- symbols, so a
+reviewer -- or `make check-memmap`'s static checker, --
+scripts/check_memmap_zp.py -- has ONE authoritative collision
+map, -- instead of grepping three files and eyeballing hex
+ranges. -- -- RESERVED_PRODOS_ZP is the bright line every
+future main-ZP allocation -- must cross explicitly:
+docs/PRODOS-SPIKE.md answer (a) (task #11) -- empirically
+confirmed, via `make check-mli`, the ProDOS 8 TRM's own --
+claim (ch 3.3.1) that the MLI and its disk-driver use $3A-$4E
+-- and -- found the TRM's "restores $40-$4E before it
+completes a call" promise -- does NOT hold for every byte even
+for the cheapest possible call -- (GET_TIME leaves $40/$41
+drifted). No main-ZP allocation below may -- overlap this
+range, ever, while ProDOS stays resident (v1's whole --
+filesystem story). See that document's dated correction note
+(task -- #13) for why this range was not previously named as a
+maux symbol -- -- it was true but undocumented until this
+task.
+
+----------------------------------------------------------------
+ARG_MAX -- the spawn() argument-list
+----------------------------------------------------------------
+
+ARG_MAX -- the spawn() argument-list limit, in BYTES of packed
+strings, which is the unit of the resource being protected
+(docs/LIMITS.md, learning:01M07V2D0T25FYD6ASCMPJYNWQ). It
+REPLACED ARGV_MAX_CNT=16, a per-entry count derived once from
+a byte budget (16 entries x a 64-byte per-arg cap = 1024B) and
+thereafter treated as the limit itself. A count is wrong in
+both directions at once: it refused 20 short filenames that
+occupy ~200 bytes, while 16 args at the per-arg cap already
+hit 1024. The entry count now FALLS OUT of these two ceilings
+instead of being declared, and PSTG_ARGV FAILS (ERR_2BIG)
+rather than truncating -- a silently short argv is `rm *`
+removing some of what you asked for.
+
+Both ceilings are ANCHORED TO THIS MAP, not chosen: strings
+run from PRC_ARGV_STR up to the load base, and the pointer
+array runs from PRC_ARGV_PTRS up to the strings. Move any of
+those three addresses and both budgets follow.
+
+SINGLE-OPERATOR EXPRESSIONS ON PURPOSE, and this one is
+measured, not folklore (2026-08-17, via a temporary probe in
+processtestb.s read through `make check-dual`'s byte diff):
+in an `equ`, merlin32 applies operator PRECEDENCE while real
+Merlin-8 2.59 evaluates strictly LEFT TO RIGHT. `127+1/2` is
+127 to merlin32 and 64 to Merlin-8 -- not an assembly error in
+either, just two different working programs. So never mix
++/- with */ in one expression anywhere in this tree; the
+dual-assembly gate (task #7) is the only thing that would
+catch it, and only if the constant reaches emitted bytes.
+(Curiosity worth knowing: merlin32 is left-to-right in
+INSTRUCTION and DATA operands -- `dfb 1+2*3` is 9 in both
+assemblers -- so it disagrees with ITSELF depending on
+context. One more reason not to lean on either rule.)

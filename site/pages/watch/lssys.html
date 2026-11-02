@@ -1,0 +1,93 @@
+title: a ProDOS 8 program, built on maux
+description: Build LS.SYSTEM with nas and ld, then leave maux entirely: ProDOS 8 boots the program, lists the directory, and quits back into the shell that was waiting.
+demo: lssys
+---
+<div class="band demo">
+<h1>A ProDOS 8 program, built on maux</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / lssys</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/lssys.py; examples/lssys/ls.s; examples/lssys/Makefile -->
+<p class="lead">maux builds an ordinary ProDOS 8 system program and then gets
+out of its way. <code>nas</code> assembles it, <code>ld</code> links it at
+<code>$2000</code>, <code>ls -l</code> says <code>SYS</code>, and
+<code>make test</code> hands the whole machine over: ProDOS 8 loads the
+program, the program lists the directory it is sitting in and waits for a key,
+and <code>QUIT</code> brings back the shell that was waiting all along.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The program knows nothing of maux</h2>
+<!-- src: examples/lssys/ls.s; scripts/check_examples.py (stock_row) -->
+<p><code>LS.SYSTEM</code> calls the ProDOS MLI at <code>$BF00</code> and the
+monitor ROM's <code>COUT</code>, and nothing else. It finds its own prefix,
+opens the directory like a file, reads it a block at a time, and walks the
+entries: the high nibble of an entry's first byte is its storage type and the
+low nibble its name length. That is the ProDOS 8 of 1983, not a maux API, so
+the same file runs on a stock ProDOS 2.4 disk with no maux on it anywhere
+&mdash; which is how it is also tested.</p>
+
+<!-- src: examples/lssys/ls.s -->
+<p>It writes the names it found to a file called <code>GOT</code>, in maux's
+own text convention: high bit set, each line ended by <code>$8D</code>. So
+maux's tools read what ProDOS wrote with no conversion step in between.
+<code>GOT</code> is created only after the directory has been read, so it never
+lists itself.</p>
+
+<h2>One screen, two owners</h2>
+<!-- src: src/kernel/byelaunch.s; docs/BYE.md -->
+<p>Watch the picture change shape when the farewell prints. maux runs the
+console at 80 columns; <code>bye</code> puts the machine back the way a
+ProDOS program expects to find it &mdash; text mode, page 1, no
+<code>80STORE</code>, 40 columns, and the display handed back to the
+motherboard &mdash; because a program written in 1983 is entitled to assume
+all of that. The 40-column screen in the middle of this film is not a
+rendering choice. It is the machine the tenant actually gets.</p>
+
+<!-- src: docs/DEMO-W17-NOTES.md; src/kernel/byelaunch.s -->
+<p>That is also why this is the one film here with a single display. Every
+other demo is filmed twice, on the IIe's own 80 columns and on a
+Videx UltraTerm. During the handover the card is not the selected display at
+all, so a card film would freeze on the farewell for the whole of the
+interesting part.</p>
+
+<h2>The Makefile is the test</h2>
+<!-- src: examples/lssys/Makefile; examples/lssys/mkwant; examples/lssys/check -->
+<p>The lesson's <code>test</code> rule is four lines: delete
+<code>GOT</code>, run <code>mkwant</code> (which is just
+<code>ls | tr a-z A-Z &gt; WANT</code>, maux's own listing), <code>bye
+LS.SYSTEM</code>, and run <code>check</code>, which sorts both files and
+<code>cmp</code>s them. Two programs that share no code, on two operating
+systems, list the same directory and are made to agree about it. The exit
+status of <code>make</code> is the verdict.</p>
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; docs/VERIFICATION.md (check-demos) -->
+<p>This film is made by <code>site/demos/lssys.py</code>. Run as assertions,
+the same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that the
+copied directory holds the lesson's own files, in the order <code>ls</code>
+prints them; that the <code>Makefile</code> on screen is the lesson's,
+line for line, tabs included; that <code>make</code> prints the
+<code>nas</code> command, nas's report and the <code>ld</code> command, in
+that order, and nothing else; that <code>ls -l</code> calls the result
+<code>SYS</code>; that the names ProDOS printed appear on the 40-column page
+while the tenant owns the machine; that the rows of <code>make test</code>
+come back in order, ending in <code>sh check</code>, with an exit status of
+<code>0</code>; that <code>GOT</code> and <code>WANT</code> each hold exactly
+the expected names; and that the host, reading the disk the machine wrote,
+finds <code>GOT</code> to be maux text &mdash; every byte with its high bit
+set, every line ended by <code>$8D</code>.</p>
+
+<!-- src: site/pages/learn/prodos-system.html -->
+<p>Lesson L7 under <a href="/learn/">Learn</a> walks through the same program
+with the source and the ProDOS directory format explained a line at a time,
+and links back to this film.</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

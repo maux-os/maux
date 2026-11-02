@@ -1,0 +1,70 @@
+timer.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+PUT-included module (no ORG/DSK -- same convention as
+bankprobe.s/entry.s/ sched.s). Boot probes, in order:
+AppleMouse+VBL (slot 5, direct-PIA) -> Mockingboard 6522 (slot
+4, presence-only) -> cooperative-only -- and reports the outcome
+LOUDLY (K_TIMER_MODE + a fixed text-page line; never silently
+assumes a source that isn't actually there). Missing- ROM /
+absent-card failure is loud by construction: the presence probe
+simply fails its register round-trip and falls through to the
+next tier -- the kernel never blocks waiting for ticks that will
+never come.
+
+v1 implements the AppleMouse direct-PIA path for real (promoted
+from src/test/syscalltest.s's working MOUSE_ISR/MOUSE_SEND_CMD
+-- the ARCHITECT RULING resolving docs/SYSCALL.md #7.5/the
+ServeMouse finding, learning:01KZZF3HE8F6R29MT126X4YCKF: the
+kernel never calls mouse FIRMWARE, boot or IRQ -- direct 6821
+PIA register pokes only). Mockingboard and cooperative are PROBE
+OUTCOMES only in v1 -- they set K_TIMER_MODE and print the loud
+message; no real Mockingboard 6522 timer-interrupt programming
+is implemented (out of v1 scope, docs/ARCHITECTURE.md's "V1
+scope" fence: "Mockingboard timers" is explicitly v2+).
+
+PADDLE-STROBE DOCUMENTATION DUTY (docs/TASKS.md #6): every $C073
+write (i.e. every context switch, via
+SCHED_SWITCH/SCHED_START/entry.s's
+KERNEL_EXIT/KERNEL_IRQ_SERVICE insertion points) retriggers the
+real game-paddle 558 one-shots on ACTUAL hardware (AE manual
+fact, learning:01KYYJ98T5R0M9K1AW2550M132: wait >=3ms before
+trusting a paddle read after a bank switch) -- UNMODELED by
+either verilogapple backend
+(learning:01KZZ5492YPQSFYTYNANRJZVWH: fast only arms the one-
+shot on the literal address $C070, never $C073; rtl's IOU
+generates the $C07x strobe correctly but nothing downstream
+consumes it -- "Paddle one-shots... are not modelled yet",
+rtl/iou.sv:521-522). CONSEQUENCE FOR THIS SCHEDULER: a
+preemptive round-robin at 60Hz writes $C073 on every quantum
+exhaustion, which on REAL hardware would leave the paddles
+permanently mid-discharge for any process trying to read a
+joystick -- this is a real, currently UNTESTABLE-IN-EMULATION
+correctness hazard for a future paddle/joystick driver, not a
+bug in this scheduler. Needs MAME, AppleWin, or iron to even
+OBSERVE, let alone fix; flagged here rather than silently
+dropped (docs/SCHED.md carries the full writeup and the v1
+stance: no joystick driver exists yet, so nothing in THIS task
+is currently affected, but the NEXT task that adds one inherits
+this finding as a known hazard, not a rediscovered one).
+
+PRECONDITION ON THE INCLUDER: `use inc/memmap.equ`
+(RAMRDMAIN/ RAMWRTMAIN/BANKSEL etc. are NOT needed by this file
+itself, but `put sched.s` before this file needs them, and
+K_IRQ_HOOK/K_RESULT-style forward refs resolve the same 2-pass
+way as elsewhere in this tree) and `put src/kernel/sched.s`
+BEFORE this file (TIMER_ISR calls SCHED_TICK). K_IRQ_HOOK itself
+must be declared by the includer (ds 2 -- same precondition
+entry.s already documents; this file WRITES it, does not declare
+it).
+----------------------------------------------------------------
+
+-- boot-time force hook (test-only in v1, but a legitimate real-
+world -- feature too -- e.g. a config flag skipping hardware
+detection): if -- nonzero, TIMER_PROBE skips all real hardware
+detection and adopts -- this value as K_TIMER_MODE directly.
+check-sched's cooperative-mode -- variant sets this to
+TIMER_MODE_COOP before calling TIMER_PROBE; -- every other build
+leaves it zero (real probing). --

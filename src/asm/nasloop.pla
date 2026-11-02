@@ -1,0 +1,651 @@
+// Opt-in experiment, injected by scripts/build_nas_loop.py only.
+// Descriptor offsets are words in that script's FIELDS. Native callbacks
+// use PLASMA's fixed zero-page JMP trampoline, not bytecode CALL. No code
+// self-references or mutable native text. Consecutive lines never enter VM.
+// Refusal returns the ALREADY parsed line to the original PLASMA body.
+// Reader/parse state advances once; replay, output and PC do not on refusal.
+asm fastvalue(ctx)#1
+!macro NLCTX .slot {
+        PHA
+        LDA ESTKL+.slot,X
+        STA DSTL
+        LDA ESTKH+.slot,X
+        STA DSTH
+        PLA
+}
+!macro NLARG .off {
+        LDY #.off
+        LDA (DST),Y
+        DEX
+        STA ESTKL,X
+        INY
+        LDA (DST),Y
+        STA ESTKH,X
+}
+!macro NLIND .off, .field {
+        LDY #.off
+        LDA (DST),Y
+        STA SRCL
+        INY
+        LDA (DST),Y
+        STA SRCH
+        LDY #.field
+        LDA (SRC),Y
+        DEX
+        STA ESTKL,X
+        INY
+        LDA (SRC),Y
+        STA ESTKH,X
+}
+!macro NLADR .off {
+        CLC
+        LDA DSTL
+        ADC #.off
+        DEX
+        STA ESTKL,X
+        LDA DSTH
+        ADC #0
+        STA ESTKH,X
+}
+!macro NLCALL .off {
+        LDY #.off
+        LDA (DST),Y
+        STA TMPL
+        INY
+        LDA (DST),Y
+        STA TMPH
+        JSR JMPTMP
+}
+!macro NLSET .off {
+        LDY #.off
+        STA (DST),Y
+        INY
+        LDA #0
+        STA (DST),Y
+}
+!macro NLPTR .off {
+        LDY #.off
+        LDA (DST),Y
+        STA SRCL
+        INY
+        LDA (DST),Y
+        STA SRCH
+}
+!macro NLCON .val {
+        DEX
+        LDA #.val
+        STA ESTKL,X
+        LDA #0
+        STA ESTKH,X
+}
+!macro NLFALL {
+        INX
+        LDA #0
+        STA ESTKL,X
+        STA ESTKH,X
+        RTS
+}
+!macro NLNEXT {
+        +NLCTX 1
+        LDY #48
+        LDA (DST),Y
+        STA TMPL
+        INY
+        LDA (DST),Y
+        STA TMPH
+        JMP JMPTMP
+}
+!macro NVFAIL {
+        LDA #0
+        STA ESTKL,X
+        STA ESTKH,X
+        RTS
+}
+!macro NLGOTO .target {
+        LDY #48
+        LDA (DST),Y
+        CLC
+        ADC #<(.target-NLENTRY)
+        STA TMPL
+        INY
+        LDA (DST),Y
+        ADC #>(.target-NLENTRY)
+        STA TMPH
+        JMP JMPTMP
+}
+!macro NVGOTO .target {
+        LDY #74
+        LDA (DST),Y
+        CLC
+        ADC #<(.target-NVENTRY)
+        STA TMPL
+        INY
+        LDA (DST),Y
+        ADC #>(.target-NVENTRY)
+        STA TMPH
+        JMP JMPTMP
+}
+NVENTRY +NLCTX 0
+        LDA #0
+        +NLSET 78
+        +NLSET 80
+        +NLSET 82
+        +NLPTR 54
+        LDY #56
+        LDA (DST),Y
+        BEQ NVNUM
+        LDY #0
+        LDA (SRC),Y
+        CMP #'<'
+        BEQ NVSEL
+        CMP #'>'
+        BNE NVNUM
+NVSEL   +NLSET 82
+        LDY #54
+        LDA (DST),Y
+        CLC
+        ADC #1
+        STA (DST),Y
+        INY
+        LDA (DST),Y
+        ADC #0
+        STA (DST),Y
+        LDY #56
+        LDA (DST),Y
+        SEC
+        SBC #1
+        STA (DST),Y
+NVNUM
+        +NLARG 54
+        +NLARG 56
+        +NLADR 52
+        +NLCALL 36
+        LDA ESTKL,X
+        INX
+        +NLCTX 0
+        CMP #0
+        BEQ NVNAME
+        LDY #56
+        CMP (DST),Y
+        BEQ NVYES
+NVNO    LDA #0
+NVRET   STA ESTKL,X
+        LDA #0
+        STA ESTKH,X
+        RTS
+NVYES   +NVGOTO NVFINAL
+NVNAME  +NLARG 54
+        +NLARG 56
+        +NLADR 62
+        +NLCALL 38
+        LDA ESTKL,X
+        INX
+        +NLCTX 0
+        CMP #0
+        BEQ NVNO
+        LDY #56
+        CMP (DST),Y
+        BNE NVNO
+        +NLARG 54
+        +NLARG 56
+        +NLPTR 26
+        LDY #0
+        LDA (SRC),Y
+        STA TMPL
+        INY
+        LDA (SRC),Y
+        STA TMPH
+        LDY #62
+        LDA (DST),Y
+        AND #$7F
+        ASL
+        TAY
+        LDA (TMP),Y
+        DEX
+        STA ESTKL,X
+        INY
+        LDA (TMP),Y
+        STA ESTKH,X
+        +NLIND 28, 0
+        +NLCALL 40
+        LDA ESTKL,X
+        STA SRCL
+        LDA ESTKH,X
+        STA SRCH
+        ORA SRCL
+        INX
+        +NLCTX 0
+        BNE NVFOUND
+        +NVFAIL
+NVFOUND LDY #8
+        LDA (SRC),Y
+        AND #$10
+        BEQ NVNOTPROV
+        +NVFAIL
+NVNOTPROV LDY #8
+        LDA (SRC),Y
+        STA ESGUARD
+        LDA SRCL
+        STA TMPL
+        LDA SRCH
+        STA TMPH
+        +NLPTR 20
+        LDY #12
+        LDA (SRC),Y
+        STA SRCL
+        LDA ESGUARD
+        AND #4
+        BEQ NVREGULAR
+        LDA SRCL
+        BEQ NVEXREF
+        LDA #2
+        +NLSET 78
+NVEXREF
+        LDY #2
+        LDA (TMP),Y
+        LDY #80
+        STA (DST),Y
+        LDY #3
+        LDA (TMP),Y
+        LDY #81
+        STA (DST),Y
+        LDA #0
+        +NLSET 52
+        +NVGOTO NVFINAL
+NVREGULAR LDA ESGUARD
+        AND #1
+        BNE NVDEFINED
+        +NVFAIL
+NVDEFINED LDA SRCL
+        BEQ NVLOAD
+        LDA ESGUARD
+        AND #2
+        BNE NVLOAD
+        LDA #1
+        +NLSET 78
+NVLOAD LDY #2
+        LDA (TMP),Y
+        LDY #52
+        STA (DST),Y
+        LDY #3
+        LDA (TMP),Y
+        LDY #53
+        STA (DST),Y
+NVFINAL LDY #52
+        LDA (DST),Y
+        LDY #76
+        STA (DST),Y
+        LDY #53
+        LDA (DST),Y
+        LDY #77
+        STA (DST),Y
+        LDY #82
+        LDA (DST),Y
+        CMP #'<'
+        BEQ NVLOW
+        CMP #'>'
+        BNE NVDONE
+        LDY #53
+        LDA (DST),Y
+        DEY
+        STA (DST),Y
+NVLOW   LDY #53
+        LDA #0
+        STA (DST),Y
+NVDONE
+        LDA #1
+        STA ESTKL,X
+        LDA #0
+        STA ESTKH,X
+        RTS
+end
+asm fastloop(ctx, pass)#1
+NLENTRY +NLCTX 1
+        +NLPTR 68
+        LDY #0
+        LDA (SRC),Y
+        LDY #6
+        CLC
+        ADC (DST),Y
+        DEX
+        STA ESTKL,X
+        INY
+        LDA (DST),Y
+        ADC #0
+        STA ESTKH,X
+        +NLARG 0
+        +NLARG 2
+        +NLARG 4
+        +NLCALL 32
+        LDA ESTKL,X
+        STA TMPL
+        LDA ESTKH,X
+        STA TMPH
+        INX
+        CMP #$FF
+        BNE NLCLASS
+        LDA TMPL
+        CMP #$FF
+        BNE NLRETURN
+        +NLNEXT
+NLCLASS LDA TMPL
+        BEQ NLCODE
+NLRETURN INX
+        LDA TMPL
+        STA ESTKL,X
+        LDA TMPH
+        STA ESTKH,X
+        RTS
+NLCODE +NLCTX 1
+        +NLPTR 24
+        LDY #0
+        LDA (SRC),Y
+        BEQ NLNDUM
+        +NLFALL
+NLNDUM +NLPTR 2
+        LDY #2
+        LDA (SRC),Y
+        BEQ NLNLAB
+        +NLFALL
+NLNLAB LDY #6
+        LDA (SRC),Y
+        CMP #3
+        BCS NLVALID
+        +NLFALL
+NLVALID LDY #8
+        LDA (SRC),Y
+        LDY #54
+        STA (DST),Y
+        LDY #9
+        LDA (SRC),Y
+        LDY #55
+        STA (DST),Y
+        LDY #10
+        LDA (SRC),Y
+        +NLSET 56
+        +NLPTR 18
+        LDY #6
+        LDA (SRC),Y
+        STA TMPL
+        INY
+        LDA (SRC),Y
+        STA TMPH
+        +NLPTR 30
+        LDY #0
+        LDA TMPL
+        STA (SRC),Y
+        INY
+        LDA TMPH
+        STA (SRC),Y
+        LDA ESTKL,X
+        CMP #1
+        BEQ NLPASS1
+        +NLPTR 16
+        LDY #4
+        LDA (SRC),Y
+        STA TMPL
+        INY
+        LDA (SRC),Y
+        STA TMPH
+        LDY #3
+        CMP (SRC),Y
+        BCC NLREPLAY
+        BNE NLRFAIL
+        DEY
+        LDA TMPL
+        CMP (SRC),Y
+        BCC NLREPLAY
+NLRFAIL +NLFALL
+NLREPLAY LDY #0
+        LDA (SRC),Y
+        CLC
+        ADC TMPL
+        STA TMPL
+        INY
+        LDA (SRC),Y
+        ADC TMPH
+        STA TMPH
+        LDY #0
+        LDA (TMP),Y
+        +NLSET 58
+        +NLPTR 14
+        LDY #58
+        LDA (DST),Y
+        TAY
+        LDA (SRC),Y
+        +NLSET 50
+        // Jump to shared operand stage through a relocated descriptor base.
+        LDY #48
+        LDA (DST),Y
+        CLC
+        ADC #<(NLOPER-NLENTRY)
+        STA TMPL
+        INY
+        LDA (DST),Y
+        ADC #>(NLOPER-NLENTRY)
+        STA TMPH
+        JMP JMPTMP
+NLPASS1 +NLIND 2, 12
+        +NLIND 2, 4
+        +NLARG 8
+        +NLARG 10
+        +NLARG 12
+        +NLCALL 34
+        +NLCTX 1
+        +NLPTR 12
+        LDY #2
+        LDA (SRC),Y
+        BNE NLKNOWN
+        +NLFALL
+NLKNOWN LDA #$FF
+        +NLSET 60
+        LDY #56
+        LDA (DST),Y
+        BNE NLHASOP
+        LDA #1
+        +NLSET 60
+        LDA #0
+        +NLSET 50
+        // Implied/accumulator mode goes directly to the row probe.
+        LDY #48
+        LDA (DST),Y
+        CLC
+        ADC #<(NLPROBE-NLENTRY)
+        STA TMPL
+        INY
+        LDA (DST),Y
+        ADC #>(NLPROBE-NLENTRY)
+        STA TMPH
+        JMP JMPTMP
+NLHASOP +NLPTR 12
+        LDY #11
+        LDA (SRC),Y
+        AND #$40
+        BEQ NLNBR
+        LDA #14
+        BNE NLFIXED
+NLNBR   +NLPTR 54
+        LDY #0
+        LDA (SRC),Y
+        CMP #'#'
+        BNE NLNIMM
+        LDA #2
+NLFIXED +NLSET 50
+        LDY #48
+        LDA (DST),Y
+        CLC
+        ADC #<(NLPROBE-NLENTRY)
+        STA TMPL
+        INY
+        LDA (DST),Y
+        ADC #>(NLPROBE-NLENTRY)
+        STA TMPH
+        JMP JMPTMP
+NLNIMM  // The prototype sizes plain scalars; indexed/indirect fall back.
+        CMP #'A'
+        BEQ NLACCTEST
+        CMP #'a'
+        BNE NLNOTACC
+NLACCTEST LDY #56
+        LDA (DST),Y
+        CMP #1
+        BNE NLNOTACC
+        +NLFALL
+NLNOTACC
+        +NLADR 0
+        +NLCALL 74
+        LDA ESTKL,X
+        INX
+        +NLCTX 1
+        CMP #0
+        BNE NLSCALAR
+        +NLFALL
+NLSCALAR LDA #6
+        +NLSET 50
+        LDA #3
+        +NLSET 60
+        LDY #53
+        LDA (DST),Y
+        BNE NLPROBE
+        LDY #78
+        LDA (DST),Y
+        BNE NLPROBE
+        LDA #3
+        +NLSET 50
+        LDA #6
+        +NLSET 60
+NLPROBE +NLIND 12, 6
+        +NLIND 12, 2
+        +NLARG 50
+        +NLPTR 22
+        LDY #0
+        LDA (SRC),Y
+        DEX
+        STA ESTKL,X
+        LDA #0
+        STA ESTKH,X
+        +NLCALL 42
+        LDA ESTKL,X
+        STA TMPL
+        LDA ESTKH,X
+        INX
+        +NLCTX 1
+        CMP #0
+        BEQ NLSELECT
+        LDY #60
+        LDA (DST),Y
+        CMP #$FF
+        BNE NLSECOND
+        +NLFALL
+NLSECOND +NLSET 50
+        LDA #$FF
+        +NLSET 60
+        +NLGOTO NLPROBE
+NLSELECT LDA TMPL
+        +NLSET 58
+        +NLARG 58
+        +NLARG 14
+        +NLARG 16
+        +NLARG 18
+        // noteinst wants &curpc, not &outbuf.
+        CLC
+        LDA ESTKL,X
+        ADC #6
+        STA ESTKL,X
+        BCC NLNOTE
+        INC ESTKH,X
+NLNOTE  +NLCALL 44
+        LDA ESTKL,X
+        INX
+        CMP #0
+        BNE NLRECORDED
+        +NLFALL
+NLRECORDED +NLNEXT
+NLOPER  +NLCTX 1
+        LDY #50
+        LDA (DST),Y
+        CMP #2
+        BCS NLEVAL
+        LDA #0
+        +NLSET 52
+        // Native direct branch distance is bounded here.
+        BEQ NLEMIT
+NLEVAL  STA ESGUARD
+        +NLPTR 70
+        LDY ESGUARD
+        LDA (SRC),Y
+        LDY #54
+        CLC
+        ADC (DST),Y
+        STA (DST),Y
+        INY
+        LDA (DST),Y
+        ADC #0
+        STA (DST),Y
+        +NLPTR 72
+        LDY ESGUARD
+        LDA (SRC),Y
+        STA TMPL
+        LDY #56
+        LDA (DST),Y
+        SEC
+        SBC TMPL
+        STA (DST),Y
+        +NLADR 0
+        +NLCALL 74
+        LDA ESTKL,X
+        INX
+        +NLCTX 1
+        CMP #0
+        BNE NLEMIT
+        +NLFALL
+NLEMIT  // Commit the scratch expression result only after full recognition.
+        +NLPTR 20
+        LDY #80
+        LDA (DST),Y
+        LDY #6
+        STA (SRC),Y
+        LDY #81
+        LDA (DST),Y
+        LDY #7
+        STA (SRC),Y
+        LDY #76
+        LDA (DST),Y
+        LDY #8
+        STA (SRC),Y
+        LDY #77
+        LDA (DST),Y
+        LDY #9
+        STA (SRC),Y
+        LDY #78
+        LDA (DST),Y
+        LDY #10
+        STA (SRC),Y
+        LDY #82
+        LDA (DST),Y
+        LDY #11
+        STA (SRC),Y
+        +NLARG 58
+        +NLARG 50
+        +NLARG 52
+        +NLARG 18
+        +NLARG 20
+        +NLCALL 46
+        LDA ESTKH,X
+        INX
+        +NLCTX 1
+        CMP #0
+        BEQ NLCOMMIT
+        +NLFALL
+NLCOMMIT +NLPTR 16
+        LDY #4
+        LDA (SRC),Y
+        CLC
+        ADC #1
+        STA (SRC),Y
+        INY
+        LDA (SRC),Y
+        ADC #0
+        STA (SRC),Y
+        +NLNEXT
+end

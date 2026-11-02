@@ -1,0 +1,74 @@
+ls.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+CONTRACT (rewritten 2026-08-19, the "proper ls" round): usage
+`ls [-l] [path ...]`. No paths: list the cwd, obtained the way
+pwd does (SC_GETPFX). Each path argument is stat'd with SC_GFI
+(GET_FILE_INFO, wired this same round): a directory storage_type
+lists its contents; anything else prints the file's own line.
+Directory entries are collected (cap 128 -- more is a loud
+truncation error, never silent), insertion-sorted ascending on
+the STORED uppercase name bytes (case-insensitive for free), and
+printed case-decoded. Multi-argument calls print file lines
+first in argv order, then each directory under a `path:` header
+with a blank line between listings. -l columns:
+`TTT SSSSSSSS YYYY-MM-DD HH:MM NAME` -- type (TXT/BIN/DIR/SYS/
+BAS or $xx hex), EOF bytes right-aligned 8 (the GFI file-arg
+path prints blocks_used with a `b` suffix instead: GET_FILE_INFO
+returns no EOF), and the mod date under docs/PRODOS-VERSION.md's
+standing rulings: validity check on the RAW hour/minute bytes
+(hour<=23, minute<=59 -- masking first defeats the discriminator
+and lets real 2.5 Extended stamps print garbage; check-ls stages
+the doc's own captured $97E4 artifact to keep that honest),
+legacy decode with the year pivot at 78, `-` for zero, invalid,
+or Extended dates. Exit 0 on success; 1 on any per-path failure
+(cannot access, read error, truncation), after continuing with
+the remaining arguments; 2 on usage. Gate: make check-ls
+(byte-exact against a staged tree; expected bytes recomputed
+from the built image, teeth proven against no-sort, no-casefold,
+and masked-date sabotages).
+
+The original v1 contract, kept for the record: hardcoded /BASIC
+(pre-cwd), no arguments, no flags, no sort, on-disk order, names
+only.
+
+REWORKED this round against the RATIFIED ABI (docs/SYSCALL.md
+ruling 7): there is no separate readdir() call number -- "OPEN
+the directory as a file, then READ raw directory blocks with the
+SAME OPEN/READ numbers" (the standard MLI pattern, TRM ch. 4).
+This is real, non-optional complexity ls now owns directly
+(ruling 7: "that reshaping is liba's job, not a kernel call") --
+the block/entry-walking algorithm below is transcribed from the
+ProDOS 8 TRM Appendix B.2.4/B.2.5 ("File Entries" / "Reading a
+Directory File"), fetched live this round, not guessed:
+directory blocks are 512 bytes, prefixed by two 2-byte sibling-
+block pointers, followed by 39-byte (TRM: entry_length=$27)
+fixed-size entries -- the first entry in the KEY block is a
+header (not a file), holding
+entry_length/entries_per_block/file_count at buffer offsets
+$23/$24/$25-26. Entries whose first byte
+(storage_type/name_length, packed nibbles) is zero are inactive
+(deleted) and skipped without counting against file_count.
+Filenames are 7-bit ASCII ("ProDOS clears this high bit," TRM
+ch. 2) -- MAKEHI'd per character before printing, the same
+liba/MLI string-encoding boundary src/liba/mli.s's MKPATH
+crosses in the other direction (see docs/USERLAND.md "ABI
+RESOLUTIONS").
+
+io_buffer (architect review, merge-blocking finding, corrected
+this round): OPEN's io_buffer field is kernel-owned MAIN memory,
+NOT a process buffer -- the MLI dereferences it CONTINUOUSLY
+while the directory file stays open and cannot see process banks
+at all. ls used to reserve a 1024B IOBUF for this; it's GONE --
+the field is set to $0000 (PROPOSED convention, task #11
+ratifies -- docs/USERLAND.md "ABI RESOLUTIONS"). DIRBUF (the
+READ data_buffer, holding the raw 512-byte directory block this
+file walks) is NOT affected -- that field is correctly a
+process-bank address; the kernel copyin/outs through it.
+
+Uses ONLY liba (src/liba) -- no direct syscalls, no raw gate
+address, no equates; see docs/USERLAND.md and syscalls.s's
+header for why.
+----------------------------------------------------------------

@@ -1,0 +1,169 @@
+*---------------------------------------------------------------
+* mm.hw.equ -- canonical kernel softswitch trigger and
+* status addresses (docs/MEMMAP.md #4, #4a, #4b). Split out of
+* inc/memmap.equ (docs/SELFHOST-CONVERSION.md phase 1) as
+* its own file: this is the single most widely-shared cluster
+* in the old monolith (nearly every src/kernel/*.s module, plus
+* src/bin/as.s and src/bin/ld.s for LCBANK2_RAM), but it is
+* still a distinct reference set from inc/mm.mli.equ
+* (MLI/mouse addresses, a much narrower file set) and from
+* inc/mm.annex.equ (process/annex structure layout, a
+* different narrower set again) -- so it earns its own file
+* rather than folding into either.
+* Full design notes: I.MEMMAPE.TXT (docs/a2/), docs/MEMMAP.md #4
+*---------------------------------------------------------------
+* See I.MEMMAPE.TXT: "4. Canonical kernel softswitch steady sta"
+CLR80STORE     equ   $C000        ;80STORE off -- STEADY STATE
+SET80STORE     equ   $C001        ;80STORE on  -- bracket only
+                                  ;(display backends / bankcopy
+                                  ;tests)
+RAMRDMAIN      equ   $C002        ;RAMRD -> main -- STEADY STATE
+RAMRDAUX       equ   $C003        ;RAMRD -> aux
+RAMWRTMAIN     equ   $C004        ;RAMWRT -> main -- STEADY
+                                  ;STATE
+RAMWRTAUX      equ   $C005        ;RAMWRT -> aux
+ALTZPMAIN      equ   $C008        ;ALTZP -> main -- STEADY STATE
+ALTZPAUX       equ   $C009        ;ALTZP -> aux (entry/exit
+                                  ;critical section or explicit
+                                  ;ZP/stack peek)
+KBD_DATA       equ   $C000        ;keyboard data; bit7 set means
+                                  ;key ready
+KBD_STROBE     equ   $C010        ;any access clears KBD_DATA
+                                  ;bit7
+*-- THE APPLE KEYS ARE PUSHBUTTONS, NOT KEYBOARD BITS. Sather,
+*-- Understanding the Apple IIe: "The open Apple and close Apple
+*-- keys are not associated with other keyboard functions.
+*-- Instead, these are connected to the PB0 and PB1 serial
+*-- inputs ... Pushing open Apple or close Apple is equivalent
+*-- to pushing pushbutton 0 or pushbutton 1 on a paddle set."
+*--
+*-- So a modifier is NOT in KBD_DATA's byte and cannot be
+*-- recovered later: it must be SAMPLED at the moment the key
+*-- is taken. bit7 set = pressed.
+BUTN0          equ   $C061        ;pushbutton 0 = OPEN Apple
+BUTN1          equ   $C062        ;pushbutton 1 = SOLID/CLOSED
+                                  ;Apple ("Option")
+COL80OFF       equ   $C00C        ;80-column DISPLAY off (40-col
+                                  ;video). Distinct from 80STORE
+                                  ;($C000/$C001), which governs
+                                  ;MEMORY mapping only.
+COL80ON        equ   $C00D        ;80-column display on -- the
+                                  ;native-80 console backend's
+                                  ;steady state (tty2.s)
+ALTCHARSETOFF  equ   $C00E        ;primary char set: inverse +
+                                  ;FLASHING, and NO inverse
+                                  ;lowercase
+ALTCHARSETON   equ   $C00F        ;alternate char set -- CONSOLE
+                                  ;STEADY STATE. Trades the
+                                  ;flashing block for inverse
+                                  ;lowercase ($60-$7F) +
+                                  ;MouseText ($40-$5F). The
+                                  ;console must SET this rather
+                                  ;than inherit whatever ProDOS
+                                  ;left; see docs/CONSOLE.md
+                                  ;section 6.
+TEXTMODEOFF    equ   $C050        ;graphics mode
+TEXTMODEON     equ   $C051        ;text mode -- console steady
+                                  ;state
+MIXEDOFF       equ   $C052        ;full-screen text/graphics
+MIXEDON        equ   $C053
+PAGE2OFF       equ   $C054        ;PAGE2 off (page 1) -- STEADY
+                                  ;STATE
+PAGE2ON        equ   $C055
+HIRESOFF       equ   $C056        ;HIRES off -- text-console
+                                  ;STEADY STATE
+HIRESON        equ   $C057
+BANKSEL        equ   $C073        ;RamWorks bank select --
+                                  ;WRITE-ONLY, UNKNOWN at every
+                                  ;entry; always written, never
+                                  ;read for meaning
+RDLCBNK2       equ   $C011        ;READ-only: bit 7 = the
+                                  ;$C080-$C087 group ($C083) is
+                                  ;selected. The BANK is
+                                  ;readable; the write-enable is
+                                  ;NOT -- docs/LANGUAGE-CARD.md
+RDLCRAM        equ   $C012        ;READ-only: bit 7 = LC RAM is
+                                  ;read-enabled (not ROM)
+LCBANK1_STORE  equ   $C080        ;LC: read RAM, write-protect,
+                                  ;bank 1
+LCBANK1_RW     equ   $C081        ;LC: read ROM, write-enable,
+                                  ;bank 1
+LCBANK1_ROM    equ   $C082        ;LC: read ROM, write-protect,
+                                  ;bank 1
+LCBANK1_RAM    equ   $C083        ;LC: read RAM, write-enable,
+                                  ;bank 1
+LCBANK2_STORE  equ   $C088        ;LC: read RAM, write-protect,
+                                  ;bank 2
+LCBANK2_RW     equ   $C089        ;LC: read ROM, write-enable,
+                                  ;bank 2
+LCBANK2_ROM    equ   $C08A        ;LC: read ROM, write-protect,
+                                  ;bank 2
+LCBANK2_RAM    equ   $C08B        ;LC: read RAM, write-enable,
+                                  ;bank 2 -- STEADY STATE
+*-- THE RULE (2026-09-20, docs/LANGUAGE-CARD.md, gate
+*-- check-lc): $C083 and $C08B are the ONLY two of these
+*-- sixteen addresses any maux code may touch. Both select
+*-- read-RAM AND write-enable; they differ only in bank. The
+*-- four EVEN spellings write-PROTECT and the _RW/_ROM pair
+*-- select read-ROM, and all six are banned because this is
+*-- ONE latch for the WHOLE MACHINE that CANNOT be read back
+*-- ($C011/$C012 report bank and read-source; nothing reports
+*-- write-enable). No scheduler can save and restore what it
+*-- cannot read, so any process holding write-enable across a
+*-- preemptible window loses the rest of its stores in
+*-- silence. Declared exemptions live in scripts/check_lc.py.
+* -- 4b. Slot-ROM soft switches. Needed by any slot card the
+* -- kernel drives directly (the UltraTerm console backend, and
+* -- the SmartPort at $C7xx). The UltraTerm's OWN registers live
+* -- in src/kernel/ultraterm.s, not here: they are one module's
+* -- hardware, and this file is 200 bytes from real Merlin's
+* -- 41215-byte source-buffer ceiling.
+CLRINTCXROM    equ   $C006        ;$C100-$CFFF = SLOT ROM. The
+                                  ;normal kernel state -- the
+                                  ;SmartPort needs it too.
+SETSLOTC3ROM   equ   $C00B        ;$C300 = slot 3's card, not
+                                  ;the //e's internal 80-column
+                                  ;firmware
+CLRSLOTC3ROM   equ   $C00A        ;$C300 = internal ROM. IRQs
+                                  ;vector via $C3FA: slot 3
+                                  ;EMPTY must be internal, else
+                                  ;that fetch is floating bus.
+CLRC8ROM       equ   $CFFF        ;READ = release every card's
+                                  ;$C800 latch + INTC8ROM. A
+                                  ;bare $Cnxx claim is NOT
+                                  ;portable: release THEN claim
+                                  ;(docs/MAME.md finding 1).
+* -- 4a. Softswitch STATUS (read) registers -- ADDITIVE (task
+* #4, -- src/kernel/bankcopy.s). Distinct from the write-only
+* TRIGGER -- addresses above: these are read to discover the
+* CALLER's incoming -- switch state (bit 7 of the byte read back
+* = switch ON) before the -- bank-copy primitive's own
+* CLR80STORE bracket, so it can restore -- exactly on exit
+* (docs/TASKS.md #4's contract). Sather p.5-25 / --
+* learning:01KW1GTYHGXMBZNR6DMQB2F712. --
+RD80STORE      equ   $C018        ;bit7: 1=80STORE on
+RDPAGE2        equ   $C01C        ;bit7: 1=PAGE2 selected
+RDHIRES        equ   $C01D        ;bit7: 1=HIRES on
+RDALTZP        equ   $C016        ;bit7: 1=ALTZP (aux ZP+stack)
+
+* -- /RAM protocol constants (procmli.s PRC_RAMDIS, procbye.s
+* -- PRC_RAMRECONN/PRC_RAMREDISC) -- MOVED here 2026-09-26:
+* -- nas-librel's own REL-module export rule refuses a
+* -- cross-module equate that is not in an equ file.
+RD_DEVCNT   equ   $BF31
+RD_DEVLST   equ   $BF32
+RD_RAMSLT   equ   $BF26        ;slot3/drive2 driver vector
+RD_NODEV    equ   $BF10        ;the reserved no-device vector
+RD_RAMUNIT  equ   $B0          ;/RAM's ON_LINE unit_num form
+                               ;(DSSS0000, slot 3 drive 2 --
+                               ;NEVER DEVLST's own $BF byte)
+* -- docs/DEVFS.md, 2026-09-30: PRC_DEVLIST's built-in Disk ][
+* -- classification range -- main LC bank 1 $D000-$D5FF
+* -- (learning:01M0W5ZCYJQH2A19V5XJW2HZR4). Named per check-
+* -- encoding's own rule (a literal $A0-$FE immediate is debt).
+DSK2_LC_LO  equ   $D0          ;DEVADR hi byte, inclusive lower
+DSK2_LC_HI  equ   $D6          ;DEVADR hi byte, exclusive upper
+
+* -- KSEG_ORG: cold segment base, LC bank 2 $D400-$DFFF -- docs/
+* -- KSEG.md "Cells and equates".
+KSEG_ORG    equ   $D400

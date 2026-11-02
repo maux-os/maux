@@ -1,0 +1,51 @@
+.\" dirname.1 -- maux's dirname(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic dirname(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as basename.1. Rendered at
+.\" build time to build/man/DIRNAME.TXT and staged on the play
+.\" image as /usr/man/DIRNAME: `more /usr/man/DIRNAME`.
+.TH DIRNAME 1 "September 14, 2026" maux
+.SH NAME
+dirname \- return all but the last component of a pathname
+.SH SYNOPSIS
+.B dirname
+.I string
+.SH DESCRIPTION
+.I Dirname
+deletes the last component of
+.IR string ,
+beginning with the last slash
+.RB ( / )
+character, after first stripping trailing slashes, and writes
+the result to standard output.
+.PP
+If
+.I string
+consists entirely of slashes, a single
+.B /
+is printed. If, after stripping trailing slashes,
+.I string
+contains no slash at all, a single
+.B .
+is printed. If removing the last component leaves nothing but
+slashes, a single
+.B /
+is printed.
+.PP
+.I String
+is text, not a filesystem lookup: no file or directory named by
+.I string
+needs to exist, and none is opened.
+.SH FILES
+/usr/man/DIRNAME  this page
+.SH "SEE ALSO"
+basename(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success; 2 on a usage error (a number of
+operands other than one); 1 if the result would not fit
+dirname's own working buffer (96 bytes).
+.SH BUGS
+This is the POSIX single-operand form only; some other
+implementations accept more than one
+.I string
+and print one line per operand.

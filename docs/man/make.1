@@ -1,0 +1,248 @@
+.\" make.1 -- maux manual page for make(1), src/bin/make.s and its
+.\" four body modules (makeread.s, makemac.s, makeinf.s, makerun.s).
+.\" ORIGINAL to maux: no V7 or BSD text is reproduced here, so no
+.\" third-party notice applies (docs/MAN.md sec 7).
+.\" Rendered by make man-pages and staged as /usr/man/MAKE.
+.TH MAKE 1 "September 18, 2026" maux
+.SH NAME
+make \- keep files up to date
+.SH SYNOPSIS
+.B make
+[
+.B \-eikNnpqrSst
+] [
+.B \-f
+.I makefile
+] [
+.I name=value
+] ... [
+.I target
+] ...
+.SH DESCRIPTION
+.I Make
+reads a makefile of rules and, for each
+.I target
+named on the command line, brings that target's prerequisites up to
+date and then runs the target's recipe if any prerequisite is newer
+than the target or the target does not exist.
+With no
+.I target
+operand it builds the first rule in the file whose target does not
+begin with a period.
+.PP
+A makefile is made of four kinds of line:
+.TP
+.B "NAME = value"
+A macro definition. Later,
+.BR $(NAME) ,
+.B ${NAME}
+or, for a one-character name,
+.BR $N ,
+expands to the value.
+.B $$
+is a literal dollar sign, and an undefined macro expands to nothing.
+A macro given on the command line overrides one in the makefile;
+an exported environment variable is a macro too, and
+.B \-e
+makes the environment win over the makefile.
+.TP
+.B "target ... : prerequisite ... [; command]"
+A rule. Several targets on one line make several rules sharing the
+prerequisites and the recipe.
+.TP
+.B "<tab>command"
+A recipe line for the rule above it. A leading
+.B @
+suppresses the echo, a leading
+.B \-
+ignores a nonzero exit, and a leading
+.B +
+runs the line even under
+.BR \-n .
+.TP
+.B "# comment"
+A comment, to the end of the line. Comments are recognised on macro
+and rule lines only, never inside a recipe: with no shell in the way
+(see BUGS) a recipe line IS the command.
+.PP
+The makefile may be in either text convention: maux text (high bit set,
+tab $89, lines ended by $8D) or ProDOS-standard text (low ASCII, tab $09,
+lines ended by $0D); both build the same bytes.
+.PP
+A line ending in
+.B \e
+is continued on the next; the join is one blank and the continuation's
+own indentation is dropped.
+.SS Inference rules
+A target with no rule of its own can be made by an
+.I inference rule.
+.B .SUFFIXES
+lists the suffixes to try, in order; a second
+.B .SUFFIXES
+adds to the list and an empty one clears it. A rule whose target is
+two suffixes written together says how to make the second from the
+first, so with
+.PP
+.RS
+.nf
+\&.SUFFIXES: .o .c
+\&.c.o:
+	cc \-c $<
+.fi
+.RE
+.PP
+the target
+.B prog.o
+is made from
+.B prog.c
+if that file exists or is itself a target.
+There are NO built-in suffixes or rules: this system has no compiler
+to write one for, so a makefile declares its own.
+.PP
+A suffix here need not begin with a period.
+.I Make
+joins the pair to name the rule and never takes it apart again, so
+.B ".SUFFIXES: R .S"
+with a rule
+.B .SR:
+makes
+.B CATMR
+from
+.BR CATM.S ,
+which is what maux's own self-rebuild uses.
+.SS Internal macros
+Inside a recipe:
+.TP
+.B $@
+the target.
+.TP
+.B $<
+the prerequisite an inference rule was chosen for; in an ordinary
+rule, the first prerequisite.
+.TP
+.B $*
+the target with its suffix removed.
+.TP
+.B $?
+the prerequisites that are newer than the target. It is recomputed
+when it is used, so it costs one
+.BR stat (2)
+per prerequisite.
+.SS Special targets
+.B .SILENT
+and
+.B .IGNORE
+do what
+.B \-s
+and
+.B \-i
+do.
+.B .DEFAULT
+gives a recipe for any target that has no rule and no file.
+.B .PRECIOUS
+and
+.B .POSIX
+are accepted and do nothing.
+.SH OPTIONS
+.TP
+.B \-e
+Environment variables override macros set in the makefile.
+.TP
+.BI \-f " makefile"
+Read
+.I makefile
+instead of MAKEFILE. The name may be attached (\fB\-f\fIname\fR).
+.TP
+.B \-i
+Ignore the exit status of every command.
+.TP
+.B \-k
+On a failing command, abandon that target but carry on with targets
+that do not depend on it.
+.TP
+.B \-n
+Write the commands that would run; run none of them. A line beginning
+.B @
+is still written.
+.TP
+.B \-p
+Write the macro definitions and the target descriptions.
+.TP
+.B \-q
+Say nothing and run nothing; exit 1 if any named target is out of
+date.
+.TP
+.B \-r
+Clear the initial suffix list. There is no built-in list, so this
+does nothing and is accepted for portability.
+.TP
+.B \-S
+Undo a previous
+.BR \-k .
+.TP
+.B \-s
+Do not echo commands.
+.TP
+.B \-t
+Bring each target up to date by dating it, without running its
+recipe.
+.SH FILES
+.TP
+.B MAKEFILE
+read when
+.B \-f
+is not given.
+.TP
+.B /usr/man/MAKE
+this page.
+.SH DIAGNOSTICS
+A recipe's command word is located the way sh(1) locates one: looked
+up on PATH, except that a word containing a slash is a path and is not
+searched. Unlike sh(1), make has no retry of a file that begins with
+#!, and a leading
+.B \-
+carries on after a command that is not found but not after one that
+cannot be run. A command that cannot
+be found stops make with
+.B make: NAME: not found
+(a leading
+.B \-
+or
+.B \-i
+carries on).
+.PP
+Exit 0 if every target was already up to date or was made, 1 on any
+failure (or, under
+.BR \-q ,
+if a target is out of date), 2 on a usage error.
+.SH BUGS
+There is no shell between
+.I make
+and the command. A recipe line is split on blanks and the program is
+spawned directly, so a recipe has no pipes, no redirection, no
+globbing, and no
+.BR cd .
+.PP
+File times have one-minute resolution, so a target rebuilt within a
+minute of its source's last write compares equal to it and is judged
+up to date.
+.B \-t
+and
+.BR touch (1)
+are the way out; there is no
+.B \-B
+to force a build.
+.PP
+There is no parallelism, no
+.BR include ,
+no
+.B ::
+rules, and
+.B "\-f \-"
+cannot read a makefile from the standard input.
+.SH SEE ALSO
+.BR nas (1),
+.BR ld (1),
+.BR ld (1),
+.BR sh (1),
+.BR touch (1)

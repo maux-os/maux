@@ -1,0 +1,83 @@
+.\" uuencode.1 -- maux's uuencode(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic uuencode(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as env.1. Rendered at build
+.\" time to build/man/UUENCODE.TXT and staged on the play image
+.\" as /usr/man/UUENCODE: `more /usr/man/UUENCODE`.
+.TH UUENCODE 1 "September 14, 2026" maux
+.SH NAME
+uuencode \- encode a binary file into printable ASCII
+.SH SYNOPSIS
+.B uuencode
+[
+.B \-m
+] [
+.I file
+]
+.I decode_pathname
+.SH DESCRIPTION
+.I Uuencode
+reads
+.I file
+(or standard input, if only
+.I decode_pathname
+is given) and writes a "begin" header line, the encoded body,
+and a trailer to standard output.
+.I Decode_pathname
+is written into the header verbatim; it is never opened or
+checked for existence, and need not match any real file.
+.PP
+The header line reads
+.RI "begin " mode " " decode_pathname
+(or
+.BR begin-base64 ,
+with
+.BR \-m ),
+where
+.I mode
+is always the literal
+.B 644 :
+this machine has no permission bits to report.
+.TP
+.B \-m
+Use the base64 alphabet (RFC 4648) instead of the historical
+uuencode alphabet. Lines carry 57 source bytes (76 characters);
+the final, possibly short, group is padded with
+.BR = .
+The trailer is a line of four
+.BR = " characters."
+.PP
+Without
+.BR \-m ,
+each line carries up to 45 source bytes, prefixed by a length
+character (32 plus the byte count, or a backquote for a
+zero-length line). Each 6-bit group encodes as 32 plus its
+value, except a zero group, which encodes as a backquote rather
+than a space -- the historical convention that survives mail
+transports which strip trailing spaces. The body ends with a
+zero-length line (a lone backquote) followed by
+.BR end .
+.PP
+.I Uuencode
+writes a maux TEXT file: high-bit ASCII, CR line ends, the same
+convention every other program in this tree uses -- not the
+plain 7-bit ASCII a uuencode file traditionally is on the wire.
+.B tip (1)
+strips the high bit on the way out to the serial line
+(docs/SERIAL.md), so
+.B "uuencode FILE NAME | tip"
+reaches the far end as an ordinary 7-bit uuencode file without
+any extra step here.
+.SH FILES
+/usr/man/UUENCODE  this page
+.SH "SEE ALSO"
+uudecode(1), tip(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success; 1 if
+.I file
+could not be opened; 2 on a usage error (an unrecognised option,
+or other than one or two operands).
+.SH BUGS
+Group ownership and any other permission bits are never
+reported; the header's mode field is always
+.BR 644 .

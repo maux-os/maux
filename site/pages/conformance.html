@@ -1,0 +1,74 @@
+title: Conformance
+description: How closely maux's tools follow POSIX and the older Unix they come from, checked against real Unix tools, with the differences listed.
+---
+<h1>Conformance</h1>
+
+<!-- src: docs/POSIX-CONFORMANCE.md; docs/SITE.md sec 0 (Voice); docs/VERIFICATION.md; evidence/README.md -->
+<p class="lead">A Unix tool is only useful if it does what you expect. When you type
+<code>sort -n</code> or <code>sed s/a/b/</code>, you want the answer you would get on any
+other Unix. So the tools in maux are tested against real ones.</p>
+
+<h2>At a glance</h2>
+<!-- src: evidence/conformance-f9a0e021-2026-10-24/check-posixutil.log; Makefile UTILS -->
+{{gen:conformance_summary}}
+
+<h2>How closely</h2>
+<!-- src: docs/POSIX-CONFORMANCE.md; docs/POSIX-GAPS.md -->
+<p>The headline: most of the command set follows POSIX, and is tested that way. Some of it
+is older on purpose. The shell is the Version 7 Bourne shell with the POSIX parts that
+fit. <code>ed</code> is a small version of the original editor. <code>vi</code> and <code>ex</code> come from
+Berkeley, and have been brought up to the POSIX text. The table says which is which.</p>
+
+<p>How it is checked: most tests run a command on maux and run the same command on a Mac,
+then compare the output and the exit status byte for byte. Where the Mac&rsquo;s tool
+and the POSIX text disagree, the POSIX text wins. The Mac&rsquo;s own tools are BSD tools,
+and its <code>vi</code> and <code>ex</code> are Vim. The counts below come from test runs
+on {{fact:cf_date}}. maux runs on an emulated enhanced IIe for those runs, not on a
+real machine: they establish what the software does, not how the original hardware
+behaves.</p>
+
+<h2>How to read the counts</h2>
+<!-- src: evidence/README.md; evidence/conformance-f9a0e021-2026-10-24/check-posixutil.log -->
+<p>A test is one command, run on maux and run again on the reference. It counts
+only if maux gave the same answer, byte for byte, including the exit status.
+Something maux does not do, such as <code>grep -E</code>, is a difference, not a match, and
+is listed by name under &ldquo;Where it differs&rdquo;. {{fact:cf_util_pass}} of the
+{{fact:cf_util_total}} tests on the standard utilities gave the same answer, and
+{{fact:cf_util_gaps}} are known differences. (The test run itself prints
+{{fact:cf_util_gate}} of {{fact:cf_util_total}}, because it also counts a known
+difference as a pass for as long as it stays different. That is a check on the list of
+differences, not a match.)</p>
+<!-- src: evidence/conformance-f9a0e021-2026-10-24/check-posixutil.log -->
+<p>Not every test has a running reference to compare with. Of the
+{{fact:cf_util_pass}} that agreed, {{fact:cf_util_host}} compare maux with the
+Mac&rsquo;s own tool. The other {{fact:cf_util_hand}} check maux against an expected answer
+written by hand, where the Mac has no tool to compare with (<code>cal</code>, for one) or
+its tool disagrees with the POSIX text. Those are assertions, not comparisons. The
+shell, <code>sed</code>, <code>vi</code>, <code>ex</code> and regular-expression counts
+are separate runs against their own references, named in the table.</p>
+
+<h2>Tool by tool</h2>
+<!-- src: evidence/README.md; docs/man (source headers, BUGS); docs/POSIX-GAPS.md; docs/SED.md; docs/MAKE-POSIX.md; docs/SH-FEATURES.md -->
+<p>&ldquo;Where it comes from&rdquo; is the design maux follows. &ldquo;Same
+answer&rdquo; counts the tests whose output and exit status matched the reference
+exactly; a known difference is not counted as agreeing.</p>
+{{gen:conformance_table}}
+
+<h2>Where it differs</h2>
+<!-- src: evidence/README.md; docs/POSIX-GAPS.md -->
+<p>The known differences from the reference, as the test runs reported them: the
+{{fact:cf_util_gaps}} utility differences counted above, then the shell. Each is something a
+script might trip over. Some are choices (no extended regular expressions), some are the
+machine (no floating point, no file owners), and some are work not done yet.</p>
+{{gen:conformance_gaps}}
+
+<h2>Every utility</h2>
+<!-- src: evidence/README.md; evidence/conformance-f9a0e021-2026-10-24/check-posixutil.log -->
+<p>The same answers, utility by utility, in the run above. A utility with a known
+difference shows less than its full count.</p>
+<details class="utils">
+<summary>Show all {{fact:cf_util_tools}} utilities</summary>
+{{gen:conformance_utils}}
+</details>
+
+<p>The test runs are kept in <a href="repo:evidence/README.md">evidence/</a>.</p>

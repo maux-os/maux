@@ -1,0 +1,63 @@
+probetest.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+SmartPort boot-block entry contract
+(learning:01KZZ55AZ98V8P0FQASXWQ6K7T, confirmed by two
+independent boot blocks incl. src/bootblock.s from this same
+repo): block 0 loads to $0800, byte at $0800 must be $01 (chain
+count) or the ROM falls back to BASIC, execution starts at
+$0801, and NO register/zero-page state is guaranteed at entry --
+init everything before use. Cribbed structurally from
+src/bootblock.s (same org/dsk/typ/dfb chrome, same SEI/LDX
+#$FF/TXS/CLD entry, same "write straight to the $0400 text page,
+no ROM COUT" output style, same trailing `ds` pad to exactly one
+512-byte block).
+
+Runs BankProbe (src/kernel/bankprobe.s, PUT-included below --
+see that file's header for the full algorithm, the alias-dedupe
+argument, and the stated test gap: sparse/aliased period-card
+decodes are NOT exercised by this image on either verilogapple
+backend, only the dense allocator BEHAVIOR path is), then
+prints:
+  row 0: a banner
+  row 1: "FREE=" + the free-bank count (3 decimal digits)
+  row 2: "FIRST:" + the first few (up to 8) free bank numbers, in hex
+
+`make check-probe` (Makefile) boots this image on the fast
+backend at two different `aux_banks` values and asserts FREE=
+tracks (aux_banks-1) each time (bank 0 always reserved) -- see
+that target and scripts/check_probe.py for how the assertion
+parses this screen output.
+
+`use`s inc/memmap.equ (task #2) BEFORE putting in
+bankprobe.s, on bankprobe.s's own module-header instruction:
+merlin32 only recurses ONE level of put/use from the file
+actually handed to the assembler, so a `use` written inside
+bankprobe.s (itself only reached via `put`) is silently never
+loaded -- confirmed empirically while wiring this up (see
+bankprobe.s's "PRECONDITION ON THE INCLUDER" note and
+docs/TOOLCHAIN.md).
+BANKSEL/RAMRDMAIN/RAMRDAUX/RAMWRTMAIN/RAMWRTAUX must therefore
+already be defined by the time `put`'s bankprobe.s in.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+PrintHexY -- A  byte to
+----------------------------------------------------------------
+----------------------------------------------------------------
+PrintHexY -- A = byte to print, Y = starting column offset into
+row 2 ($0500). Writes 2 hex-digit characters at $0500+Y and
+$0500+Y+1, high bit set (text page's normal display encoding).
+Leaves Y unchanged.
+
+Preserves X: the nibble->HEXDIGITS lookup needs an index
+register and uses X for it, but the caller (probetest.s's show-
+loop) also keeps its FREELIST index live in X across this call
+-- PHX/PLX bracket the whole body so that use is invisible to
+the caller. (Found by running the image under verilogapple:
+without this bracket the show-loop's `inx` incremented from
+whatever nibble TAX last left in X, not the real index, printing
+FREELIST[0],[2],[4],[6] instead of [0],[1],[2],[3].)
+----------------------------------------------------------------

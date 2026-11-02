@@ -1,0 +1,31 @@
+.\" Original maux page, MIT, 2026-09-19.
+.\" Historical-source decision: The V1/V6/V7 as pages describe PDP-11 syntax and objects, not this Merlin-hosting command.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH AS 1 "September 19, 2026" maux
+.SH NAME
+as \- run the legacy Merlin assembler
+.SH SYNOPSIS
+.B as
+.RB [ \-l ]
+.RB [ \-o " object" ]
+.I source
+.SH DESCRIPTION
+Assemble a Merlin-format source file using the legacy Merlin/Sweet16
+core hosted as a maux process.
+The -l option enables a listing; -o names the object output.
+Source directives determine flat or relocatable output.
+.PP
+This command is retained for compatibility and independent comparison.
+It is not an alias for nas(1).
+The production native rebuild uses nas + ld + make.
+.PP
+The command is supplied on assembler development images, not on the
+ordinary interactive play image.
+.SH FILES
+/usr/man/AS  this page
+.SH "SEE ALSO"
+nas(1), ld(1), nm(1), make(1)
+.SH DIAGNOSTICS
+Exit status is 0 for an assembly with no errors, 1 for an assembly/runtime failure, 2 for usage errors.
+.SH BUGS
+Source and object storage are bounded by the legacy core's process-bank layout. Consult nas(1) for the production route rather than assuming a host Unix as interface.

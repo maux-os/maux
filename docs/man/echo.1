@@ -1,0 +1,29 @@
+.\" Derived from Research UNIX V6 echo(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/echo.1
+.\" Retrieved 2026-09-19; archived response SHA256: 155c80570ecd2cf90842551741c729f2ad6f347f71aad5077cc14a14e59a0bbc
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH ECHO 1 "September 19, 2026" maux
+.SH NAME
+echo \- echo arguments
+.SH SYNOPSIS
+.B echo
+.RB [ \-n ]
+.RI [ arg ...]
+.SH DESCRIPTION
+.I Echo
+writes its arguments in order as a line on the standard output file.
+It is mainly useful for producing diagnostics in command files.
+Arguments are separated by one space.
+An initial, separate
+.B \-n
+suppresses the final newline.
+Backslash escapes are not interpreted.
+.SH FILES
+/usr/man/ECHO  this page
+.SH "SEE ALSO"
+printf(1), sh(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0.

@@ -1,0 +1,78 @@
+*---------------------------------------------------------------
+* mm.mlibuf.equ -- MLI file I/O buffer constants (task #11
+* amendment, docs/PRODOS-SPIKE.md answer (e)). Split out of
+* inc/memmap.equ (docs/SELFHOST-CONVERSION.md phase 1) as
+* its own file: only src/kernel/process.s and src/kernel/
+* procfd.s reference MLI_IOBUF_CNT, a narrower set than either
+* the annex structure budget or the main-memmap documentation
+* constants it used to sit next to.
+* Full design notes: I.MEMMAPE.TXT (docs/a2/), docs/MEMMAP.md
+* #1.3
+*---------------------------------------------------------------
+
+* -- MLI file I/O buffers (task #11 amendment, docs/PRODOS-
+* SPIKE.md answer -- (e)): the ProDOS 8 TRM's OPEN call (Sec
+* 4.5.1) requires a caller- -- supplied, PAGE-ALIGNED 1024-byte
+* io_buffer PER OPEN FILE, live for the -- file's entire open
+* lifetime (not just during one call -- ProDOS keeps -- the
+* current data block + index block resident there between
+* calls). -- The kernel MLI lock (docs/PRODOS-SPIKE.md answer
+* (d)) serializes MLI -- CALLS, not concurrently OPEN files --
+* two processes can each hold a -- file open (and its buffer
+* live) at once, taking turns making calls -- under the lock.
+* MLI_IOBUF_CNT=4 is a JUDGMENT CALL (no fs/exec code --
+* exists yet to measure real concurrency): generous for v1's
+* shell + six -- utils (a redirected pipeline's worst case is
+* ~2-3 files open at once -- system-wide -- sh's own
+* redirections plus one reader/writer utility -- each), revisit
+* if a real consumer needs more. Verified empirically --
+* (docs/PRODOS-SPIKE.md, `make check-mli`): ONE reused, page-
+* aligned 1K -- buffer correctly served a sequential
+* CREATE/OPEN/WRITE/CLOSE -> -- OPEN/READ/CLOSE workload with
+* zero corruption -- this spike never -- exercised TWO buffers
+* live simultaneously (its two "fake processes" -- run their
+* file sequences serially under the lock, never with both --
+* files open at once), so MLI_IOBUF_CNT>1 is sized by policy
+* -- (matching the fd-table/pipeline reasoning above), not
+* itself replayed -- in the gate -- flagged rather than silently
+* assumed proven.
+* MEASURED 2026-08-21: peek MLI_BUF_USED across a whole
+* check-shlang run. Occupancy oscillates and RETURNS TO BASELINE
+* between commands -- no leak on this path -- with a concurrent
+* HIGH-WATER of exactly 4 of 4, reached by the script's deepest
+* shape: outer sh's own script fd + its `2>` capture file + a
+* NESTED sh's script fd + the spawn loader's transient buffer.
+* So 4 is adequate but SATURATED: one more level of `sh` nest,
+* or one more file held open across a spawn, needs 5. Raise this
+* before adding either. (A `sh: cannot redirect` in 2026-08 was
+* blamed on this constant and was NOT this constant -- it was a
+* pipe-slot leak in PRC_DEC_OBJ, src/kernel/procfd2.s. A static
+* ceiling cannot be positional; that failure was.)
+* RAISED 4 -> 6, 2026-08-22, on the demonstrated failure the
+* note above asked to wait for. At 4, `SH < script > out` with a
+* command inside that opens a file DOES NOT WORK: outer script
+* fd + its `2>` capture + the nested sh's script fd + that sh's
+* redirected stdout is already 4 before the inner command opens
+* anything. The symptom is `cat: cannot open <path>` on a file
+* that plainly exists, plus a silently uncreated output file.
+* That is ordinary shell usage, and it had also begun blocking
+* the WRITING of gates -- docs/SH-FEATURES.md sec 15 Finding 1.
+* 6 clears the measured 4-of-4 high-water by two, covering one
+* more level of `sh` nesting. Costs 2048B of K_CODE_C, which is
+* 24576B and now uses 6656B. PMLI_XFER_BUF moved $7000 -> $7800
+* in src/kernel/process.s to make room: buffer FIVE lands
+* exactly on the old $7000 (see PRC_IBF_HI_A), so that move is a
+* hard requirement of this change, not tidying.
+MLI_IBF_SIZE  equ   1024        ;FACT -- TRM 4.5.1, page-
+                                  ;aligned, per file
+* RAISED 6 -> 8, 2026-09-07: 8 is ProDOS 8's OWN ceiling ("a
+* maximum of eight files can be open at a time", TRM p.13), so
+* this is the last raise there will ever be. Past it the kernel
+* LENDS: an exhausted pool parks the least-recently-used open
+* file (GET_MARK + CLOSE) and reopens it on its next use --
+* src/kernel/procfd2.s PRC_PARK_ONE, docs/IOBUF-LENDING.md.
+* LOWERED 8 -> 6, 2026-10-21 (B1): lending covers the two
+* given back, and the 2 KB is flat-image ceiling. Measured
+* park rates in docs/B1-NOTES.md.
+MLI_IOBUF_CNT equ   6           ;was 8 (2026-09-07), 6 before
+MLI_IBF_TOTAL equ   MLI_IBF_SIZE*MLI_IOBUF_CNT   ;6144B

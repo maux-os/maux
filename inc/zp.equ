@@ -1,0 +1,117 @@
+*---------------------------------------------------------------
+* zp.equ -- liba's private zero-page window.
+* Full design notes: L.ZPE.TXT (docs/a2/)
+*---------------------------------------------------------------
+PTR0        equ   $E0            ;2 bytes -- pointer arg 1 (e.g.
+                                 ;src/path/buf)
+PTR1        equ   $E2            ;2 bytes -- pointer arg 2 (e.g.
+                                 ;dst)
+PTR2        equ   $E4            ;2 bytes -- pointer arg 3
+                                 ;(SC_SPAWN's fdactions only)
+OPTPTR      equ   $EC            ;2 bytes -- getopt.s: the
+                                 ;permitted-letters string.
+                                 ;Needs ZP because the validity
+                                 ;scan is (OPTPTR),y
+* -- U2DEC (num.s) working cells. Not meant for use outside
+* num.s, but not -- enforced -- nothing in this toolchain
+* enforces module-private state.
+U2DEC_VAL   equ   $E6            ;2 bytes -- remaining value
+                                 ;being converted
+U2DEC_SUB   equ   $E8            ;2 bytes -- current power-of-
+                                 ;ten subtrahend
+U2DEC_DIGIT equ   $EA            ;1 byte  -- digit accumulator
+                                 ;for current position
+U2DEC_LZ    equ   $EB            ;1 byte  -- leading-zero-
+                                 ;suppression flag
+* -- stdio.s (docs/PROCIO.md sec 4) working cells. Transient
+* -- scratch only -- never holds state across two separate
+* -- PUTC/flush calls -- so sharing these two pairs between
+* -- SIO_PUTC's own addressing and SIO_CPY's LC-bank1<->stage
+* -- copy is safe (SIO_PUTC never re-enters while SIO_CPY holds
+* -- them: SIO_PUTC calls SIO_FLUSH, which calls SIO_CPY, all
+* -- single-threaded, no reentrancy). (zp),Y indirect addressing
+* -- requires zero page, same reason PTR0-PTR2 exist above.
+STG_PTR     equ   $EE            ;2 bytes -- source pointer
+                                 ;(PUTC: the LC bank1 byte slot;
+                                 ;SIO_CPY: the LC bank1 copy
+                                 ;source)
+* -- RESERVED, NOT AVAILABLE: process zero page $FF is owned by
+* -- the KERNEL (inc/entry.frame.equ's K_LCBANK). The syscall
+* and
+* -- IRQ doors write the interrupted process's language-card
+* bank
+* -- there, in that process's own zero page, and the exit paths
+* -- read it back to restore it. A program that uses $FF will
+* have
+* -- its LC bank silently mis-restored after any preemption.
+* -- docs/LANGUAGE-CARD.md. Highest cell any program claims
+* today
+* -- is PLASMA's LDPTR at $F9-$FA (src/bin/plasma.s).
+ZP_KRN_LCBANK equ $FF            ;= entry.frame.equ's K_LCBANK
+DST_PTR     equ   $F0            ;2 bytes -- SIO_CPY's stage-
+                                 ;buffer copy destination
+*---------------------------------------------------------------
+* CONSTANTS THAT ARE NOT ZERO PAGE, and why they live in a file
+* whose name says otherwise.
+*
+* Merlin-8 REJECTS a forward reference to an `equ` -- merlin32
+* accepts one silently, so the tree grew several
+* (learning:01M05519PC55WGJNE4PY5HX4TH). Each of the constants
+* below is DEFINED in a liba module that a program `put`s late
+* (seek.s, libabss.s -- libabss.s must be last, it is the
+* symbol-anchored dum arena) and USED by code assembled
+* earlier. Real Merlin-8 stops with "Illegal forward reference"
+* and writes no object; `as` running under maux agrees with it,
+* which is how these were found -- file.s, tee.s and time.s
+* would not self-host.
+*
+* They are HERE rather than in a new liba.equ because this file
+* is already `put` by all 43 units that `put` libabss.s, always
+* in their first equ block. That universality is the property
+* the fix needs, and it is safer to reuse the one file that has
+* it than to create a second file the next new unit can forget
+* -- a miss would assemble cleanly under merlin32 and fail only
+* under real Merlin, which is exactly the trap being closed.
+*---------------------------------------------------------------
+* -- seek.s's whence values (docs/FLEET.md, "`>>` and the seek
+* -- family"). Used by callers that are assembled before seek.s
+* -- itself is put.
+SEEK_SET    equ   0
+SEEK_CUR    equ   1
+SEEK_END    equ   2
+* -- pathres.s's PATHRSLV scratch sizes, sized in libabss.s but
+* -- referenced by pathres.s and shpath.s, both put BEFORE it.
+* -- PRS_BUFSZ is a LITERAL, not MLI_PTH_MAXLN+1: libabss.s is
+* -- linked by every program in the tree including harnesses
+* -- that never put mli.equ, and a constant they cannot see
+* -- fails to assemble for all of them. pathres.s carries an
+* -- `err` tripwire comparing the two where mli.equ IS in
+* -- scope, so they cannot drift.
+PRS_BUFSZ   equ   65
+PTB_SRCSZ   equ   40
+* -- stdio.s's stage-buffer size (docs/PROCIO.md sec 4; grown
+* -- 512 -> 1024 on 2026-08-28 when the stage became the FIRST
+* -- fully-buffered fd's own buffer -- see stdio.s SIO_MODEOF's
+* -- stage-owner note). Referenced by stdio.s, DEFINED by
+* -- libabss.s's `ds` -- which is put after stdio.s, so the
+* -- constant must live here or real Merlin-8 rejects the
+* -- forward reference (this file's own header rule).
+STGSIZE     equ   1024
+* -- readdir.s's directory-block size, used by libabss.s's
+* -- RD_DIRBUF reservation -- which EVERY program links, readdir
+* -- user or not, so the number needs the universal home (the
+* -- PRS_BUFSZ argument). Moved from libabss.s 2026-08-29: an
+* -- equate a REL module exports is impossible (Merlin-8 ENT is
+* -- code labels only); cross-module equates live in equ files.
+RD_BLKSZ    equ   512
+* -- regex.s's public match registers (ptr pairs) -- referenced
+* -- by edsubst.s and sedexec.s. Moved from regex.s 2026-08-29,
+* -- same REL rule as RD_BLKSZ above.
+RE_MSTART   equ   $CE
+RE_MEND     equ   $D0
+* -- env.s's '=' in both text conventions (hi-bit and clear),
+* -- hoisted here 2026-08-29: shvar.s is put before env.s and
+* -- compares against them in immediate operands -- the same
+* -- Merlin-8 forward-reference rule as everything above.
+ENV_EQHI    equ   $BD
+ENV_EQLO    equ   $3D

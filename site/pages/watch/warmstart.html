@@ -1,0 +1,54 @@
+title: The second time is faster
+description: A program launched a second time starts several times faster, because the kernel kept its bank. Cold, warm and rewritten, timed in emulated cycles.
+demo: warmstart
+---
+<div class="band demo">
+<h1>The second time is faster</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / warmstart</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/warmstart.py; src/kernel/lazyfree.s -->
+<p class="lead">Every process lives in a bank of its own. When one exits, the
+kernel does not free its bank: it keeps it, tagged with the file whose code is in
+it. Launch that file again and the same bank is handed back, code intact. The
+film runs <code>vi</code> twice, and a copy of the assembler <code>nas</code>
+three times, and times each launch.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The three states</h2>
+<!-- src: site/demos/warmstart.py; src/kernel/lazyfree.s; docs/STICKY.md -->
+<p>A <em>cold</em> launch opens the file, reads it from the disk and copies the
+image into a bank. A <em>warm</em> launch finds a kept bank tagged with that
+file, and skips all three. What it still pays for is the kernel's own work in
+starting a process, one call to ask the disk for the file's date, a page of
+zeros, and the program itself, which starts again from its first instruction:
+<code>vi</code> still draws its screen, and <code>nas</code> still prints its usage.
+So the saving is the load, and the more a program does after it starts, the
+smaller a share the load is.</p>
+<p>A kept bank is tagged with an absolute path, so a copy of a file is a new file.
+It is also dropped when the file is written, and the kernel checks the file's
+date before it reuses one; the last launch in the film comes after
+<code>cp</code> rewrote the file, and is cold again. A kept bank is only kept
+until some other program needs the memory: then the oldest one is taken back.</p>
+{{gen:warmstart_figures}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/warmstart.py; docs/VERIFICATION.md (check-demos, check-recorder) -->
+<p>This film is made by <code>site/demos/warmstart.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests, on both displays. It requires
+that <code>vi</code> comes up on a new file and the copy of <code>nas</code> prints its
+usage line on every launch; that the second launch of <code>vi</code> takes fewer
+cycles than the first; that the first launch of the copy costs more than twice its
+second; and that the launch after <code>cp</code> rewrote the file costs more than twice
+the warm one. Each figure in a caption is the
+figure the run measured, and the stamp of the film is held to the caption that states it. The checks themselves were tested: a variant that rewrites the file just before the warm launch fails at the order of the figures, and with <code>nas</code> replaced by a copy of <code>cat</code> it fails at "asm, cold: the output never appeared".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

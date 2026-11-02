@@ -1,0 +1,149 @@
+.\" xargs.1 -- maux's xargs(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic xargs(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as cut.1. Rendered at build
+.\" time to build/man/XARGS.TXT and staged on the play image as
+.\" /usr/man/XARGS: `more /usr/man/XARGS`.
+.TH XARGS 1 "October 8, 2026" maux
+.SH NAME
+xargs \- construct argument lists and run a utility with them
+.SH SYNOPSIS
+.B xargs
+[
+.B \-0pt
+] [
+.BI \-n " number"
+] [
+.BI \-s " size"
+] [
+.B \-t
+] [
+.BI \-I " replstr"
+] [
+.I utility
+[
+.I argument
+] ... ]
+.SH DESCRIPTION
+.I Xargs
+reads whitespace- and newline-delimited arguments from the
+standard input, appends as many of them as will fit to the
+given
+.I argument
+list, and runs
+.I utility
+with the result.  This is repeated until standard input is
+exhausted.
+.I Utility
+defaults to
+.BR echo .
+If standard input carries no arguments at all,
+.I utility
+is not run and the exit status is 0.
+.PP
+Arguments are delimited by unquoted blanks (space or tab) or
+newlines; adjacent delimiters collapse to one.
+.B '...'
+and
+.B \(dq...\(dq
+each protect everything but their own matching quote (not a
+bare newline, and not the shell's own escaping -- backslash is
+literal inside either kind of quote).  An unquoted backslash
+escapes the very next byte, newline included.  A quote left
+open at end of input is an error.
+.SH OPTIONS
+.TP
+.BI \-n " number"
+Use at most
+.I number
+standard-input-derived arguments per invocation of
+.IR utility ,
+in addition to any
+.I argument
+words given on the command line.
+.TP
+.BI \-s " size"
+Bound the standard-input-derived arguments' packed byte total
+per invocation to
+.I size
+bytes.  Both
+.B \-n
+and
+.B \-s
+are additionally bounded by this machine's own spawn() ceiling
+(the packed argument list, and the pointer array indexing it,
+are both fixed-size); a value asking for more than the
+ceiling allows is silently lowered to it.  If a single
+standard-input argument alone exceeds the size in effect, it
+still runs by itself rather than being dropped.
+.TP
+.B \-t
+Write each constructed command line to standard error,
+terminated with a newline, just before running it.
+.TP
+.B \-0
+Items end at a NUL byte and at nothing else: blanks, newlines, quotes
+and backslashes are ordinary bytes. An empty item is dropped. With
+.B \-I
+a NUL ends a line and nothing is stripped from it.
+.TP
+.B \-p
+Before each invocation write the command line to standard error, then
+.B ?...
+and read one reply line from the terminal (the standard error, which
+stays the console when the standard input is a file or a pipe). The
+utility runs only if the reply begins with y or Y; anything else,
+including an empty line, skips that invocation without an error. Where
+standard error is not a terminal nobody can be asked and every
+invocation is skipped. Replaces
+.BR \-t .
+.TP
+.BI \-I " replstr"
+Read one whole input line per invocation (leading blanks
+stripped, blank lines skipped) and substitute every occurrence
+of
+.I replstr
+in
+.I utility
+and its
+.I argument
+words with that line's text.  Disables
+.BR \-n .
+.SH FILES
+/usr/man/XARGS  this page
+.SH "SEE ALSO"
+find(1), sh(1)
+.SH DIAGNOSTICS
+Exit status is 0 if every invocation of
+.I utility
+exited 0, or if none ran; 123 if some invocation exited between
+1 and 125 (noted, but xargs keeps going); 124 if some invocation
+exited abnormally (this machine's wait status cannot always
+distinguish an exit(255) from a kill by signal, so both fold
+into this one code, and xargs stops); 126 if
+.I utility
+was found but could not be invoked; 127 if
+.I utility
+could not be found on
+.BR PATH ;
+1 for a usage error, an unmatched quote, or an argument list
+too long to leave any room for standard input's own arguments.
+.SH BUGS
+.B \-0
+(NUL-delimited input),
+.BR \-E ,
+.BR \-L ,
+.BR \-p ,
+.BR \-r ,
+.B \-x
+and
+.B \-P
+are not implemented.  The child's standard input is closed
+(not connected to a terminal, and not xargs's own standard
+input, which POSIX leaves unspecified for this reason: xargs's
+own input is very often the read end of a pipe xargs itself is
+still draining).  xargs's own environment is not passed to
+.IR utility ,
+unlike a real execvp -- a deliberate simplification that keeps
+the whole packed-argument budget available to argument text.
+Each argument's own text is truncated at 255 bytes.

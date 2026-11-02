@@ -1,0 +1,29 @@
+shtest.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+Boots as MAUXSH.SYSTEM, installs the maux syscall/scheduler
+machinery (identical skeleton to src/test/fileproctest.s /
+catreadtest.s -- same puts, same boot helpers), starts one
+parent process that:
+  - OPENs /BASIC/SCRIPT (O_RDONLY) -- a script file STAGED on the volume
+    by scripts/build_sh_image.py, containing (high-bit-set text, CR
+    line endings -- sh.s's own documented input convention):
+        ECHO HELLO > /BASIC/OUT1
+        ECHO A | CAT > /BASIC/OUT2
+        EXIT
+  - SPAWNs /BASIC/SH (argv = ["SH"]) with fdactions redirecting the
+    CHILD's fd 0 -> SCRIPT (fd 1/2 left at sh's own inherited default --
+    sh's own PROMPT write is documented as harmless when unset/redirected)
+  - waits for sh to exit, closes its own SCRIPT fd copy
+  - re-OPENs /BASIC/OUT1 and /BASIC/OUT2 (both CREATEd by sh itself via
+    its `>` redirection handling -- neither is pre-staged by this
+    harness) and READs each back
+
+scripts/check_sh.py asserts: sh exited 0, OUT1 == "HELLO"+CR
+(echo's own documented one-arg contract), OUT2 == "A"+CR (echo
+piped into a bare, no-args cat -- proving both the pipe wiring
+AND cat's stdin-copy path together, through a REAL spawned sh,
+not a hand-rolled kernel-test harness call sequence).
+----------------------------------------------------------------

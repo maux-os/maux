@@ -1,0 +1,62 @@
+.\" expand.1 -- maux's expand(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as cut.1/fold.1.
+.\" Rendered at build time to build/man/EXPAND.TXT and staged on the
+.\" play image as /usr/man/EXPAND: `more /usr/man/EXPAND`.
+.TH EXPAND 1 "September 14, 2026" maux
+.SH NAME
+expand \- convert tabs to spaces
+.SH SYNOPSIS
+.B expand
+[
+.BI \-t " tablist"
+] [
+.I file
+] ...
+.SH DESCRIPTION
+.I Expand
+copies each named
+.I file
+(standard input if none is given) to standard output, replacing
+each tab with the spaces needed to reach the next tab stop.
+.PP
+Without
+.BR \-t ,
+stops fall every 8 columns.
+.BI \-t " N"
+(a single number) sets stops every
+.I N
+columns instead, without limit \(em every tab in the file keeps
+expanding to the next multiple of
+.IR N .
+.BI \-t " list"
+(two or more increasing numbers, comma\- or blank\-separated)
+sets stops at exactly those columns; once the column has passed
+the last one in
+.IR list ,
+each further tab becomes a single space.
+.PP
+A backspace is written to the output as itself and moves the
+column back by one (never below 0); a tab already exactly on a
+stop still advances to the
+.I next
+one, not zero columns.  The column does
+.B not
+reset between operands \(em an unterminated file's trailing
+column carries into the next file's first tab.
+.SH FILES
+/usr/man/EXPAND  this page
+.SH "SEE ALSO"
+unexpand(1), fold(1), cut(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if a file named on the command line could
+not be opened \(em that file is skipped, a diagnostic naming it
+is written to standard error, and the remaining operands are
+still processed; 2 for a usage error, including a malformed or
+non\-increasing
+.I tablist
+or a stop over 120.
+.SH BUGS
+An explicit tab stop is capped at 120 columns.  The running
+column itself saturates at 250 rather than wrapping on a
+pathologically long unbroken line.

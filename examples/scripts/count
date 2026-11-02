@@ -1,0 +1,13 @@
+#!/bin/sh
+# count FILE -- say how many lines FILE has
+if [ $# -ne 1 ]
+then
+    echo usage: count file
+    exit 1
+elif [ -f "$1" ]
+then
+    wc -l "$1"
+else
+    echo count: $1: no such file
+    exit 1
+fi

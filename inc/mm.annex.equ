@@ -1,0 +1,266 @@
+*---------------------------------------------------------------
+* mm.annex.equ -- aux bank 0 (the kernel annex), PART 1: the
+* flat address bases (docs/MEMMAP.md #2.1), the cwd table, the
+* lazy-free bank-tag pathnames and the pipe ring/slot sizing.
+* Part 2 is inc/mm.annex2.equ (the PCB annex-entry shape
+* and the OFT/pipe object graph); it is PUT immediately after
+* this file everywhere, and it depends on names defined here, so
+* the order is load-bearing -- real Merlin-8 resolves an `equ`
+* only if it was defined before its first reference.
+*
+* WHY IT IS TWO FILES NOW, 2026-08-30. This header used to
+* say it was deliberately ONE file, because the referrers
+* overlap almost completely and "splitting further would just
+* force the same manifests to PUT several small files instead
+* of one mid-sized one". The mechanics were right and the
+* conclusion was backwards.
+* Real Merlin-8's source buffer is 41,215 B and its budget is
+*
+*     size(resident manifest) + MAX over puts of size(put)
+*
+* -- not the sum. Several small files instead of one
+* mid-sized one is precisely what lowers that peak. At 19,248 B
+* this file was the largest put of all five kernel modules real
+* Merlin refused to assemble ("56 MEMORY IN USE", ProDOS $56,
+* bad buffer address) and of none that it accepted.
+* Full design notes: I.MEMMAPE.TXT (docs/a2/), docs/MEMMAP.md #2
+*---------------------------------------------------------------
+
+* See I.MEMMAPE.TXT: "2. Aux bank 0 -- the"
+
+ANNEX_BANK      equ   0           ;aux bank number reserved as
+                                  ;the annex
+ANNEX_ZP        equ   $0000       ;512B inert -- bank 0 never
+                                  ;scheduled
+ANNEX_GLOBALS   equ   $0200       ;512B annex low globals
+ANNEX_TEXT80    equ   $0400       ;1024B 80-col text aux half /
+                                  ;DLORES companion -- HARD
+                                  ;video reserve
+ANNEX_TEXT2     equ   $0800       ;1024B text/lores page-2
+                                  ;companion -- SOFT video
+                                  ;reserve
+ANNEX_STRCT_A equ   $0800       ;6144B annex structures; first
+                                  ;1K overlaps soft-reserved
+                                  ;page-2 companion
+ANNEX_STRCT_B equ   $2000       ;8192B DHR page 1 companion --
+                                  ;HARD video reserve /
+                                  ;temporary text-only V1
+                                  ;reclaim; new allocations
+                                  ;avoid
+ANNX_DHR_PG1 equ   $2000       ;8192B aux bank-0 DHR page 1
+                                  ;companion
+ANNX_DHR_PG2 equ   $4000       ;8192B aux bank-0 DHR page 2
+                                  ;companion
+ANNEX_STRCT_C equ   $6000       ;24576B preferred non-video
+                                  ;annex structs
+
+* -- 2.2 annex structure budget --
+PCB_COUNT       equ   48          ;task-directed sizing: full
+                                  ;sparse RamWorks
+PCB_ENT_SIZE  equ   16          ;bytes/entry -- see PCB_ENTRY
+                                  ;dum below
+PCB_ARRY_SIZE  equ   PCB_COUNT*PCB_ENT_SIZE   ;768B
+
+* INODE_* REMOVED (task #11 amendment, commit 32fd146): the V6
+* inode cache died with the ProDOS ruling; MLI keeps its own
+* state in MAIN context. Full note: docs/PRODOS-SPIKE.md (b).
+
+* -- per-process working directory (task: real cwd semantics) --
+* ProDOS is PATH-based, not inode-based, so a cwd must be stored
+* as a STRING; PCB_CWDINO's one byte cannot hold one. The table
+* lives in the annex beside the PCB array, indexed by pid, and
+* is read the same way (COPYIN_ENTRY).
+*
+* 64 bytes/entry: a length byte plus up to 63 characters. A
+* ProDOS pathname maxes at 64 characters TOTAL, and the kernel
+* forms cwd + "/" + relative, so a cwd longer than ~62 leaves no
+* room for a filename -- the limit is inherent, not a budget.
+CWD_ENT_SIZE    equ   64
+CWD_TBL_SIZE    equ   PCB_COUNT*CWD_ENT_SIZE   ;3072B
+
+* -- lazy-free bank tags (docs/STICKY.md sec 25, superseding the
+* sec 2-5 spawn cache and its 8-entry directory). One slot per
+* bank in the process pool; a slot's SMALL fields are ordinary
+* main-memory arrays in src/kernel/lazyfree.s, and only the
+* 65-byte pathname -- the thing that identifies WHICH program's
+* text a retained bank holds -- lives here in the annex, at the
+* address the cache directory used to occupy. Follows the cwd
+* table's own precedent exactly: an annex-resident, fixed-stride
+* array indexed by a plain linear scan, placed directly after
+* that table in the annex's preferred non-video continuation
+* (ANNEX_STRCT_C). CWD_TBL_SIZE (3072B) plus this 910B is still
+* a small carve of the 24576B available, so no budget
+* renegotiation.
+*
+* 65 bytes/slot is PRC_PATHBUF's own slot shape (length byte +
+* up to 64 pathname chars), so the compare is a flat byte-for-
+* byte match against whichever slot the caller points at.
+LZ_PTH_ADDR     equ   ANNEX_STRCT_C+CWD_TBL_SIZE
+LZ_SLOT_CNT     equ   14          ;one per bank PRC_INIT puts in
+                                  ;the free list -- the most
+                                  ;banks that can ever carry a
+                                  ;tag at once
+LZ_PTH_SIZE     equ   65          ;length byte + up to 64 chars
+LZ_PTH_TOTAL  equ   LZ_SLOT_CNT*LZ_PTH_SIZE   ;910B
+
+* -- per-console (VC) tty state backing slots (S3, 2026-08-23,
+* docs/CONSOLE.md sec 14.1). One 290-byte slot per virtual
+* console, 4 consoles = 1,160 bytes, directly above the LZ
+* pathname slots (LZ_PTH_ADDR + 910 = $6F8E; this rounds up to
+* the next page). The slot SIZE is derived in src/kernel/tty.s
+* (VC_ST_SIZE = the VC struct's own extent -- the struct labels
+* live there, so the size cannot be computed here); the BUDGET
+* below is this file's reservation, and tty.s growing the
+* struct past it means renegotiating this line, not silently
+* spilling. Reached only through BankCopy (bank 0), never
+* mapped inline. Next free annex byte: $74A0 (stty seed grew
+* VC_TMODE in, 300->301B/slot, was $749C). (TTY80_STT_SZ's
+* 32-byte reservation further down predates this and is unused.)
+VC_SLOT_ADDR  equ   ANNEX_STRCT_C+$1000       ;$7000
+*-- 1208->1220 (VT102 slice 1, VC_ST_SIZE 302->305):
+*-- SIG_TBL_ADDR
+*-- (the next occupant, $7500) does not move -- there were 72
+*-- free bytes between the old reservation's end ($74B8) and
+*-- $7500 already (this file's own "preferred non-video
+*-- continuation" carve, never fully packed), so the
+*-- renegotiation
+*-- tty.s's header calls for costs nothing downstream. New end:
+*-- $7000+1220=$74C4, still 60B short of $7500.
+*-- 1220->1228 (VT102 slice 2/3, VC_ST_SIZE 305->307): VC_IRM +
+*-- VC_XENL, 2 more bytes/slot. New end: $7000+1228=$74CC, still
+*-- 52B short of SIG_TBL_ADDR ($7500) -- no renegotiation there.
+*-- 1228->1248 (VT102 slice 5, VC_ST_SIZE 307->312): the five
+*-- character-set cells. New end: $7000+1248=$74E0, 32B short of
+*-- SIG_TBL_ADDR ($7500) -- no renegotiation.
+*-- 1248->1272 (VT102 slice 6, VC_ST_SIZE 312->318): the DECSC
+*-- block's six new stash cells. New end: $7000+1272=$74F8, 8B
+*-- short of SIG_TBL_ADDR ($7500).
+*-- 1272->1276 (VT102 slice 7, VC_ST_SIZE 318->319): VC_AWM. New
+*-- end: $7000+1276=$74FC, 4B short of SIG_TBL_ADDR ($7500) --
+*-- the slack is spent; the next per-console byte moves
+*-- SIG_TBL_ADDR.
+*-- 1276->1280 (UltraTerm bold, VC_ATTRMODE, VC_ST_SIZE
+*-- 319->320;
+*-- merged from the posix-sed line 2026-09-13): the last 4
+*-- bytes.
+*-- New end: $7000+1280=$7500 == SIG_TBL_ADDR exactly (end
+*-- exclusive) -- ZERO slack; the next per-console byte MUST
+*-- move
+*-- SIG_TBL_ADDR.
+VC_SLOT_RESV  equ   1280        ;4 slots x 320B -- $7000-$7500
+
+* -- THE CONSOLE STORE (docs/CONSOLE.md sec 13): one screen
+* -- image per console, so a console that is not on the glass
+* -- still HAS a screen. Saved and restored by VC_SWITCH, not
+* -- written through -- the rationale, the 40-column-only
+* -- limitation and the measured image-size wall are all in
+* -- CONSOLE.md sec 13, deliberately NOT here: this file is the
+* -- largest `put` of every kernel module, so a paragraph in it
+* -- is charged against all 31 of their real-Merlin source
+* -- budgets. The first draft of this note cost 1,940 B and put
+* -- KSCHED and KLAZY over.
+* -- Stride is VC_STR_COLS even when TTY_COLS is 40, so the
+* -- layout survives a backend change.
+VC_STR_COLS   equ   80
+VC_STR_ROWS   equ   24
+* -- RELOCATED + RESIZED 2026-09-01 (docs/VIDMODE.md sec 3): 4 x
+* -- 4096B page-aligned slots in ANNEX_STRCT_B's documented
+* -- text-only-V1 reclaim -- worst-case mode (128x32) fits, and
+* -- the GRAPHICS FUTURE EVICTS THIS CLAIM (the named debt).
+* -- The old $7500-$9300 region is free again.
+VC_STR_SIZE   equ   4096
+VC_STR_ADDR   equ   $2000
+VC_STR_RESV   equ   16384       ;4 x 4096 -- $2000-$6000
+
+VC_HIST_ADDR  equ   ANNEX_STRCT_C+$3300 ;hist 4b, -$A4FF
+VC_HIST_SIZE  equ   1152        ;one console's ring + stash
+VC_HIST_TOTAL equ   VC_HIST_SIZE*4   ;all four consoles
+
+* -- per-process SIGNAL state (docs/SIGNALS.md): pid-indexed
+* -- annex array in VC_STR's freed $7500-$9300, stride 8.
+SIG_TBL_ADDR  equ   ANNEX_STRCT_C+$1500       ;$7500
+SIG_ENT_SIZE  equ   8
+SIG_TBL_SIZE  equ   PCB_COUNT*SIG_ENT_SIZE    ;384B
+
+* -- per-console FOREGROUND JOB (docs/JOB-CONTROL.md Increment
+* -- A): {count, pid0, pid1, pid2} x 4 consoles, right above the
+* -- signal table. Written by SYS_TCSETFG, read by the ^C sweep,
+* -- scrubbed at reap. Stride 4 so the row is console<<2.
+VC_FGJOB_ADDR equ   ANNEX_STRCT_C+$1680       ;$7680-$7690
+VC_FGJ_STRIDE equ   4
+VC_FGJ_ROWS   equ   4                         ;= VC_COUNT
+VC_FGJ_SIZE   equ   16                        ;STRIDE*ROWS
+
+* -- ALTERNATE-SCREEN stores (docs/VI-ALTSCREEN.md): the MAIN
+* -- screen a console parked on ESC [ ? 1049 h, 24 x 80 (the
+* -- store's live extent), one per console: 0/1 above SIG_TBL,
+* -- 2/3 above the history rings. tty4.s VCS_C4..VCS_C7.
+VCA_STR_SIZE  equ   VC_STR_ROWS*VC_STR_COLS   ;1920B
+VCA_STR_A     equ   ANNEX_STRCT_C+$1700       ;$7700-$8600
+VCA_STR_B     equ   ANNEX_STRCT_C+$4500       ;$A500-$B400
+
+
+* -- THE ENTRY-POINT CHECK (docs/STICKY.md sec 27). Bytes at
+* -- LOAD_BASE, recorded when the image is loaded and re-read
+* -- when the bank is retired: a program that has overwritten
+* -- the address the kernel is going to JUMP to has rewritten
+* -- its own text, and its bank must not be reused. Kept in
+* -- MAIN memory (src/kernel/lazyfree.s LZ_HEAD), 8 bytes per
+* -- slot, because both halves of the check are on the hot exit
+* -- path. 8 is a power of two so the slot index shifts rather
+* -- than multiplies.
+LZ_HEAD_LEN     equ   8
+LZ_HEAD_TOTL  equ   LZ_SLOT_CNT*LZ_HEAD_LEN    ;112B
+
+PIPE_COUNT      equ   8           ;concurrent-pipe budget
+                                  ;(judgment call) -- HARD
+                                  ;LIMIT, see sec 2.2a's OFT
+                                  ;object graph
+PIPE_RNG_SIZE  equ   256         ;FACT -- docs/ARCHITECTURE.md
+                                  ;V1 scope -- ANNEX-resident
+                                  ;(aux bank 0), unchanged by
+                                  ;the task #13 amendment below
+PIPE_MT_SIZE  equ   8           ;TASK #13 AMENDMENT
+                                  ;(code review C3):
+                                  ;this was sized against the
+                                  ;NOW- SUPERSEDED `PIPE_META`
+                                  ;dum block (sec 2.2a below has
+                                  ;the replacement). The actual
+                                  ;implementation's per-pipe
+                                  ;control metadata
+                                  ;(PIPE_USED/RDP/WRP/BYTES/
+                                  ;RREFS/WREFS,
+                                  ;`src/kernel/process.s`) is 6
+                                  ;bytes/pipe, struct-of-arrays,
+                                  ;AND lives in ordinary MAIN
+                                  ;kernel memory, not the annex
+                                  ;at all -- so it no longer
+                                  ;consumes ANY of the annex
+                                  ;budget this constant feeds
+                                  ;into below. Left at its
+                                  ;original value (a small over-
+                                  ;budget, not an under-budget,
+                                  ;so PIPE_TTL_SIZE stays a
+                                  ;safe upper bound on the
+                                  ;annex's actual pipe-ring-only
+                                  ;footprint) rather than
+                                  ;renegotiating the annex
+                                  ;table's bottom line for a
+                                  ;change that only shrinks its
+                                  ;real consumption
+;2112B
+* Real Merlin-8 has no parentheses and no operator precedence:
+* it evaluates strictly left to right, so 2+3*4 is 20, not 14.
+* The per-slot size therefore gets its own name and the product
+* stays a single operation. Same value under both assemblers.
+* learning:01M051DJW89KV4JYM1EC9SDZ5Y
+PIPE_SLOT_SZ  equ   PIPE_RNG_SIZE+PIPE_MT_SIZE
+PIPE_TTL_SIZE equ   PIPE_SLOT_SZ*PIPE_COUNT
+                                   ;upper bound (annex now
+                                   ;actually uses
+                                   ;PIPE_COUNT*PIPE_RNG_SIZE =
+                                   ;2048B for
+                                   ;pipes -- see the amendment
+                                   ;above)
+
+TTY80_STT_SZ equ  32          ;annex-side tty extended state

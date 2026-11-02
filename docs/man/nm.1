@@ -1,0 +1,44 @@
+.\" Derived from Research UNIX V1 nm(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/nm
+.\" Retrieved 2026-09-19; archived response SHA256: b431e97b687a0c88c30a9884b4245931e27ab3623f8512618dc3fa00cc96a180
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH NM 1 "September 19, 2026" maux
+.SH NAME
+nm \- print object-file symbols
+.SH SYNOPSIS
+.B nm
+.RB [ \-ug ]
+.I file ...
+.SH DESCRIPTION
+.I Nm
+prints the symbol table from the output file of an assembler run.
+The output is sorted alphabetically.
+On maux the files must be Merlin-format REL objects.
+Each line has an address, type letter and name.
+.TP
+.B X
+An exported definition (ENT). The address is module-relative.
+.TP
+.B U
+An external reference (EXT), undefined in this module.
+.TP
+.B \-u
+Print only undefined symbols.
+.TP
+.B \-g
+Print only exported definitions.
+.PP
+The two selections intersect: -ug prints no symbols.
+More than one operand produces a file-name header for each table.
+Unlike historical nm, there is no default a.out operand.
+.SH FILES
+/usr/man/NM  this page
+.SH "SEE ALSO"
+nas(1), as(1), ld(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for file/format failures, 2 for usage errors.
+.SH BUGS
+Ordinary private assembler labels are not present in the REL dictionary and cannot be displayed. There is no T/D/B distinction.

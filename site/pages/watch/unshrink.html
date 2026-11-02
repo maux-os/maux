@@ -1,0 +1,27 @@
+title: Unpack a ShrinkIt archive from the wild
+description: nulib2 lists and unpacks a real 1990 ShrinkIt archive onto the disk; more reads its documentation.
+demo: unshrink
+---
+<div class="band demo">
+<h1>Unpack a ShrinkIt archive from the wild</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / unshrink</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/unshrink.py; docs/UNPACK-E2E.md -->
+<p class="lead">Thirty years of Apple II software lives in ShrinkIt archives. This one is real, a 1990 freeware utility fetched from the asimov.net mirror. The demo lists it with <code>nulib2 -v</code>, unpacks it with <code>nulib2 -x</code>, lists the files, and reads the documentation with <code>more</code>.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/unshrink.py; docs/DEMOS-W1-NOTES.md -->
+<p>This film is made by <code>site/demos/unshrink.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that the machine&rsquo;s listing agrees with an independent reader of the archive on every name, type, size and auxiliary type; that the directory after unpacking holds exactly the archive&rsquo;s files; that <code>cksum</code> of an unpacked program and an unpacked text file, both stored compressed (LZW) in the archive, equals the host&rsquo;s checksum of the archive&rsquo;s own bytes; and that the documentation text comes out row for row. The checks themselves were tested: with <code>nulib2</code> replaced by a copy of <code>true</code> the listing is empty; with one byte flipped inside the compressed stream nulib2 reports a damaged stream and the demo fails at "nulib2 -x says nothing"; with <code>cksum</code> or <code>more</code> replaced by <code>true</code> the checksum and the text rows fail.</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

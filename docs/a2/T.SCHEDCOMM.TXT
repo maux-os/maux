@@ -1,0 +1,41 @@
+sched.common.s -- design notes
+================================================================
+
+
+----------------------------------------------------------------
+SYNTHFRAME -- A  target aux
+----------------------------------------------------------------
+----------------------------------------------------------------
+SYNTH_FRAME -- A = target aux bank number. Writes a fresh 6-byte
+trapframe at the TOP of that bank's page 1 ($01FA-$01FF,
+matching PCB_SAVEDSP=$F9 -- docs/SYSCALL.md item 11's
+synthesized-frame convention: PC=LOAD_BASE ($0800), P=$20 (I=0,
+interruptible), A=X=Y=0). SCHED_CREATE hardcodes PCB_SAVEDSP=$F9
+for exactly this reason -- the two must agree, and both cite
+item 11 as the shared source of truth.
+
+CORRECTNESS NOTE (found by testing, this round -- the exact bug
+class docs/SYSCALL.md #5.1/#7.7 already catalogs three other
+instances of): an EARLIER version of this routine used
+RAMWRTAUX/RAMWRTMAIN to reach $01FA-$01FF, on the mistaken
+assumption that "flat, non-LC memory means RAMWRT governs it."
+Page 1 ($0100-$01FF) is NOT part of the $0200-$BFFF
+RAMRD/RAMWRT-governed flat range at all -- like zero page, it is
+ALTZP-governed (docs/ARCHITECTURE.md: "ALTZP gives each bank its
+own zero page and hardware stack"). RAMWRT has NO EFFECT on
+$01xx, so the writes silently landed in MAIN's own stack instead
+of the target bank's -- the target bank's page 1 stayed
+uninitialized (whatever the emulator's RAM happened to power on
+with), and SCHED_START's later `TXS`+`JMP $FF22` pulled a
+GARBAGE frame (RTI pulling an uninitialized PCH/PCL/P),
+producing a wild jump into ROM space -- observed directly via
+`regs`/`peek` (PC bouncing through $C7xx-$CCxx
+SmartPort/expansion- ROM addresses after the boot banner had
+already printed, impossible if the synthesized frame were real).
+Fixed: ALTZPAUX/ALTZPMAIN, the SAME switch STAMP_BANK already
+uses to reach the target bank's $FFxx page (and the SAME switch
+src/test/syscalltest.s's ENTER_FAKEPROC_STUB uses to reach page
+1) -- no LC write-enable dance needed here (unlike STAMP_BANK's
+$FFxx write), because $0100-$01FF is ordinary RAM, always
+read/write once ALTZP selects the right bank.
+----------------------------------------------------------------

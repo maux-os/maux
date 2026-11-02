@@ -1,0 +1,130 @@
+.\" mount.1 -- maux's mount(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as tty.1. Rendered at
+.\" build time to build/man/MOUNT.TXT and staged on the play image
+.\" as /usr/man/MOUNT: `man mount`.
+.TH MOUNT 1 "October 10, 2026" maux
+.SH NAME
+mount \- list the mounted volumes, mount a floppy, or mount a disk image
+.SH SYNOPSIS
+.B mount
+.br
+.B mount
+.I /dev/sNdM
+.br
+.B mount
+.RB [ \-r ]
+.I image
+.SH DESCRIPTION
+With no operand
+.I mount
+prints one line per volume shown under
+.BR /mnt ,
+for example
+.PP
+.nf
+/dev/s7d1 on /mnt/MAUX
+.fi
+.PP
+A fast unit (SmartPort, hard disk) is always mounted. A 5.25-inch
+Disk ][ appears only after it has been mounted here, so listing
+never touches an empty drive. The boot volume is listed first; the
+rest follow in slot, then drive, order.
+.PP
+With one operand,
+.I /dev/sNdM
+(slot N, drive M),
+.I mount
+reads that one unit once and, if it holds a ProDOS volume, marks it
+mounted: it then appears in
+.BR /mnt ,
+.IR df (1)
+and this listing, and its files are under
+.BR /mnt/NAME .
+The call is the one deliberate poll of a Disk ][ in the system. A
+drive with no readable volume fails with the MLI's own reason and
+nothing is mounted. Mounting a fast unit succeeds and does nothing.
+.PP
+With one operand that is not a unit,
+.I mount
+treats it as a disk IMAGE: a ProDOS tree file (a
+.B .po
+or
+.B .hdv
+over 128K) on any mounted volume. The kernel attaches it as unit
+.B /dev/s3d2
+(slot 3, drive 2: the slot ProDOS reserves for /RAM, which maux
+never uses), and the volume inside appears under
+.B /mnt
+like any other, so
+.IR dd (1)
+and
+.IR nulib2 (1)
+work on
+.B /dev/s3d2
+with nothing new. What is written through the unit lands in the
+image file, block for block, straight on the host volume's disk, so
+the image is current outside maux as soon as the write returns. The
+image file stays open for as long as it is
+mounted: it cannot be removed, renamed or overwritten, and
+.IR umount (1)
+closes it.
+.PP
+There is NO
+.IR losetup :
+the unit is fixed, there is one image at a time, and
+.I mount
+is the only verb. A second image is refused as "busy", and so is one
+that lives inside the first. An image is refused, with the reason,
+when it is a seedling or a sapling (under 128K) or a directory, when
+it is a 2IMG container the loop cannot serve (see below), and when it
+is not a ProDOS volume at all. While
+an image is mounted
+the volume that holds it cannot be unmounted.
+.PP
+A SPARSE image (a file with blocks ProDOS never allocated) is made
+dense first: unless
+.B \-r
+is given,
+.I mount
+rewrites every all-zero block of the file so that ProDOS allocates it
+(the loop driver cannot allocate), and says "densified N blocks" on
+the way. This writes to the image file, and takes about 90000
+cycles per block of the image; a dense image costs nothing.
+.PP
+With
+.B \-r
+the image is mounted read-only, and is never written, densified
+included: the unit answers "write protected" to a write, holes read
+as zeros. An image whose access byte is not write-enabled is mounted
+read-only without
+.BR \-r .
+A 2IMG container (a
+.B .2mg
+file: ProDOS order, a header of 1 to 64 bytes, whole blocks) is always
+mounted read-only; convert it to a
+.B .po
+for read-write. A write that fails (to a read-only image, or one the
+host refuses) is reported by
+.IR umount (1).
+.PP
+.IR Bye (1)
+works with an image mounted: it is detached for the trip and attached
+again afterwards.
+.SH FILES
+/dev/sNdM       the units
+.br
+/dev/s3d2       the mounted image, while there is one
+.br
+/mnt/NAME       a mounted volume
+.SH "SEE ALSO"
+umount(1), df(1), ls(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 if the unit or image could not be
+mounted ("no device connected", "not a ProDOS volume", "not a
+mountable unit", "busy", "no such file", "disk full" while densifying,
+"2IMG layout not supported", "not a tree file", "needs ProDOS 2.4"),
+2 for a usage error.
+.SH BUGS
+One image at a time. The write-failure bookkeeping reads ProDOS 2.4's
+own cells: on another ProDOS the mount is refused.

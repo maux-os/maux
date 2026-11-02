@@ -1,0 +1,41 @@
+.\" Derived from Research UNIX V1 mv(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/mv
+.\" Retrieved 2026-09-19; archived response SHA256: 6f58535db30e0b8510cb84f8678baf4a7113f134320cb32384e01e3978ac5031
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH MV 1 "September 19, 2026" maux
+.SH NAME
+mv \- move or rename files and directories
+.SH SYNOPSIS
+.B mv
+.RB [ \-fi ]
+.I source ... destination
+.SH DESCRIPTION
+.I Mv
+changes the name of a file.
+If the new name is a directory, the file is moved to that directory
+under its old name.
+With several sources, the last operand must be a directory.
+.PP
+A move within one parent directory uses ProDOS RENAME.
+Across directories or volumes, maux copies the data and then removes
+the source. Directory trees are handled recursively; replacement of
+a nonempty destination directory is refused.
+.TP
+.B \-f
+Do not prompt before replacing an existing destination.
+.TP
+.B \-i
+Prompt before replacement; only y or Y proceeds.
+.PP
+The last -i or -f wins. A declined move is not an error.
+.SH FILES
+/usr/man/MV  this page
+.SH "SEE ALSO"
+cp(1), rm(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 for successful or declined moves, 1 for move failures, 2 for usage errors.
+.SH BUGS
+A cross-directory move is not atomic, even on one volume. A copy or source-removal failure can leave both source and destination; inspect both before retrying.

@@ -1,0 +1,73 @@
+title: Get
+description: Download the maux disk, or boot it in your browser. How to run it in MAME or on an enhanced Apple IIe with a RamWorks card.
+---
+<h1>Get maux</h1>
+
+<!-- src: docs/RELEASE.md sec "Package the qualified revision"; docs/FULLDISK-NOTES.md sec 8b; scripts/build_release.py -->
+<p class="lead">One bootable disk image with the system, the tools, the compilers and the manual.</p>
+{{gen:download}}
+<p>Each release also has <code>SHA256SUMS</code> and a source archive.</p>
+
+<h2>Try it in your browser</h2>
+<!-- src: docs/SITE.md sec 10 D4 ("Spike, 2026-10-20"); src/kernel/process.s -->
+<p>Boots this disk in Apple2TS, an Apple II emulator in your browser. Type at
+a human pace: it is a IIe keyboard.</p>
+{{gen:tryit}}
+
+<h2>Run it</h2>
+
+<h3>In an emulator</h3>
+<!-- src: docs/SUPPORT.md (rows "MAME apple2ee", "verilogapple"); scripts/check_mame.py; docs/DEPENDENCIES.md sec "Operator-supplied ROMs" -->
+<pre>mame apple2ee -aux rw3 -sl7 a2sd -hard maux-VERSION.po</pre>
+<p>That sets up an enhanced IIe with a RamWorks III and the disk on an AppleIISd card.
+Add a Mouse or Mockingboard card for the 60 Hz clock tick; you supply the Apple ROMs.</p>
+
+<h3>On an Apple IIe</h3>
+<!-- src: docs/SUPPORT.md (rows "Enhanced Apple IIe with UltraTerm v3 and dense RamWorks", "Release medium: one 32 MB / 65,535-block SmartPort volume") -->
+<p>You need an enhanced IIe, a RamWorks-style card with at least {{fact:min_ram_kb}} KB,
+and a SmartPort card that can present a {{fact:release_mb}} MB volume (an SD or CompactFlash
+adapter). Write the disk to the card's media byte for byte, for example
+<code>dd if=maux-VERSION.po of=/dev/rdiskN bs=1m</code>, then boot from that slot.
+Nobody has run it on real hardware yet.</p>
+
+<h2>Quick start</h2>
+<!-- src: docs/SITE.md sec 2.3; docs/man/man.1; docs/FULLDISK.md sec 2 -->
+<ol>
+<li>Boot. You land at the shell prompt.</li>
+<li>Run <code>ls /bin</code> to see the commands, and <code>ps</code> to see the processes.</li>
+<li>Run <code>man man</code> to learn the manual; <code>q</code> leaves it.</li>
+<li>Next, <a href="/learn/">Learn</a> to write a program, or <a href="/watch/">Watch</a> it run.</li>
+</ol>
+
+<h2>Requirements</h2>
+<!-- src: docs/SUPPORT.md; src/kernel/timer.s (TMR_INT_MB); src/kernel/process.s -->
+<ul>
+<li>An enhanced Apple IIe (65C02)</li>
+<li>A RamWorks-compatible card with at least {{fact:min_ram_kb}} KB, presenting
+banks <code>$00</code> to <code>$0F</code> &mdash; the kernel does not probe, it
+uses those sixteen and no others. A fully populated main board gives exactly
+them. {{fact:min_ram_kb}} KB reached any other way (say a part-filled board plus
+an expander) can leave gaps in that range, and bank select is write-only, so
+maux will hand a process a bank that is not there without noticing.</li>
+<li>An AppleMouse or Mockingboard card, for the clock tick</li>
+<li>A SmartPort card that can present a {{fact:release_mb}} MB volume</li>
+</ul>
+<p>Or an emulator: MAME, or Apple2TS in your browser.</p>
+
+<h3>Optional</h3>
+<!-- src: docs/SUPPORT.md; docs/CONSOLE.md; docs/VIDMODE.md; docs/SERIAL.md; docs/man/tip.1 -->
+<ul>
+<li>A Videx UltraTerm, for an enhanced terminal: more screen modes and hardware scrolling</li>
+<li>A Super Serial Card, to <code>tip</code> in and out of another machine</li>
+</ul>
+
+<h2>Limits</h2>
+<!-- src: docs/KNOWN-LIMITATIONS.md sec "Hardware and protection", "System scope" -->
+<p>Single user, no memory protection, no network stack and no C compiler.
+Only emulator runs are on record so far.</p>
+
+<h2>Source and licence</h2>
+<!-- src: README.md; LICENSE; docs/man/SOURCES.md -->
+<p>The code is <a href="repo:LICENSE">MIT licensed</a>. The source is in the
+<a href="repo:README.md">project repository</a>. Manual pages derived from V7 and BSD
+keep their own notices; see <a href="/about/">About</a>.</p>

@@ -1,0 +1,54 @@
+title: About
+description: Why maux exists, and its licences and credits.
+---
+<h1>About</h1>
+
+<h2>Why maux exists</h2>
+<!-- src: operator, 2026-10-20 -->
+<p class="lead">maux comes from a place of deep respect, and honestly of love, for two systems that shaped how a generation thought about computers: the Apple&nbsp;II and Unix.</p>
+<p>The Apple&nbsp;II was the machine on the desk: the one you could open up, wire into, and know down to the last soft switch. Unix was the system in the machine room: pipes, a shell, and small tools that each did one thing well, running on a PDP-11 that most of us only read about. Plenty of people writing Apple&nbsp;II software in those years would have given a great deal for that PDP-11 beside them as a development host &mdash; a real editor, a real shell, <code>make</code>, and an assembler that could see the whole project.</p>
+<p>maux is that wish, granted on the Apple itself. It is a sanctuary where you can develop for your Apple&nbsp;II as if the PDP-11 were in the next room: edit in <code>vi</code>, assemble with <code>nas</code>, link with <code>ld</code>, drive it all with <code>make</code>, then run the result on plain ProDOS with <code>bye</code> and come straight back to where you were.</p>
+<p>It is meant to be a happy place. A place where a program is something you can hold in your head, where every byte has a reason to be where it is, and where you can remember what real programming was like &mdash; and do it again.</p>
+
+<h2>Thanks</h2>
+<!-- src: operator, 2026-10-20 -->
+<p class="lead">Nothing in maux is new. All of it was given to us first, by people who never knew we would be here.</p>
+<p><strong>Steve Wozniak</strong> designed the Apple&nbsp;II nearly single-handed, and designed it to be understood: open slots, soft switches with names, a disk controller made from a handful of chips, a monitor in ROM, SWEET16 tucked in beside Integer BASIC. A IIe is still his machine at heart, and every byte maux moves goes through his decisions. <strong>Steve Jobs</strong> wanted that machine to be a finished thing &mdash; a quiet box in a plastic case that anyone could buy, carry home and switch on &mdash; and made sure it was. Between them they put a real computer on the kitchen table.</p>
+<p>At Bell Labs, <strong>Ken Thompson</strong> and <strong>Dennis Ritchie</strong> built Unix on a little-used PDP-7 and then a PDP-11, and made a system small enough to hold in your head and strong enough to outlive every machine it ran on. Ken wrote <code>ed</code>, and <code>grep</code> fell out of its <code>g/re/p</code>; Dennis gave Unix C and the manual's plain, exact voice, which the pages on this site try to borrow. Around them: <strong>Doug McIlroy</strong>, who argued for pipes until they existed, and with them the habit of small programs joined together; <strong>Steve Bourne</strong>, whose shell maux's <code>sh</code> follows; <strong>Stu Feldman</strong>, who wrote <code>make</code>; <strong>Joe Ossanna</strong>, whose <code>nroff</code> is why a manual page still looks like a manual page; and <strong>Brian Kernighan</strong>, whose <em>Software Tools</em>, with P.&nbsp;J.&nbsp;Plauger, showed that the ideas could travel to machines that were never meant to run Unix &mdash; which is all maux really is. And from Berkeley, <strong>Bill Joy</strong>, who gave us <code>ex</code> and <code>vi</code>.</p>
+<p>Then the line runs on, through the people who wrote for the Apple&nbsp;II itself. <strong>Glen Bredon</strong>, a topologist by profession, wrote Merlin, the assembler many of us actually used, and ProSel, and KIX &mdash; a Unix-flavoured shell for ProDOS, with its own <code>ls</code>, <code>grep</code> and <code>ed</code>. He had this dream before we did. maux still carries his Merlin as <code>as</code>, and its own assembler, <code>nas</code>, speaks his dialect. After he died in 2000, his widow released all of his Apple&nbsp;II work, source and all, into the public domain, and that gift is part of why maux can exist. The source <code>as</code> is built from is the documented version 2.59 release that <strong>Willi Kusche</strong> assembled and <a href="https://www.callapple.org/vintage-apple-computers/apple-ii/8-bit-merlin-ide-version-2-59-source-now-documented-and-available/">Call-A.P.P.L.E. published</a>: a disk put together so that anyone can rebuild Merlin from the published sources and check the result against the original binary. Releasing a thing is one job and curating it so it still works thirty years later is another, and maux depends on the second one. <strong>David Schmenk</strong> gave the Apple&nbsp;II <a href="https://github.com/dschmenk/PLASMA">PLASMA</a>, a real language with modules on a virtual machine small enough to live beside your program; <code>nas</code> is itself a PLASMA program, so when maux rebuilds itself, every byte passes through his work.</p>
+
+<!-- src: docs/man/nulib2.1 (HISTORY); docs/NUFX.md; docs/NUFX-SDK-NOTES.md -->
+<p>Then the archives. <strong>Andy Nicholas</strong> wrote ShrinkIt and designed NuFX, the format nearly every Apple&nbsp;II file you can download today is still wrapped in; maux&rsquo;s <code>nulib2</code> was checked against ShrinkIt 3.4 itself, and unpacks what it packs and packs what it unpacks. <strong>Andy McFadden</strong>&rsquo;s <a href="https://github.com/fadden/nulib2">NuLib2 and nufxlib</a> are why those archives stayed readable off the machine in all the years since, and his LZW code and notes are what maux&rsquo;s own encoder was written against &mdash; the name <code>nulib2</code> carries on the disk is his.</p>
+<p>None of them had anything to do with maux, and none of them is answerable for it. All of it stands on what they made. Where something here feels right, it is because they made it so; the mistakes are ours.</p>
+
+<h2>Licences</h2>
+<!-- src: README.md sec "Important limits" (licence paragraphs) -->
+<p>maux's own code is MIT licensed. Vendored or externally obtained ROMs, ProDOS,
+PLASMA and emulator components keep their own licensing and distribution
+conditions; no ROM bytes are in the tree or in a release. Merlin-8 is public domain:
+Glen Bredon's widow released all of his Apple II software and source on 2000-08-24.</p>
+
+<!-- src: docs/MAN.md sec 7; docs/man/SOURCES.md; docs/man/CALDERA-LICENSE; docs/man/BSD-LICENSE -->
+<p>The manual pages are a mix. Some are original to maux and MIT. Many are adapted from
+the oldest publicly available, generously licensed page: Research UNIX V1, V6 and V7
+pages under Caldera International's 2002 "Ancient UNIX" grant, and 4.3BSD-Reno and 4.4BSD
+pages under their file-local permissive notices. Each derived page keeps its provenance
+(source, retrieval date, checksum of the retrieved response, licence) in its source and
+at the foot of its page here. The notices themselves are on the disk as
+<code>man licenses</code> and on this site as <a href="/man/licenses/">licenses(1)</a>,
+and the register is <a href="repo:docs/man/SOURCES.md">docs/man/SOURCES.md</a>; the
+grant letter is <a href="repo:docs/man/CALDERA-LICENSE">CALDERA-LICENSE</a>.</p>
+
+<div class="limits">
+<!-- src: README.md (closing notice paragraph) -->
+<p>This product includes software developed or owned by Caldera International, Inc.
+This product includes software developed by the University of California, Berkeley
+and its contributors.</p>
+</div>
+
+<h2>Tools and pins</h2>
+<!-- src: docs/DEPENDENCIES.md; README.md -->
+<p>Beyond the names above, maux is built with merlin32 and
+ACME on the host, a2til for disk images, and mandoc for these manual pages. It is
+tested against MAME and against verilogapple. Their licences and
+exact revisions are pinned in <a href="repo:dependencies.lock.json">dependencies.lock.json</a>.</p>

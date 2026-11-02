@@ -1,0 +1,51 @@
+// Incremental, stable-address storage. No pass0 and no realloc/copy.
+// Symbols have two extra bytes for declaration-order traversal, followed
+// immediately by their counted name. Hash record offsets remain unchanged.
+def newsymbol(l)#1
+    word p
+    p = xalloc(SYMRSZ + 3 + l)
+    if not p
+        return 0
+    fin
+    *(p + SYMRSZ) = 0
+    if symtail
+        *(symtail + SYMRSZ) = p
+    else
+        symrec = p
+    fin
+    symtail = p
+    return p
+end
+// A replay page is next:2, used:2, payload:256. Boundary service is
+// requested BEFORE noteinst changes PC/count, so allocation can fail safely.
+def newmodepage()#0
+    word p
+    p = xalloc(260)
+    if not p
+        return
+    fin
+    *p = 0
+    *(p + 2) = 0
+    if modepage
+        *(modepage + 2) = modecnt
+        *modepage = p
+    else
+        modehead = p
+    fin
+    modepage = p
+    modestrm = p + 4
+    modecnt = 0
+    maxmodes = 256
+end
+def nextmodepage()#0
+    if modepos <> modecnt or not *modepage
+        eputs("nas: phase error: mode stream line ")
+        eputi(g_lineno); eputln
+        errflag = 1
+        return
+    fin
+    modepage = *modepage
+    modestrm = modepage + 4
+    modecnt = *(modepage + 2)
+    modepos = 0
+end

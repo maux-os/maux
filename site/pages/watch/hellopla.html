@@ -1,0 +1,71 @@
+title: hello, world, in PLASMA
+description: Type David Schmenk's hello.pla and a Makefile in vi, compile it with plasm, run it with plasma, then run the same program cut by the plasma cutter.
+demo: hellopla
+---
+<div class="band demo">
+<h1>hello, world, in PLASMA</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / hellopla</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/hellopla.py; examples/hellopla/hello.pla; examples/hellopla/Makefile -->
+<p class="lead">A program in PLASMA, written and built without leaving the
+machine, and then run twice: loaded the ordinary way, and as a single file made
+by the plasma cutter. The demo types <strong>David Schmenk</strong>'s own
+<code>hello.pla</code> in <code>vi</code>, writes a <code>Makefile</code> in
+<code>vi</code>, runs <code>make</code>, which compiles it with
+<code>plasm</code>, and runs the module with <code>plasma</code>. Then
+<code>make</code> again, which has nothing to do, and the same program from the
+plasma cutter.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The two startups</h2>
+<!-- src: site/demos/hellopla.py; docs/PLASCUT.md -->
+<p>Each run is timed in cycles of the emulated machine, from the moment
+RETURN is pressed to the moment the output appears on the screen. The first,
+<code>plasma hello.mod</code>, loads the runtime, reads the module and resolves its
+names. The second is a copy of the cut program from
+<code>/usr/src/examples/HELLOPLA/HELLO</code>: that file was made on the
+<em>host</em> by <code>plascut</code>, which did the loading once, in advance.
+Both are run once cold and the cut one again warm; the captions give the figures
+this run measured, and they differ a little between the two displays. The plasma
+cutter is described on the <a href="/dev/">Dev</a> page.</p>
+{{gen:hellopla_figures}}
+
+<h2>A TAB, not eight spaces</h2>
+<!-- src: examples/hellopla/Makefile; docs/man/make.1 -->
+<p>The <code>Makefile</code> is typed with real TABs. It removes the old module,
+runs <code>plasm</code> and lists the new one, because <code>plasm</code> exits with
+success even after a compile error and <code>ls</code> fails when the module is
+missing, which stops <code>make</code>.</p>
+
+<h2>The source is his</h2>
+<!-- src: examples/hellopla/hello.pla; docs/man/licenses.1 -->
+<p>The program is <code>src/samplesrc/hello.pla</code> from PLASMA, written by
+David Schmenk (MIT licence, Copyright &copy; 2010-2022 David Schmenk), unchanged. The
+lines the film types are compared with the lesson's file, exactly, and the
+lesson's file is checked against his at the PLASMA version maux builds with.</p>
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; docs/VERIFICATION.md (check-demos, check-recorder) -->
+<p>This film is made by <code>site/demos/hellopla.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests, on both displays. It requires
+that the lines typed are those of the lesson's <code>hello.pla</code> and
+<code>Makefile</code> exactly; that <code>cat</code> reads both files back as typed;
+that <code>cmp</code> finds the typed <code>hello.pla</code> identical to the file on the disk;
+that <code>make</code> prints the commands and plasm's report in order and 23 bytes
+compiled; that <code>plasma hello.mod</code> and the cut <code>./hello</code> both print
+<code>Hello, world.</code>; that the cut program, started cold, takes fewer cycles than <code>plasma hello.mod</code> started cold, and started again warm fewer than started cold; that
+<code>cmp</code> finds the copy of the cut program identical to the file on the disk; that the module the machine compiled is, but for the numbering of its imports, the module the host compiler writes; and that the host,
+reading the disk the machine wrote, finds <code>hello.mod</code> to be a REL file
+and <code>hello</code> a <code>BIN</code> file whose <code>aux_type</code> is
+<code>$0800</code>.</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

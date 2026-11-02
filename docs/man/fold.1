@@ -1,0 +1,66 @@
+.\" fold.1 -- maux's fold(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as cut.1/head.1.
+.\" Rendered at build time to build/man/FOLD.TXT and staged on the
+.\" play image as /usr/man/FOLD: `more /usr/man/FOLD`.
+.TH FOLD 1 "September 14, 2026" maux
+.SH NAME
+fold \- break long lines
+.SH SYNOPSIS
+.B fold
+[
+.B \-bs
+] [
+.BI \-w " width"
+] [ file ] ...
+.SH DESCRIPTION
+.I Fold
+breaks each line of each named
+.I file
+(standard input default) so that no output line exceeds
+.I width
+columns (80 by default), writing a newline at each break.
+.PP
+In the default mode a tab advances to the next multiple-of-8
+column and a backspace moves back one column (never past 0); a
+tab that would push the column past
+.I width
+forces a break before the tab rather than after it, unless the
+line is already empty, in which case the overshoot is accepted
+rather than looping forever.
+.B \-b
+counts
+.I width
+in raw bytes instead, with no tab or backspace handling at all.
+.PP
+.B \-w " width"
+sets the width explicitly.
+.PP
+.B \-s
+breaks after the last
+.I <blank>
+.RI ( <space>
+or
+.IR <tab> )
+within the width instead of exactly at the width, provided the
+line has one; a line with no blank in range breaks at the width
+regardless.
+.PP
+Multiple files are folded independently: the column state
+starts fresh at each operand, and an unterminated final line is
+flushed as it stands, without a synthesized newline \(em so two
+files, the first ending without one, may appear to run
+together on one output line.
+.SH FILES
+/usr/man/FOLD  this page
+.SH "SEE ALSO"
+cut(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if a file named on the command line could
+not be opened \(em that file is skipped, a diagnostic naming it
+is written to standard error, and the remaining operands are
+still processed; 2 for a usage error, including
+.B \-w 0
+or a width over 120.
+.SH BUGS
+The width is capped at 120 columns.

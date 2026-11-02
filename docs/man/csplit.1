@@ -1,0 +1,105 @@
+.\" csplit.1 -- maux's csplit(1), in the V7 man(1) shape. An
+.\" original page (this project's own text), so it carries no
+.\" third-party notice -- MIT like the code, same posture as
+.\" cksum.1/paste.1. Rendered at build time to build/man/CSPLIT.TXT
+.\" and staged on the play image as /usr/man/CSPLIT.
+.TH CSPLIT 1 "September 15, 2026" maux
+.SH NAME
+csplit \- split a file into pieces at context lines
+.SH SYNOPSIS
+.B csplit
+[
+.B \-k
+] [
+.B \-s
+] [
+.B \-f
+.I prefix
+] [
+.B \-n
+.I number
+]
+.I file
+.I arg
+.RI [ arg
+.IR ... ]
+.SH DESCRIPTION
+.I Csplit
+reads
+.I file
+and writes it out in pieces at the boundaries named by each
+.IR arg ,
+processed in order, current position starting at line 1:
+.TP
+.I number
+A boundary right before that (1-based) line.
+.I number
+equal to the current line makes an empty piece;
+.I number
+less than it is an error.
+.TP
+.BI / bre / [+\-offset]
+Search forward for the next line matching
+.IR bre ;
+the boundary falls
+.I offset
+lines (default 0) past it. The matched-through span becomes a
+real piece file.
+.TP
+.BI % bre % [+\-offset]
+The same search, but the span is discarded \(em no piece file is
+created for it.
+.TP
+.BI { n }
+Repeat the preceding
+.I bre
+argument
+.I n
+more times, each a fresh forward search from wherever the last one
+left off.
+.RB ( "{*}"
+is a KNOWN GAP: the repeat count must be a decimal number.)
+.PP
+Whatever remains after the last
+.I arg
+becomes one final piece. Pieces are named
+.I prefix
+.RB ( \-f ,
+default
+.BR xx )
+followed by a zero-padded decimal counter
+.RB ( \-n
+digits, default 2):
+.BR xx00 ,
+.BR xx01 ,
+and so on. Each piece's byte count is written to standard output,
+one line, right after it closes, unless
+.BR \-s .
+.PP
+A
+.I bre
+that never matches before end of file, or a
+.I number
+not strictly greater than the current line, are errors: without
+.BR \-k ,
+every piece this invocation created (the partial one included) is
+destroyed and the run exits 1; with
+.BR \-k ,
+they stay.
+.I Offset
+is honored only when positive (KNOWN LIMITATION: a negative offset
+needs a multi-line lookback buffer this build does not carry, so it
+is accepted syntactically and treated as 0). The delimiter
+character's first later occurrence ends the pattern; there is no
+.RI \e / \e %
+escape.
+.SH FILES
+/usr/man/CSPLIT  this page
+.SH DIAGNOSTICS
+Exit status is 0 on success; 1 if the input file could not be
+opened, the prefix/digit-width exceeds 15 characters, a piece
+could not be created or written, or an
+.I arg
+failed to match/order as described above; 2 on a usage error.
+.SH BUGS
+None known.

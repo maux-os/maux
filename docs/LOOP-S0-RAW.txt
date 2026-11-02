@@ -1,0 +1,908 @@
+################ q1_k24
+== ProDOS 2.4: <repo>/vendor/ProDOS-2.4.bin (17128 bytes, md5 86ad6bb152e4fef05436312ef82f546c)
+   driver image: file offset $0D00, runs at $FF00-$FF9A (155 bytes)
+   $FF00  CLD
+   $FF01  LDX #$0b
+   $FF03  LDA $3c,X
+   $FF05  STA $ff84,X
+   $FF08  DEX
+   $FF09  BPL $ff03
+   $FF0B  LDX #$01
+   $FF0D  LDA $03ed,X
+   $FF10  STA $ff82,X
+   $FF13  DEX
+   $FF14  BPL $ff0d
+   $FF16  LDA $42
+   $FF18  BEQ $ff44
+   $FF1A  CMP #$04
+   $FF1C  BCS $ff3b
+   $FF1E  EOR #$03
+   $FF20  STA $42
+   $FF22  BEQ $ff2c
+   $FF24  LDY $47
+   $FF26  BNE $ff3b
+   $FF28  LDA $46
+   $FF2A  BMI $ff3b
+   $FF2C  LDA #$00
+   $FF2E  STA $03ed
+   $FF31  LDA #$02
+   $FF33  STA $03ee
+   $FF36  SEC
+   $FF37  CLV
+   $FF38  JMP $c314
+   $FF3B  LDA #$27
+   $FF3D  BNE $ff41
+   $FF3F  LDA #$2b
+   $FF41  SEC
+   $FF42  BCS $ff47
+   $FF44  LDA #$00
+   $FF46  CLC
+   $FF47  PHP
+   $FF48  PHA
+   $FF49  LDX #$0b
+   $FF4B  LDA $ff84,X
+   $FF4E  STA $3c,X
+   $FF50  DEX
+   $FF51  BPL $ff4b
+   $FF53  LDA $ff82
+   $FF56  BIT $6060
+   $FF59  STA $03ed
+   $FF5C  LDA $ff83
+   $FF5F  STA $03ee
+   $FF62  PLA
+   $FF63  PLP
+   $FF64  RTS
+   $FF65  STA $c005
+   $FF68  LDY #$00
+   $FF6A  LDA ($3c),Y
+   $FF6C  STA ($42),Y
+   $FF6E  LDA ($3e),Y
+   $FF70  STA ($40),Y
+   $FF72  DEY
+   $FF73  BNE $ff6a
+   $FF75  STA $c004
+   $FF78  LDA #$da
+   $FF7A  STA $03ed
+   $FF7D  LDA #$02
+   $FF7F  JMP $ff33
+   code ends at $FF81
+   $FF58 = $60  (ROM IORTS; BIT $6060 at $FF56 plants the RTS)
+   $FF82-$FF8F scratch (saved $03ED/EE + ZP $3C-$47): 0000000000000000000000000000
+   $FF90-$FF9A pad: 0000000000000000000000
+   operand scan: 10 absolute-operand candidates in $FF00-$FF9A (file-wide, incl. data bytes):
+     $2567 op $4C $FF59
+     $256A op $4C $FF59
+     $2C85 op $99 $FF00
+     $2D05 op $9D $FF84  (inside the driver itself)
+     $2D10 op $9D $FF82  (inside the driver itself)
+     $2D4B op $BD $FF84  (inside the driver itself)
+     $2D53 op $AD $FF82  (inside the driver itself)
+     $2D5C op $AD $FF83  (inside the driver itself)
+     $2D7F op $4C $FF33  (inside the driver itself)
+     $3ACA op $B9 $FF48
+   live DEVADR $BF10: a3dea3dea3dea3dea3dea3dea3de7bc7a3dea3dea3de00ffa3dea3dea3dea3de
+   live DEVADR slot3/drive2 ($BF26) = $FF00
+   live DEVCNT=$01 DEVLST=70bf
+   until_pc $FF00: {'cycle': 40011931, 'elapsed': 11931, 'hit': True, 'pc': 65280}
+   live $FF00-$FF9A == static image: True
+   switches at driver entry: RAMRD=False RAMWRT=False ALTZP=False 80STORE=False
+   live vectors $FFFA: fb03cbfffac3
+   emulator: 296d93a-dirty
+== ProDOS 2.5: <repo>/vendor/ProDOS-2.5.bin (16616 bytes, md5 f3bd6a1700d17af4d5fdd198072e5a69)
+   driver image: file offset $0D00, runs at $FF00-$FF9A (155 bytes)
+   $FF00  CLD
+   $FF01  LDX #$0b
+   $FF03  LDA $3c,X
+   $FF05  STA $ff84,X
+   $FF08  DEX
+   $FF09  BPL $ff03
+   $FF0B  LDX #$01
+   $FF0D  LDA $03ed,X
+   $FF10  STA $ff82,X
+   $FF13  DEX
+   $FF14  BPL $ff0d
+   $FF16  LDA $42
+   $FF18  BEQ $ff44
+   $FF1A  CMP #$04
+   $FF1C  BCS $ff3b
+   $FF1E  EOR #$03
+   $FF20  STA $42
+   $FF22  BEQ $ff2c
+   $FF24  LDY $47
+   $FF26  BNE $ff3b
+   $FF28  LDA $46
+   $FF2A  BMI $ff3b
+   $FF2C  LDA #$00
+   $FF2E  STA $03ed
+   $FF31  LDA #$02
+   $FF33  STA $03ee
+   $FF36  SEC
+   $FF37  CLV
+   $FF38  JMP $c314
+   $FF3B  LDA #$27
+   $FF3D  BNE $ff41
+   $FF3F  LDA #$2b
+   $FF41  SEC
+   $FF42  BCS $ff47
+   $FF44  LDA #$00
+   $FF46  CLC
+   $FF47  PHP
+   $FF48  PHA
+   $FF49  LDX #$0b
+   $FF4B  LDA $ff84,X
+   $FF4E  STA $3c,X
+   $FF50  DEX
+   $FF51  BPL $ff4b
+   $FF53  LDA $ff82
+   $FF56  BIT $6060
+   $FF59  STA $03ed
+   $FF5C  LDA $ff83
+   $FF5F  STA $03ee
+   $FF62  PLA
+   $FF63  PLP
+   $FF64  RTS
+   $FF65  STA $c005
+   $FF68  LDY #$00
+   $FF6A  LDA ($3c),Y
+   $FF6C  STA ($42),Y
+   $FF6E  LDA ($3e),Y
+   $FF70  STA ($40),Y
+   $FF72  DEY
+   $FF73  BNE $ff6a
+   $FF75  STA $c004
+   $FF78  LDA #$da
+   $FF7A  STA $03ed
+   $FF7D  LDA #$02
+   $FF7F  JMP $ff33
+   code ends at $FF81
+   $FF58 = $60  (ROM IORTS; BIT $6060 at $FF56 plants the RTS)
+   $FF82-$FF8F scratch (saved $03ED/EE + ZP $3C-$47): 0000000000000000000000000000
+   $FF90-$FF9A pad: 0000000000000000000000
+   operand scan: 10 absolute-operand candidates in $FF00-$FF9A (file-wide, incl. data bytes):
+     $2577 op $4C $FF59
+     $257A op $4C $FF59
+     $2C85 op $99 $FF00
+     $2D05 op $9D $FF84  (inside the driver itself)
+     $2D10 op $9D $FF82  (inside the driver itself)
+     $2D4B op $BD $FF84  (inside the driver itself)
+     $2D53 op $AD $FF82  (inside the driver itself)
+     $2D5C op $AD $FF83  (inside the driver itself)
+     $2D7F op $4C $FF33  (inside the driver itself)
+     $3DCD op $B9 $FF48
+   live DEVADR $BF10: cce1cce1cce1cce1cce1cce1cce178fecce1cce1cce100ffcce1cce1cce1cce1
+   live DEVADR slot3/drive2 ($BF26) = $FF00
+   live DEVCNT=$01 DEVLST=70b0
+   until_pc $FF00: {'cycle': 40012084, 'elapsed': 12084, 'hit': True, 'pc': 65280}
+   live $FF00-$FF9A == static image: True
+   switches at driver entry: RAMRD=False RAMWRT=False ALTZP=False 80STORE=False
+   live vectors $FFFA: fb03cbfffac3
+   emulator: 296d93a-dirty
+== 2.4 image == 2.5 image: True
+== carrier vendor/prodos-basic.po PRODOS: 17128 bytes, banner b'ProDOS 8 V2.0.1      04-Mar-92'; driver image identical to 2.4/2.5: True
+== maux play image
+   maux image ProDOS 2.4
+   maux: DEVADR slot3/drive2 = $DEA3 (gNoDev); DEVCNT=$00 DEVLST[0]=$70
+   maux: $FF00-$FF9A == ProDOS 2.5 driver image: True
+   maux: $FF9B-$FFFF (ProDOS IRQ handler + vectors): 48a5458d56bf68854568482910d018ad00d049d8f002a9ff8d8dbf8d57bfa9bf48a95048a90448a9fa48a941488d82c0add7ff48add6ff484cc8ff61fa8d88bfad56bf8545ad8bc0ad8bc0ad57bf4cd3bf8c97bf8c9abf608d97bf8d9abf60fb03cbff5c29
+   maux session ok
+################ q1_k25
+== ProDOS 2.4: <repo>/vendor/ProDOS-2.4.bin (17128 bytes, md5 86ad6bb152e4fef05436312ef82f546c)
+   driver image: file offset $0D00, runs at $FF00-$FF9A (155 bytes)
+   $FF00  CLD
+   $FF01  LDX #$0b
+   $FF03  LDA $3c,X
+   $FF05  STA $ff84,X
+   $FF08  DEX
+   $FF09  BPL $ff03
+   $FF0B  LDX #$01
+   $FF0D  LDA $03ed,X
+   $FF10  STA $ff82,X
+   $FF13  DEX
+   $FF14  BPL $ff0d
+   $FF16  LDA $42
+   $FF18  BEQ $ff44
+   $FF1A  CMP #$04
+   $FF1C  BCS $ff3b
+   $FF1E  EOR #$03
+   $FF20  STA $42
+   $FF22  BEQ $ff2c
+   $FF24  LDY $47
+   $FF26  BNE $ff3b
+   $FF28  LDA $46
+   $FF2A  BMI $ff3b
+   $FF2C  LDA #$00
+   $FF2E  STA $03ed
+   $FF31  LDA #$02
+   $FF33  STA $03ee
+   $FF36  SEC
+   $FF37  CLV
+   $FF38  JMP $c314
+   $FF3B  LDA #$27
+   $FF3D  BNE $ff41
+   $FF3F  LDA #$2b
+   $FF41  SEC
+   $FF42  BCS $ff47
+   $FF44  LDA #$00
+   $FF46  CLC
+   $FF47  PHP
+   $FF48  PHA
+   $FF49  LDX #$0b
+   $FF4B  LDA $ff84,X
+   $FF4E  STA $3c,X
+   $FF50  DEX
+   $FF51  BPL $ff4b
+   $FF53  LDA $ff82
+   $FF56  BIT $6060
+   $FF59  STA $03ed
+   $FF5C  LDA $ff83
+   $FF5F  STA $03ee
+   $FF62  PLA
+   $FF63  PLP
+   $FF64  RTS
+   $FF65  STA $c005
+   $FF68  LDY #$00
+   $FF6A  LDA ($3c),Y
+   $FF6C  STA ($42),Y
+   $FF6E  LDA ($3e),Y
+   $FF70  STA ($40),Y
+   $FF72  DEY
+   $FF73  BNE $ff6a
+   $FF75  STA $c004
+   $FF78  LDA #$da
+   $FF7A  STA $03ed
+   $FF7D  LDA #$02
+   $FF7F  JMP $ff33
+   code ends at $FF81
+   $FF58 = $60  (ROM IORTS; BIT $6060 at $FF56 plants the RTS)
+   $FF82-$FF8F scratch (saved $03ED/EE + ZP $3C-$47): 0000000000000000000000000000
+   $FF90-$FF9A pad: 0000000000000000000000
+   operand scan: 10 absolute-operand candidates in $FF00-$FF9A (file-wide, incl. data bytes):
+     $2567 op $4C $FF59
+     $256A op $4C $FF59
+     $2C85 op $99 $FF00
+     $2D05 op $9D $FF84  (inside the driver itself)
+     $2D10 op $9D $FF82  (inside the driver itself)
+     $2D4B op $BD $FF84  (inside the driver itself)
+     $2D53 op $AD $FF82  (inside the driver itself)
+     $2D5C op $AD $FF83  (inside the driver itself)
+     $2D7F op $4C $FF33  (inside the driver itself)
+     $3ACA op $B9 $FF48
+   live DEVADR $BF10: a3dea3dea3dea3dea3dea3dea3de7bc7a3dea3dea3de00ffa3dea3dea3dea3de
+   live DEVADR slot3/drive2 ($BF26) = $FF00
+   live DEVCNT=$01 DEVLST=70bf
+   until_pc $FF00: {'cycle': 40011931, 'elapsed': 11931, 'hit': True, 'pc': 65280}
+   live $FF00-$FF9A == static image: True
+   switches at driver entry: RAMRD=False RAMWRT=False ALTZP=False 80STORE=False
+   live vectors $FFFA: fb03cbfffac3
+   emulator: 296d93a-dirty
+== ProDOS 2.5: <repo>/vendor/ProDOS-2.5.bin (16616 bytes, md5 f3bd6a1700d17af4d5fdd198072e5a69)
+   driver image: file offset $0D00, runs at $FF00-$FF9A (155 bytes)
+   $FF00  CLD
+   $FF01  LDX #$0b
+   $FF03  LDA $3c,X
+   $FF05  STA $ff84,X
+   $FF08  DEX
+   $FF09  BPL $ff03
+   $FF0B  LDX #$01
+   $FF0D  LDA $03ed,X
+   $FF10  STA $ff82,X
+   $FF13  DEX
+   $FF14  BPL $ff0d
+   $FF16  LDA $42
+   $FF18  BEQ $ff44
+   $FF1A  CMP #$04
+   $FF1C  BCS $ff3b
+   $FF1E  EOR #$03
+   $FF20  STA $42
+   $FF22  BEQ $ff2c
+   $FF24  LDY $47
+   $FF26  BNE $ff3b
+   $FF28  LDA $46
+   $FF2A  BMI $ff3b
+   $FF2C  LDA #$00
+   $FF2E  STA $03ed
+   $FF31  LDA #$02
+   $FF33  STA $03ee
+   $FF36  SEC
+   $FF37  CLV
+   $FF38  JMP $c314
+   $FF3B  LDA #$27
+   $FF3D  BNE $ff41
+   $FF3F  LDA #$2b
+   $FF41  SEC
+   $FF42  BCS $ff47
+   $FF44  LDA #$00
+   $FF46  CLC
+   $FF47  PHP
+   $FF48  PHA
+   $FF49  LDX #$0b
+   $FF4B  LDA $ff84,X
+   $FF4E  STA $3c,X
+   $FF50  DEX
+   $FF51  BPL $ff4b
+   $FF53  LDA $ff82
+   $FF56  BIT $6060
+   $FF59  STA $03ed
+   $FF5C  LDA $ff83
+   $FF5F  STA $03ee
+   $FF62  PLA
+   $FF63  PLP
+   $FF64  RTS
+   $FF65  STA $c005
+   $FF68  LDY #$00
+   $FF6A  LDA ($3c),Y
+   $FF6C  STA ($42),Y
+   $FF6E  LDA ($3e),Y
+   $FF70  STA ($40),Y
+   $FF72  DEY
+   $FF73  BNE $ff6a
+   $FF75  STA $c004
+   $FF78  LDA #$da
+   $FF7A  STA $03ed
+   $FF7D  LDA #$02
+   $FF7F  JMP $ff33
+   code ends at $FF81
+   $FF58 = $60  (ROM IORTS; BIT $6060 at $FF56 plants the RTS)
+   $FF82-$FF8F scratch (saved $03ED/EE + ZP $3C-$47): 0000000000000000000000000000
+   $FF90-$FF9A pad: 0000000000000000000000
+   operand scan: 10 absolute-operand candidates in $FF00-$FF9A (file-wide, incl. data bytes):
+     $2577 op $4C $FF59
+     $257A op $4C $FF59
+     $2C85 op $99 $FF00
+     $2D05 op $9D $FF84  (inside the driver itself)
+     $2D10 op $9D $FF82  (inside the driver itself)
+     $2D4B op $BD $FF84  (inside the driver itself)
+     $2D53 op $AD $FF82  (inside the driver itself)
+     $2D5C op $AD $FF83  (inside the driver itself)
+     $2D7F op $4C $FF33  (inside the driver itself)
+     $3DCD op $B9 $FF48
+   live DEVADR $BF10: cce1cce1cce1cce1cce1cce1cce178fecce1cce1cce100ffcce1cce1cce1cce1
+   live DEVADR slot3/drive2 ($BF26) = $FF00
+   live DEVCNT=$01 DEVLST=70b0
+   until_pc $FF00: {'cycle': 40012084, 'elapsed': 12084, 'hit': True, 'pc': 65280}
+   live $FF00-$FF9A == static image: True
+   switches at driver entry: RAMRD=False RAMWRT=False ALTZP=False 80STORE=False
+   live vectors $FFFA: fb03cbfffac3
+   emulator: 296d93a-dirty
+== 2.4 image == 2.5 image: True
+== carrier vendor/prodos-basic.po PRODOS: 17128 bytes, banner b'ProDOS 8 V2.0.1      04-Mar-92'; driver image identical to 2.4/2.5: True
+== maux play image
+   maux image ProDOS 2.5
+   maux: DEVADR slot3/drive2 = $E1CC (gNoDev); DEVCNT=$00 DEVLST[0]=$70
+   maux: $FF00-$FF9A == ProDOS 2.5 driver image: True
+   maux: $FF9B-$FFFF (ProDOS IRQ handler + vectors): 48a5458d9ebf68854568482910d018ad00d049d8f002a9ff8df8bf8d9fbfa9bf48a9c848a90448a9fa48a941488d82c0a9fa48a96148d0f52c8bc08de6bfad9ebf8545ad9fbf4cd1bf8d0cc0adfffef0038d29c08d51c08d54c06000000000fb03cbff5c29
+   maux session ok
+################ q1_ref
+ProDOS 2.4: LDA $FF48,Y at $E8CA ran 4x during boot; (cycle, Y, effective address):
+     618,634  Y=$FE  -> $0046
+     618,671  Y=$FF  -> $0047
+     968,714  Y=$FE  -> $0046
+     968,751  Y=$FF  -> $0047
+ProDOS 2.5: LDA $FF48,Y at $EBCA ran 4x during boot; (cycle, Y, effective address):
+     622,724  Y=$FE  -> $0046
+     622,771  Y=$FF  -> $0047
+     985,596  Y=$FE  -> $0046
+     985,643  Y=$FF  -> $0047
+################ q2_k24
+== Part A: real ProDOS 2.4 (verilogapple fast, volume md5 0ccaf7e71f17)
+   T20: storage_type 2 key 62 EOF 20480
+   T140: storage_type 3 key 103 EOF 143360 master -> 360,385
+   T400: storage_type 3 key 386 EOF 409600 master -> 643,900,1157,1190
+   T20: after OPEN only      upper half = the sapling index block (62)  lower = non-zero
+   T20: FCB first=62 idx=62 data=63 mark=1
+   T20: mark       0 READ 1  byte=A6  lower half = volume block 63 (a data block)
+                                upper half = the sapling index block (62)
+   T20: FCB first=62 idx=62 data=65 mark=1025
+   T20: mark    1024 READ 1  byte=D6  lower half = volume block 65 (a data block)
+                                upper half = the sapling index block (62)
+   T140: after OPEN only      upper half = index block #0 (block 360)  lower = non-zero
+   T140: FCB first=103 idx=360 data=104 mark=1
+   T140: mark       0 READ 1  byte=05  lower half = volume block 104 (a data block)
+                                 upper half = index block #0 (block 360)
+   T140: FCB first=103 idx=360 data=232 mark=65536
+   T140: mark   65535 READ 1  byte=22  lower half = volume block 232 (a data block)
+                                 upper half = index block #0 (block 360)
+   T140: FCB first=103 idx=360 data=232 mark=65537
+   T140: mark   65536 READ 1  byte=3A  lower half = volume block 232 (a data block)
+                                 upper half = index block #0 (block 360)
+   T140: FCB first=103 idx=385 data=384 mark=143360
+   T140: mark  143359 READ 1  byte=98  lower half = ZEROS
+                                 upper half = index block #1 (block 385)
+   T140: FCB first=103 idx=360 data=104 mark=1
+   T140: mark       0 READ 1  byte=05  lower half = volume block 104 (a data block)
+                                 upper half = index block #0 (block 360)
+   T400: after OPEN only      upper half = index block #0 (block 643)  lower = non-zero
+   T400: FCB first=386 idx=643 data=387 mark=1
+   T400: mark       0 READ 1  byte=8D  lower half = volume block 387 (a data block)
+                                 upper half = index block #0 (block 643)
+   T400: FCB first=386 idx=643 data=515 mark=65537
+   T400: mark   65536 READ 1  byte=AE  lower half = volume block 515 (a data block)
+                                 upper half = index block #0 (block 643)
+   T400: FCB first=386 idx=900 data=644 mark=131073
+   T400: mark  131072 READ 1  byte=E9  lower half = volume block 644 (a data block)
+                                 upper half = index block #1 (block 900)
+   T400: FCB first=386 idx=1157 data=901 mark=262145
+   T400: mark  262144 READ 1  byte=CB  lower half = volume block 901 (a data block)
+                                 upper half = index block #2 (block 1157)
+   T400: FCB first=386 idx=1190 data=1189 mark=409600
+   T400: mark  409599 READ 1  byte=F4  lower half = ZEROS
+                                 upper half = index block #3 (block 1190)
+   emulator build_rev 296d93a-dirty
+== Part A: real ProDOS 2.5 (verilogapple fast, volume md5 1e5eb3156bb0)
+   T20: storage_type 2 key 62 EOF 20480
+   T140: storage_type 3 key 103 EOF 143360 master -> 360,385
+   T400: storage_type 3 key 386 EOF 409600 master -> 643,900,1157,1190
+   T20: after OPEN only      upper half = the sapling index block (62)  lower = non-zero
+   T20: FCB first=62 idx=62 data=63 mark=1
+   T20: mark       0 READ 1  byte=A6  lower half = volume block 63 (a data block)
+                                upper half = the sapling index block (62)
+   T20: FCB first=62 idx=62 data=65 mark=1025
+   T20: mark    1024 READ 1  byte=D6  lower half = volume block 65 (a data block)
+                                upper half = the sapling index block (62)
+   T140: after OPEN only      upper half = index block #0 (block 360)  lower = non-zero
+   T140: FCB first=103 idx=360 data=104 mark=1
+   T140: mark       0 READ 1  byte=05  lower half = volume block 104 (a data block)
+                                 upper half = index block #0 (block 360)
+   T140: FCB first=103 idx=360 data=232 mark=65536
+   T140: mark   65535 READ 1  byte=22  lower half = volume block 232 (a data block)
+                                 upper half = index block #0 (block 360)
+   T140: FCB first=103 idx=360 data=232 mark=65537
+   T140: mark   65536 READ 1  byte=3A  lower half = volume block 232 (a data block)
+                                 upper half = index block #0 (block 360)
+   T140: FCB first=103 idx=385 data=384 mark=143360
+   T140: mark  143359 READ 1  byte=98  lower half = ZEROS
+                                 upper half = index block #1 (block 385)
+   T140: FCB first=103 idx=360 data=104 mark=1
+   T140: mark       0 READ 1  byte=05  lower half = volume block 104 (a data block)
+                                 upper half = index block #0 (block 360)
+   T400: after OPEN only      upper half = index block #0 (block 643)  lower = non-zero
+   T400: FCB first=386 idx=643 data=387 mark=1
+   T400: mark       0 READ 1  byte=8D  lower half = volume block 387 (a data block)
+                                 upper half = index block #0 (block 643)
+   T400: FCB first=386 idx=643 data=515 mark=65537
+   T400: mark   65536 READ 1  byte=AE  lower half = volume block 515 (a data block)
+                                 upper half = index block #0 (block 643)
+   T400: FCB first=386 idx=900 data=644 mark=131073
+   T400: mark  131072 READ 1  byte=E9  lower half = volume block 644 (a data block)
+                                 upper half = index block #1 (block 900)
+   T400: FCB first=386 idx=1157 data=901 mark=262145
+   T400: mark  262144 READ 1  byte=CB  lower half = volume block 901 (a data block)
+                                 upper half = index block #2 (block 1157)
+   T400: FCB first=386 idx=1190 data=1189 mark=409600
+   T400: mark  409599 READ 1  byte=F4  lower half = ZEROS
+                                 upper half = index block #3 (block 1190)
+   emulator build_rev 296d93a-dirty
+== Part B: maux (images <k24-images>, ProDOS 2.4), volume 662b7b7682b6
+   T140: storage_type 3 key 1710 master -> 1967,1992
+   T400: storage_type 3 key 1993 master -> 2250,2507,2764,2797
+   -- dd if=T140 bs=512 count=1: 1 READ call(s) on T140
+      READ ref 1 req 512 io_buffer $9800: upper half = index block #0 (block 1967); lower = volume block 1712 (a data block)
+      FCB inside the call: first=1710 idx=1967
+   -- dd if=T140 skip=256 count=1: 1 READ call(s) on T140
+      READ ref 1 req 512 io_buffer $9800: upper half = index block #1 (block 1992); lower = volume block 1969 (a data block)
+      FCB inside the call: first=1710 idx=1992
+   -- dd if=T400 skip=300 count=1: 1 READ call(s) on T400
+      READ ref 1 req 512 io_buffer $9800: upper half = index block #1 (block 2507); lower = volume block 2296 (a data block)
+      FCB inside the call: first=1993 idx=2507
+   maux session ok
+################ q2_k25
+== Part B: maux (images <k25-images>, ProDOS 2.5), volume c55be0ae0a2d
+   T140: storage_type 3 key 1710 master -> 1967,1992
+   T400: storage_type 3 key 1993 master -> 2250,2507,2764,2797
+   -- dd if=T140 bs=512 count=1: 1 READ call(s) on T140
+      READ ref 1 req 512 io_buffer $9800: upper half = index block #0 (block 1967); lower = volume block 1712 (a data block)
+      FCB inside the call: first=1710 idx=1967
+   -- dd if=T140 skip=256 count=1: 1 READ call(s) on T140
+      READ ref 1 req 512 io_buffer $9800: upper half = index block #1 (block 1992); lower = volume block 1969 (a data block)
+      FCB inside the call: first=1710 idx=1992
+   -- dd if=T400 skip=300 count=1: 1 READ call(s) on T400
+      READ ref 1 req 512 io_buffer $9800: upper half = index block #1 (block 2507); lower = volume block 2296 (a data block)
+      FCB inside the call: first=1993 idx=2507
+   maux session ok
+################ q3_k24
+emulator build_rev 296d93a-dirty backend fast; images <k24-images>; ProDOS 2.4
+disk2_state at prompt: {'bit_pos': 0, 'boot_rom_loaded': True, 'data_reg': 0, 'drive': 1, 'has_disk': True, 'motor_on': False, 'mounted': True, 'optimal_bit_timing': 32, 'q6': False, 'q7': False, 'quarter_track': 0, 'read_mode': 'read-data', 'spindown_cycles': 0, 'synthetic': True, 'track': 0, 'woz2': True, 'write_protected': True}
+
+A. wc -c /dev/s7d2: 854 MLI calls, 842 READ_BLOCK (['0xf0'] units)
+   cycles inside one READ_BLOCK: n=842 min 4,294 median 4,294 mean 4,294 max 4,294
+   per-block PERIOD first->last $80 call: 32,748 cycles (adds maux OFT_BLK path + wc loop)
+   => maux-side share per block ~ 28,454 cycles
+   other MLI calls: {'0xc8': 2, '0xcc': 2, '0xc4': 2, '0xd1': 1, '0xca': 5}
+   wc -c /dev/s7d2: per READ_BLOCK interval (median of 841): period 44,531 = READ_BLOCK 4,294 + other MLI calls 0 + maux/tool remainder 40,237
+
+B. dd count=64: first->last MLI call 3,928,731 cycles; 65 READ_BLOCK (n=65 min 4,293 median 4,293 mean 4,293 max 4,293), 64 write calls
+
+B. dd count=192: first->last MLI call 10,500,919 cycles; 193 READ_BLOCK (n=193 min 4,293 median 4,293 mean 4,293 max 4,293), 192 write calls
+   (T192 - T64)/128 = 51,345 cycles per block, INCLUDING the output file write
+   dd count=192: per READ_BLOCK interval (median of 192): period 53,503 = READ_BLOCK 4,293 + other MLI calls 27,028 + maux/tool remainder 22,488
+
+   disk2_state fields that changed across A+B (SmartPort only): none
+
+D. wc -c /dev/s6d1: 842 READ_BLOCK (units ['0x60'])
+   cycles inside one READ_BLOCK: n=842 min 46,255 median 162,842 mean 134,710 max 766,098
+   first-call 766,098; per-block PERIOD 163,205
+   disk2_state after: {'bit_pos': 1197072, 'boot_rom_loaded': True, 'data_reg': 235, 'drive': 1, 'has_disk': True, 'motor_on': False, 'mounted': True, 'optimal_bit_timing': 32, 'q6': False, 'q7': False, 'quarter_track': 136, 'read_mode': 'read-data', 'spindown_cycles': 0, 'synthetic': True, 'track': 34, 'woz2': True, 'write_protected': True}
+
+D2. dd if=/dev/s6d1 bs=512 count=64 (one READ_BLOCK per block): n=65 min 186,119 median 206,643 mean 212,057 max 577,918
+   first call (spin-up + seek): 577,918 ; calls 2..: n=64 min 186,119 median 206,636 mean 206,341 max 220,769
+   dd s6d1: per READ_BLOCK interval (median of 64): period 256,043 = READ_BLOCK 206,643 + other MLI calls 27,274 + maux/tool remainder 22,488
+
+C. ONE READ_BLOCK, SmartPort card (slot 7): 4,294 bus cycles in the $BF00 -> return bracket
+    86.2%    3,703  card/slot ROM $C100-$CFFF (SmartPort / Disk ][ firmware)
+    12.0%      517  ProDOS MLI (LC) $D700-$FFFF
+     1.7%       73  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   top pages: $C9xx=641, $C8xx=614, $CAxx=614, $CBxx=614, $CCxx=614, $C7xx=595, $DExx=404, $FCxx=113
+
+C. ONE READ_BLOCK, built-in Disk ][ (slot 6): 206,403 bus cycles in the $BF00 -> return bracket
+    99.7%  205,812  ProDOS disk core $D000-$D6FF (built-in Disk ][ driver)
+     0.3%      517  ProDOS MLI (LC) $D700-$FFFF
+     0.0%       73  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   top pages: $D3xx=180,495, $D4xx=23,336, $D0xx=1,108, $D1xx=776, $DExx=404, $FCxx=113, $D6xx=87, $BFxx=73
+################ q3_k25
+emulator build_rev 296d93a-dirty backend fast; images <k25-images>; ProDOS 2.5
+disk2_state at prompt: {'bit_pos': 0, 'boot_rom_loaded': True, 'data_reg': 0, 'drive': 1, 'has_disk': True, 'motor_on': False, 'mounted': True, 'optimal_bit_timing': 32, 'q6': False, 'q7': False, 'quarter_track': 0, 'read_mode': 'read-data', 'spindown_cycles': 0, 'synthetic': True, 'track': 0, 'woz2': True, 'write_protected': True}
+
+A. wc -c /dev/s7d2: 854 MLI calls, 842 READ_BLOCK (['0xf0'] units)
+   cycles inside one READ_BLOCK: n=842 min 4,695 median 4,695 mean 4,695 max 4,695
+   per-block PERIOD first->last $80 call: 33,187 cycles (adds maux OFT_BLK path + wc loop)
+   => maux-side share per block ~ 28,492 cycles
+   other MLI calls: {'0xc8': 2, '0xcc': 2, '0xc4': 2, '0xd1': 1, '0xca': 5}
+   wc -c /dev/s7d2: per READ_BLOCK interval (median of 841): period 44,955 = READ_BLOCK 4,695 + other MLI calls 0 + maux/tool remainder 40,260
+
+B. dd count=64: first->last MLI call 3,991,023 cycles; 65 READ_BLOCK (n=65 min 4,695 median 4,695 mean 4,695 max 4,695), 64 write calls
+
+B. dd count=192: first->last MLI call 10,648,625 cycles; 193 READ_BLOCK (n=193 min 4,695 median 4,695 mean 4,695 max 4,695), 192 write calls
+   (T192 - T64)/128 = 52,013 cycles per block, INCLUDING the output file write
+   dd count=192: per READ_BLOCK interval (median of 192): period 54,223 = READ_BLOCK 4,695 + other MLI calls 27,349 + maux/tool remainder 22,488
+
+   disk2_state fields that changed across A+B (SmartPort only): none
+
+D. wc -c /dev/s6d1: 842 READ_BLOCK (units ['0x60'])
+   cycles inside one READ_BLOCK: n=842 min 46,255 median 162,858 mean 134,709 max 766,225
+   first-call 766,225; per-block PERIOD 163,205
+   disk2_state after: {'bit_pos': 1197072, 'boot_rom_loaded': True, 'data_reg': 235, 'drive': 1, 'has_disk': True, 'motor_on': False, 'mounted': True, 'optimal_bit_timing': 32, 'q6': False, 'q7': False, 'quarter_track': 136, 'read_mode': 'read-data', 'spindown_cycles': 0, 'synthetic': True, 'track': 34, 'woz2': True, 'write_protected': True}
+
+D2. dd if=/dev/s6d1 bs=512 count=64 (one READ_BLOCK per block): n=65 min 184,769 median 206,075 mean 211,648 max 578,045
+   first call (spin-up + seek): 578,045 ; calls 2..: n=64 min 184,769 median 206,071 mean 205,923 max 220,464
+   dd s6d1: per READ_BLOCK interval (median of 64): period 256,043 = READ_BLOCK 206,082 + other MLI calls 27,573 + maux/tool remainder 22,488
+
+C. ONE READ_BLOCK, SmartPort card (slot 7): 4,695 bus cycles in the $BF00 -> return bracket
+    81.6%    3,829  card/slot ROM $C100-$CFFF (SmartPort / Disk ][ firmware)
+    17.2%      808  ProDOS MLI (LC) $D700-$FFFF
+     1.2%       57  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   top pages: $C8xx=767, $C9xx=614, $CAxx=614, $CBxx=614, $CCxx=614, $C7xx=595, $E1xx=275, $E0xx=222
+
+C. ONE READ_BLOCK, built-in Disk ][ (slot 6): 206,464 bus cycles in the $BF00 -> return bracket
+    99.7%  205,744  ProDOS disk core $D000-$D6FF (built-in Disk ][ driver)
+     0.3%      662  ProDOS MLI (LC) $D700-$FFFF
+     0.0%       57  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   top pages: $D3xx=180,479, $D4xx=23,286, $D0xx=1,104, $D1xx=776, $E1xx=275, $E0xx=222, $DFxx=165, $D6xx=89
+################ q4_k24
+emulator build_rev 296d93a-dirty backend fast; images <k24-images>; ProDOS 2.4
+
+== SmartPort slot 7 drive 1: READ_BLOCK #3, unit $70, block 1, buffer $B800; DEVADR[7] = $C77B
+   at driver entry: PC $C77B P $A4 (I=1) S $F0 return -> $DED2; $42-$47 = 017000b80100
+   at driver return: PC $DED2 P $66 (C=0) A $00
+   switch state      entry -> return   (MLI entry state in ())
+     RAMRD      0 -> 0   (0)
+     RAMWRT     0 -> 0   (0)
+     ALTZP      0 -> 0   (0)
+     STORE80    0 -> 0   (0)
+     PAGE2      0 -> 0   (0)
+     HIRES      0 -> 0   (0)
+     COL80      0 -> 0   (0)
+     INTCXROM   0 -> 0   (0)
+     SLOTC3ROM  0 -> 0   (0)
+     TEXT       1 -> 1   (1)
+     MIXED      0 -> 0   (0)
+     ALTCHARSET 1 -> 1   (1)
+     ramworks_bank 0 -> 0
+   trace window: 3,702 bus cycles; I flag set in 3,702, clear in 0 rows
+   driver PC range: $C77C-$DED2
+   $C080-$C08F (language-card) accesses: NONE
+   $C0xx addresses touched (R/W, count):
+     $C0F1 R x59      slot-7 I/O $C0F1
+     $C0F2 W x1       slot-7 I/O $C0F2
+     $C0F3 W x1       slot-7 I/O $C0F3
+     $C0F4 W x1       slot-7 I/O $C0F4
+     $C0F5 W x1       slot-7 I/O $C0F5
+     $C0F6 W x1       slot-7 I/O $C0F6
+     $C0F7 W x1       slot-7 I/O $C0F7
+     $C0F8 W x1       slot-7 I/O $C0F8
+     $C0F9 W x1       slot-7 I/O $C0F9
+
+== SmartPort slot 7 drive 2: READ_BLOCK #3, unit $F0, block 1, buffer $B800; DEVADR[F] = $C77B
+   at driver entry: PC $C77B P $A4 (I=1) S $F0 return -> $DED2; $42-$47 = 01f000b80100
+   at driver return: PC $DED2 P $66 (C=0) A $00
+   switch state      entry -> return   (MLI entry state in ())
+     RAMRD      0 -> 0   (0)
+     RAMWRT     0 -> 0   (0)
+     ALTZP      0 -> 0   (0)
+     STORE80    0 -> 0   (0)
+     PAGE2      0 -> 0   (0)
+     HIRES      0 -> 0   (0)
+     COL80      0 -> 0   (0)
+     INTCXROM   0 -> 0   (0)
+     SLOTC3ROM  0 -> 0   (0)
+     TEXT       1 -> 1   (1)
+     MIXED      0 -> 0   (0)
+     ALTCHARSET 1 -> 1   (1)
+     ramworks_bank 0 -> 0
+   trace window: 3,703 bus cycles; I flag set in 3,703, clear in 0 rows
+   driver PC range: $C77C-$DED2
+   $C080-$C08F (language-card) accesses: NONE
+   $C0xx addresses touched (R/W, count):
+     $C0F1 R x59      slot-7 I/O $C0F1
+     $C0F2 W x1       slot-7 I/O $C0F2
+     $C0F3 W x1       slot-7 I/O $C0F3
+     $C0F4 W x1       slot-7 I/O $C0F4
+     $C0F5 W x1       slot-7 I/O $C0F5
+     $C0F6 W x1       slot-7 I/O $C0F6
+     $C0F7 W x1       slot-7 I/O $C0F7
+     $C0F8 W x1       slot-7 I/O $C0F8
+     $C0F9 W x1       slot-7 I/O $C0F9
+
+   disk2_state fields changed by the SmartPort run: none (floppy not touched)
+
+== Disk II slot 6: READ_BLOCK #3, unit $60, block 1, buffer $B800; DEVADR[6] = $D000
+   at driver entry: PC $D000 P $A4 (I=1) S $F0 return -> $DED2; $42-$47 = 016000b80100
+   at driver return: PC $DED2 P $66 (C=0) A $00
+   switch state      entry -> return   (MLI entry state in ())
+     RAMRD      0 -> 0   (0)
+     RAMWRT     0 -> 0   (0)
+     ALTZP      0 -> 0   (0)
+     STORE80    0 -> 0   (0)
+     PAGE2      0 -> 0   (0)
+     HIRES      0 -> 0   (0)
+     COL80      0 -> 0   (0)
+     INTCXROM   0 -> 0   (0)
+     SLOTC3ROM  0 -> 0   (0)
+     TEXT       1 -> 1   (1)
+     MIXED      0 -> 0   (0)
+     ALTCHARSET 1 -> 1   (1)
+     ramworks_bank 0 -> 0
+   trace window: 203,584 bus cycles; I flag set in 203,584, clear in 0 rows
+   driver PC range: $D001-$DED2
+   $C080-$C08F (language-card) accesses: NONE
+   $C0xx addresses touched (R/W, count):
+     $C0E0 R x5       slot-6 Disk ][ $C0E0
+     $C0E1 R x2       slot-6 Disk ][ $C0E1
+     $C0E2 R x5       slot-6 Disk ][ $C0E2
+     $C0E4 R x5       slot-6 Disk ][ $C0E4
+     $C0E6 R x5       slot-6 Disk ][ $C0E6
+     $C0E8 R x2       slot-6 Disk ][ $C0E8
+     $C0E9 R x2       slot-6 Disk ][ $C0E9
+     $C0EA R x2       slot-6 Disk ][ $C0EA
+     $C0EC R x19657   slot-6 Disk ][ $C0EC
+     $C0EE R x1       slot-6 Disk ][ $C0EE
+################ q4_k25
+emulator build_rev 296d93a-dirty backend fast; images <k25-images>; ProDOS 2.5
+
+== SmartPort slot 7 drive 1: READ_BLOCK #3, unit $70, block 1, buffer $B800; DEVADR[7] = $FE78
+   at driver entry: PC $FE78 P $24 (I=1) S $EE return -> $E1C5; $42-$47 = 017000b80100
+   at driver return: PC $E1C5 P $24 (C=0) A $00
+   switch state      entry -> return   (MLI entry state in ())
+     RAMRD      0 -> 0   (0)
+     RAMWRT     0 -> 0   (0)
+     ALTZP      0 -> 0   (0)
+     STORE80    0 -> 0   (0)
+     PAGE2      0 -> 0   (0)
+     HIRES      0 -> 0   (0)
+     COL80      0 -> 0   (0)
+     INTCXROM   0 -> 0   (0)
+     SLOTC3ROM  0 -> 0   (0)
+     TEXT       1 -> 1   (1)
+     MIXED      0 -> 0   (0)
+     ALTCHARSET 1 -> 1   (1)
+     ramworks_bank 0 -> 0
+   trace window: 3,975 bus cycles; I flag set in 3,975, clear in 0 rows
+   driver PC range: $C77E-$FEE8
+   $C080-$C08F (language-card) accesses: NONE
+   $C0xx addresses touched (R/W, count):
+     $C0F1 R x59      slot-7 I/O $C0F1
+     $C0F2 W x1       slot-7 I/O $C0F2
+     $C0F3 W x1       slot-7 I/O $C0F3
+     $C0F4 W x1       slot-7 I/O $C0F4
+     $C0F5 W x1       slot-7 I/O $C0F5
+     $C0F6 W x1       slot-7 I/O $C0F6
+     $C0F7 W x1       slot-7 I/O $C0F7
+     $C0F8 W x1       slot-7 I/O $C0F8
+     $C0F9 W x1       slot-7 I/O $C0F9
+   DEVADR[F] is the no-device stub $E1CC; trying DEVADR[7] = $FE78
+
+== SmartPort slot 7 drive 2: READ_BLOCK #3, unit $F0, block 1, buffer $B800; DEVADR[F] = $FE78
+   at driver entry: PC $FE78 P $24 (I=1) S $EE return -> $E1C5; $42-$47 = 01f000b80100
+   at driver return: PC $E1C5 P $24 (C=0) A $00
+   switch state      entry -> return   (MLI entry state in ())
+     RAMRD      0 -> 0   (0)
+     RAMWRT     0 -> 0   (0)
+     ALTZP      0 -> 0   (0)
+     STORE80    0 -> 0   (0)
+     PAGE2      0 -> 0   (0)
+     HIRES      0 -> 0   (0)
+     COL80      0 -> 0   (0)
+     INTCXROM   0 -> 0   (0)
+     SLOTC3ROM  0 -> 0   (0)
+     TEXT       1 -> 1   (1)
+     MIXED      0 -> 0   (0)
+     ALTCHARSET 1 -> 1   (1)
+     ramworks_bank 0 -> 0
+   trace window: 3,975 bus cycles; I flag set in 3,975, clear in 0 rows
+   driver PC range: $C77E-$FEE8
+   $C080-$C08F (language-card) accesses: NONE
+   $C0xx addresses touched (R/W, count):
+     $C0F1 R x59      slot-7 I/O $C0F1
+     $C0F2 W x1       slot-7 I/O $C0F2
+     $C0F3 W x1       slot-7 I/O $C0F3
+     $C0F4 W x1       slot-7 I/O $C0F4
+     $C0F5 W x1       slot-7 I/O $C0F5
+     $C0F6 W x1       slot-7 I/O $C0F6
+     $C0F7 W x1       slot-7 I/O $C0F7
+     $C0F8 W x1       slot-7 I/O $C0F8
+     $C0F9 W x1       slot-7 I/O $C0F9
+
+   disk2_state fields changed by the SmartPort run: none (floppy not touched)
+
+== Disk II slot 6: READ_BLOCK #3, unit $60, block 1, buffer $B800; DEVADR[6] = $D000
+   at driver entry: PC $D000 P $24 (I=1) S $EE return -> $E1C5; $42-$47 = 016000b80100
+   at driver return: PC $E1C5 P $66 (C=0) A $00
+   switch state      entry -> return   (MLI entry state in ())
+     RAMRD      0 -> 0   (0)
+     RAMWRT     0 -> 0   (0)
+     ALTZP      0 -> 0   (0)
+     STORE80    0 -> 0   (0)
+     PAGE2      0 -> 0   (0)
+     HIRES      0 -> 0   (0)
+     COL80      0 -> 0   (0)
+     INTCXROM   0 -> 0   (0)
+     SLOTC3ROM  0 -> 0   (0)
+     TEXT       1 -> 1   (1)
+     MIXED      0 -> 0   (0)
+     ALTCHARSET 1 -> 1   (1)
+     ramworks_bank 0 -> 0
+   trace window: 202,203 bus cycles; I flag set in 202,203, clear in 0 rows
+   driver PC range: $D001-$E1C5
+   $C080-$C08F (language-card) accesses: NONE
+   $C0xx addresses touched (R/W, count):
+     $C0E0 R x5       slot-6 Disk ][ $C0E0
+     $C0E1 R x2       slot-6 Disk ][ $C0E1
+     $C0E2 R x5       slot-6 Disk ][ $C0E2
+     $C0E4 R x5       slot-6 Disk ][ $C0E4
+     $C0E6 R x5       slot-6 Disk ][ $C0E6
+     $C0E8 R x2       slot-6 Disk ][ $C0E8
+     $C0E9 R x2       slot-6 Disk ][ $C0E9
+     $C0EA R x2       slot-6 Disk ][ $C0EA
+     $C0EC R x19514   slot-6 Disk ][ $C0EC
+     $C0EE R x1       slot-6 Disk ][ $C0EE
+################ stock_fast_2.4
+backend fast; ProDOS 2.4; boot to BASIC prompt 0 s wall; build_rev 296d93a-dirty
+
+== SmartPort slot 7 drive 1: MLI READ_BLOCK elapsed by the cycle counter: 4,285 CPU cycles (counter delta 4,285 / 1)
+
+== SmartPort slot 7 drive 1: MLI READ_BLOCK block 0, warm: 4,285 bus cycles ($BF00 -> return)
+    86.4%    3,702  card/slot ROM $C100-$CFFF (SmartPort / Disk ][ firmware)
+    12.1%      517  ProDOS MLI (LC) $D700-$FFFF
+     1.5%       65  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   DEVADR table: a3dea3dea3dea3dea3dea3de00d07bc7a3dea3dea3de00ffa3dea3de00d07bc7
+   DEVADR[7] = $C77B; entry P $A4 (I=1); return -> $DED2, P $66 (C=0) A $00
+   switches changed entry->return: NONE (RAMRD 0->0, RAMWRT 0->0, ALTZP 0->0, 80STORE 0->0)
+   driver window 3,702 bus cycles; I set in 3,702 / clear in 0 rows; LC ($C080-$C08F) accesses: NONE
+   $C0xx touched: $C0F1Rx59, $C0F2Wx1, $C0F3Wx1, $C0F4Wx1, $C0F5Wx1, $C0F6Wx1, $C0F7Wx1, $C0F8Wx1, $C0F9Wx1
+
+== SmartPort slot 7 drive 2: MLI READ_BLOCK elapsed by the cycle counter: 4,286 CPU cycles (counter delta 4,286 / 1)
+
+== SmartPort slot 7 drive 2: MLI READ_BLOCK block 0, warm: 4,286 bus cycles ($BF00 -> return)
+    86.4%    3,703  card/slot ROM $C100-$CFFF (SmartPort / Disk ][ firmware)
+    12.1%      517  ProDOS MLI (LC) $D700-$FFFF
+     1.5%       65  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   DEVADR table: a3dea3dea3dea3dea3dea3de00d07bc7a3dea3dea3de00ffa3dea3de00d07bc7
+   DEVADR[F] = $C77B; entry P $A4 (I=1); return -> $DED2, P $66 (C=0) A $00
+   switches changed entry->return: NONE (RAMRD 0->0, RAMWRT 0->0, ALTZP 0->0, 80STORE 0->0)
+   driver window 3,703 bus cycles; I set in 3,703 / clear in 0 rows; LC ($C080-$C08F) accesses: NONE
+   $C0xx touched: $C0F1Rx59, $C0F2Wx1, $C0F3Wx1, $C0F4Wx1, $C0F5Wx1, $C0F6Wx1, $C0F7Wx1, $C0F8Wx1, $C0F9Wx1
+
+== Disk II slot 6 drive 1: MLI READ_BLOCK elapsed by the cycle counter: 231,413 CPU cycles (counter delta 231,413 / 1)
+
+== Disk II slot 6 drive 1: MLI READ_BLOCK block 0, warm: 231,413 bus cycles ($BF00 -> return)
+    99.7%  230,830  ProDOS disk core $D000-$D6FF (built-in Disk ][ driver)
+     0.2%      517  ProDOS MLI (LC) $D700-$FFFF
+     0.0%       65  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   DEVADR table: a3dea3dea3dea3dea3dea3de00d07bc7a3dea3dea3de00ffa3dea3de00d07bc7
+   DEVADR[6] = $D000; entry P $A4 (I=1); return -> $DED2, P $66 (C=0) A $00
+   switches changed entry->return: NONE (RAMRD 0->0, RAMWRT 0->0, ALTZP 0->0, 80STORE 0->0)
+   driver window 230,830 bus cycles; I set in 230,830 / clear in 0 rows; LC ($C080-$C08F) accesses: NONE
+   $C0xx touched: $C0E0Rx5, $C0E1Rx2, $C0E2Rx5, $C0E4Rx5, $C0E6Rx5, $C0E8Rx2, $C0E9Rx2, $C0EARx2, $C0ECRx22464, $C0EERx1
+
+Total wall time 1 s
+################ stock_fast_2.5
+backend fast; ProDOS 2.5; boot to BASIC prompt 0 s wall; build_rev 296d93a-dirty
+
+== SmartPort slot 7 drive 1: MLI READ_BLOCK elapsed by the cycle counter: 4,689 CPU cycles (counter delta 4,689 / 1)
+
+== SmartPort slot 7 drive 1: MLI READ_BLOCK block 0, warm: 4,689 bus cycles ($BF00 -> return)
+    81.7%    3,829  card/slot ROM $C100-$CFFF (SmartPort / Disk ][ firmware)
+    17.2%      808  ProDOS MLI (LC) $D700-$FFFF
+     1.1%       51  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   DEVADR table: cce1cce1cce1cce1cce1cce100d078fecce1cce1cce100ffcce1cce1cce1cce1
+   DEVADR[7] = $FE78; entry P $24 (I=1); return -> $E1C5, P $24 (C=0) A $00
+   switches changed entry->return: NONE (RAMRD 0->0, RAMWRT 0->0, ALTZP 0->0, 80STORE 0->0)
+   driver window 3,975 bus cycles; I set in 3,975 / clear in 0 rows; LC ($C080-$C08F) accesses: NONE
+   $C0xx touched: $C0F1Rx59, $C0F2Wx1, $C0F3Wx1, $C0F4Wx1, $C0F5Wx1, $C0F6Wx1, $C0F7Wx1, $C0F8Wx1, $C0F9Wx1
+
+== SmartPort slot 7 drive 2: DEVADR[F] is the no-device stub on this boot; skipped
+
+== Disk II slot 6 drive 1: MLI READ_BLOCK elapsed by the cycle counter: 231,542 CPU cycles (counter delta 231,542 / 1)
+
+== Disk II slot 6 drive 1: MLI READ_BLOCK block 0, warm: 231,542 bus cycles ($BF00 -> return)
+    99.7%  230,828  ProDOS disk core $D000-$D6FF (built-in Disk ][ driver)
+     0.3%      662  ProDOS MLI (LC) $D700-$FFFF
+     0.0%       51  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   DEVADR table: cce1cce1cce1cce1cce1cce100d078fecce1cce1cce100ffcce1cce1cce1cce1
+   DEVADR[6] = $D000; entry P $24 (I=1); return -> $E1C5, P $66 (C=0) A $00
+   switches changed entry->return: NONE (RAMRD 0->0, RAMWRT 0->0, ALTZP 0->0, 80STORE 0->0)
+   driver window 230,828 bus cycles; I set in 230,828 / clear in 0 rows; LC ($C080-$C08F) accesses: NONE
+   $C0xx touched: $C0E0Rx5, $C0E1Rx2, $C0E2Rx5, $C0E4Rx5, $C0E6Rx5, $C0E8Rx2, $C0E9Rx2, $C0EARx2, $C0ECRx22464, $C0EERx1
+
+Total wall time 1 s
+################ stock_rtl_2.4
+backend rtl; ProDOS 2.4; boot to BASIC prompt 2 s wall; build_rev 296d93a-dirty
+
+== SmartPort slot 7 drive 1: MLI READ_BLOCK elapsed by the cycle counter: 4,294 CPU cycles (counter delta 60,122 / 14)
+
+== SmartPort slot 7 drive 1: MLI READ_BLOCK block 0, warm: 4,285 bus cycles ($BF00 -> return)
+    86.4%    3,702  card/slot ROM $C100-$CFFF (SmartPort / Disk ][ firmware)
+    12.1%      517  ProDOS MLI (LC) $D700-$FFFF
+     1.5%       65  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   DEVADR table: a3dea3dea3dea3dea3dea3dea3de7bc7a3dea3dea3de00ffa3dea3dea3de7bc7
+   DEVADR[7] = $C77B; entry P $A4 (I=1); return -> $DED2, P $66 (C=0) A $00
+   switches changed entry->return: NONE (RAMRD 0->0, RAMWRT 0->0, ALTZP 0->0, 80STORE 0->0)
+   driver window 3,702 bus cycles; I set in 3,702 / clear in 0 rows; LC ($C080-$C08F) accesses: NONE
+   $C0xx touched: $C0F1Rx59, $C0F2Wx1, $C0F3Wx1, $C0F4Wx1, $C0F5Wx1, $C0F6Wx1, $C0F7Wx1, $C0F8Wx1, $C0F9Wx1
+
+== SmartPort slot 7 drive 2: MLI READ_BLOCK elapsed by the cycle counter: 4,295 CPU cycles (counter delta 60,136 / 14)
+
+== SmartPort slot 7 drive 2: MLI READ_BLOCK block 0, warm: 4,286 bus cycles ($BF00 -> return)
+    86.4%    3,703  card/slot ROM $C100-$CFFF (SmartPort / Disk ][ firmware)
+    12.1%      517  ProDOS MLI (LC) $D700-$FFFF
+     1.5%       65  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   DEVADR table: a3dea3dea3dea3dea3dea3dea3de7bc7a3dea3dea3de00ffa3dea3dea3de7bc7
+   DEVADR[F] = $C77B; entry P $A4 (I=1); return -> $DED2, P $66 (C=0) A $00
+   switches changed entry->return: NONE (RAMRD 0->0, RAMWRT 0->0, ALTZP 0->0, 80STORE 0->0)
+   driver window 3,703 bus cycles; I set in 3,703 / clear in 0 rows; LC ($C080-$C08F) accesses: NONE
+   $C0xx touched: $C0F1Rx59, $C0F2Wx1, $C0F3Wx1, $C0F4Wx1, $C0F5Wx1, $C0F6Wx1, $C0F7Wx1, $C0F8Wx1, $C0F9Wx1
+
+== Disk II slot 6 drive 1: DEVADR[6] is the no-device stub on this boot; skipped
+
+Total wall time 14 s
+################ stock_rtl_2.5
+backend rtl; ProDOS 2.5; boot to BASIC prompt 2 s wall; build_rev 296d93a-dirty
+
+== SmartPort slot 7 drive 1: MLI READ_BLOCK elapsed by the cycle counter: 4,699 CPU cycles (counter delta 65,792 / 14)
+
+== SmartPort slot 7 drive 1: MLI READ_BLOCK block 0, warm: 4,689 bus cycles ($BF00 -> return)
+    81.7%    3,829  card/slot ROM $C100-$CFFF (SmartPort / Disk ][ firmware)
+    17.2%      808  ProDOS MLI (LC) $D700-$FFFF
+     1.1%       51  ProDOS global page $BF00-$BFFF
+     0.0%        1  main RAM below $BF00 (maux / MLI glue)
+   DEVADR table: cce1cce1cce1cce1cce1cce1cce178fecce1cce1cce100ffcce1cce1cce1cce1
+   DEVADR[7] = $FE78; entry P $24 (I=1); return -> $E1C5, P $24 (C=0) A $00
+   switches changed entry->return: NONE (RAMRD 0->0, RAMWRT 0->0, ALTZP 0->0, 80STORE 0->0)
+   driver window 3,975 bus cycles; I set in 3,975 / clear in 0 rows; LC ($C080-$C08F) accesses: NONE
+   $C0xx touched: $C0F1Rx59, $C0F2Wx1, $C0F3Wx1, $C0F4Wx1, $C0F5Wx1, $C0F6Wx1, $C0F7Wx1, $C0F8Wx1, $C0F9Wx1
+
+== SmartPort slot 7 drive 2: DEVADR[F] is the no-device stub on this boot; skipped
+
+== Disk II slot 6 drive 1: DEVADR[6] is the no-device stub on this boot; skipped
+
+Total wall time 8 s

@@ -1,0 +1,16 @@
+fileproctest.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+Boots as MAUX.SYSTEM under ProDOS, installs the maux
+syscall/scheduler machinery without stamping main's $FFxx page,
+starts one parent process in bank 1 at the parent blob's
+assembled address, and has that process exercise:
+  - OPEN/READ/CLOSE against a real ProDOS file
+  - CREATE/OPEN/WRITE/CLOSE then OPEN/READ/CLOSE readback
+  - SPAWN of a real child process image loaded from a ProDOS file
+
+Results live in bank 1 at $1200+ for
+scripts/check_fileprocess.py.
+----------------------------------------------------------------

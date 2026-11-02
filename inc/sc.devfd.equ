@@ -1,0 +1,39 @@
+*---------------------------------------------------------------
+* sc.devfd.equ -- kernel fd-table device handles. NOT
+* process-visible fd numbers -- the byte values stored in
+* PCB_FDTABLE when a fd points at a character device instead of
+* an OFT entry. Split out of inc/syscall.equ (task #8,
+* docs/SELFHOST-CONVERSION.md phase 1) -- reference-set scan
+* shows src/kernel/procfd*.s and procfile2.s (the fd-table
+* implementation) and the play test harness need these; since
+* 2026-09-14, src/bin/tty.s also `put`s this file, to name a
+* console/serial device by its SC_FDSTAT result byte -- see
+* inc/sc.fd.equ for the process-visible fd numbers.
+*
+* `put`-only file (no code/org/dsk), same precondition
+* discipline as memmap.equ -- the top-level file must `put`
+* this directly.
+*---------------------------------------------------------------
+
+* -- Kernel fd-table device handles. These are NOT process-
+* visible fd -- numbers; they are the byte values stored in
+* PCB_FDTABLE when a fd points -- at a character device instead
+* of an OFT entry. They deliberately live -- above any possible
+* OFT index (OFT_COUNT is 16 in memmap.equ).
+FD_DEV_BASE equ   $80
+FD_TTY0     equ   $80
+FD_TTY1     equ   $81
+FD_TTY2     equ   $82
+FD_TTY3     equ   $83
+
+* -- /dev/null. Not a console, so it sits above the tty block
+* -- and every range check that reads `cmp #FD_TTY3+1` still
+* -- means "is this one of the four consoles". Reads give EOF,
+* -- writes are discarded and report the full count.
+FD_NULL     equ   $84
+
+* -- /dev/ttya0 -- the Super Serial Card's 6551 ACIA (src/kernel
+* -- /ser.s: slot scan, poll, RX ring, RAW mode only). Named
+* -- per GNO's .TTYA[0-9,A-F] serial-line convention. Sits
+* -- above FD_NULL -- it is neither a console nor the sink.
+FD_SER0     equ   $85

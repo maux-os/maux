@@ -1,0 +1,107 @@
+.\" Original maux page, MIT, 2026-09-25; rewritten 2026-09-30 for the
+.\" tenant launch. No Research UNIX or early BSD counterpart exists:
+.\" program selectors (Apple's Bye, Bird's Better Bye) are period
+.\" Apple II software, not Unix, and none round-trips a running system.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH BYE 1 "September 30, 2026" maux
+.SH NAME
+bye \- run a ProDOS 8 program on the bare machine and come back
+.SH SYNOPSIS
+.B bye
+[
+.I path.system
+]
+.SH DESCRIPTION
+.B Bye
+suspends maux, gives the whole machine to a real ProDOS 8, and takes
+it back when the program that ran there quits.
+Main memory and the auxiliary bank are saved into RamWorks banks
+that ProDOS cannot see and restored from them afterwards; every
+other process stays in its own bank, untouched.
+Nothing else on the machine notices; the shell, the editor and every
+other process resume where they were.
+.PP
+A disk image mounted with
+.IR mount (1)
+(on /dev/s3d2) is detached before the program runs and /RAM is
+handed over as ProDOS made it, and attached again when
+.B bye
+returns, the same file, the same unit. The program may have changed or
+deleted the image: if it no longer attaches,
+.B bye
+says why ("bye: loop device: no such file") and exits 1, with the
+image left unmounted.
+.PP
+With no operand,
+.B bye
+makes the round trip and returns at once.
+This is a self-test of the mechanism.
+.PP
+With
+.I path.system
+the named file is launched as a ProDOS 8 system program, as if a
+program selector had chosen it: it must be a type SYS ($FF) file of
+no more than 30720 bytes, and it is loaded at $2000 and entered
+there.
+What it finds is an ordinary freshly booted ProDOS 8: main memory,
+the language card and /RAM (reinstalled and empty) all its own,
+every open file closed, and the prefix set to the directory the
+file was launched from.
+When it issues the MLI QUIT call, maux returns.
+A program that never quits -- most games, and anything that reboots
+the machine to exit -- ends the session; see BUGS.
+.PP
+Before leaving,
+.B bye
+closes every file maux has open and remembers their positions; after
+the trip they are reopened where they were.
+A file that cannot be closed and reopened by name (one opened by a
+relative path with no working directory recorded, which the kernel
+pins) makes
+.B bye
+refuse before anything is touched.
+.PP
+.B Bye
+prints
+.I Leaving maux for ProDOS...
+on the way out and
+.I Welcome back.
+on the way in.
+.SH FILES
+.TP
+/usr/man/BYE
+this page
+.TP
+/mnt/MAUX/BYERES
+the resident that ProDOS's QUIT hands control to
+.TP
+/mnt/MAUX/KSEG
+the kernel's cold segment, reloaded after the trip
+.SH "SEE ALSO"
+.IR shutdown (1),
+.IR proshim (1)
+.SH DIAGNOSTICS
+Exit status 0 when the round trip completes.
+.PP
+Exit status 2 for a usage error, or for an operand that is not a
+type SYS file, is larger than 30720 bytes, or cannot be opened; the
+reason is printed and nothing has been touched.
+.PP
+Exit status 1 when the kernel refuses the trip: a pinned open file
+is reported by its file table index, anything else by its errno.
+.SH BUGS
+The program that runs between the two messages has no exit status
+to give back; ProDOS's QUIT carries none.
+Whether it succeeded is whatever it left on the volume.
+.PP
+A program that uses RamWorks memory of its own -- an expanded
+AppleWorks, or anything that probes the aux banks -- can overwrite
+the banks
+.B bye
+saved the system into, and there is no way to warn it.
+.PP
+The saved banks survive a reset, but nothing yet restores from them
+after one; a program that never quits costs a reboot.
+.PP
+A file that grows between the size check and the launch is loaded
+truncated at the launch window, not refused.

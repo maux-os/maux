@@ -1,0 +1,66 @@
+.\" basename.1 -- maux's basename(1), in the V7 man(1) shape.
+.\" An original page (this project's own text, not copied from a
+.\" historic basename(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as printf.1. Rendered at
+.\" build time to build/man/BASENAME.TXT and staged on the play
+.\" image as /usr/man/BASENAME: `more /usr/man/BASENAME`.
+.TH BASENAME 1 "September 14, 2026" maux
+.SH NAME
+basename \- return the last component of a pathname
+.SH SYNOPSIS
+.B basename
+.I string
+[
+.I suffix
+]
+.SH DESCRIPTION
+.I Basename
+deletes any prefix ending in the last slash
+.RB ( / )
+character in
+.IR string ,
+after first stripping trailing slashes, and writes the result
+to standard output.
+.PP
+If
+.I string
+is empty, an empty line is printed. If
+.I string
+consists entirely of slashes, a single
+.B /
+is printed.
+.PP
+If
+.I suffix
+is given, and it is not identical to the remaining characters
+of
+.IR string ,
+and it is a trailing suffix of them, it is also removed. A
+.I suffix
+at least as long as the remaining characters, or an empty
+.IR suffix ,
+is never removed.
+.PP
+.I String
+is text, not a filesystem lookup: no file named by
+.I string
+needs to exist, and none is opened.
+.SH FILES
+/usr/man/BASENAME  this page
+.SH "SEE ALSO"
+dirname(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success; 2 on a usage error (wrong number of
+operands); 1 if the result would not fit basename's own working
+buffer (96 bytes).
+.SH BUGS
+This is the POSIX single-string form only. The BSD extensions
+.B \-a
+(treat every operand as its own
+.IR string )
+and
+.BI \-s " suffix"
+are not implemented -- a second operand is always
+.IR suffix ,
+never a second
+.IR string .

@@ -1,0 +1,79 @@
+.\" strings.1 -- maux's strings(1), in the V7 man(1) shape. An
+.\" original page (this project's own text), so it carries no
+.\" third-party notice -- MIT like the code, same posture as
+.\" od.1. Rendered at build time to build/man/STRINGS.TXT and
+.\" staged on the play image as /usr/man/STRINGS:
+.\" `more /usr/man/STRINGS`.
+.TH STRINGS 1 "September 15, 2026" maux
+.SH NAME
+strings \- find printable strings in a file
+.SH SYNOPSIS
+.B strings
+[
+.B \-a
+] [
+.BI \-n " number"
+] [
+.BI \-t " format"
+] [
+.I file ...
+]
+.SH DESCRIPTION
+.I Strings
+prints every run of
+.I number
+(default 4, capped at 255 in this implementation) or more
+printable bytes in
+.I file
+(standard input if none is given), each terminated by a
+non\-printable byte or end of file \(em the terminator itself
+is never printed.  With more than one
+.I file
+operand, each is scanned in turn with no header between them,
+matching this project's BSD reference.
+.PP
+A byte is printable if it falls in
+.B $20\-$7E
+(plain ASCII) OR
+.B $A0\-$FE
+(this tree's own high\-bit text convention) \(em a raw file has
+no liba string convention of its own, so both count.  A
+qualifying byte is written to standard output with its high bit
+set, this tree's own text convention, regardless of which half
+of that rule it qualified under.
+.PP
+.B \-a
+is accepted and does nothing: this implementation has no
+object\-file section table to restrict to, so the whole file is
+always scanned.
+.PP
+.BI \-t " format"
+prefixes each string with its byte offset from the start of
+.I file
+(resetting to 0 per file), as a bare number with no leading
+zeros:
+.B d
+decimal,
+.B o
+octal,
+.B x
+lower\-case hexadecimal.
+.SH FILES
+/usr/man/STRINGS  this page
+.SH "SEE ALSO"
+od(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if any file operand could not be opened
+(the rest are still scanned); 2 for a usage error (an
+unrecognised option, a non\-numeric or out\-of\-range
+.BR \-n ,
+or a
+.B \-t
+argument other than a single
+.BR d , " o" ,
+or
+.BR x ).
+.SH BUGS
+.BI \-n " number"
+is capped at 255 (see above) \(em a longer minimum is refused
+as a usage error rather than honoured.

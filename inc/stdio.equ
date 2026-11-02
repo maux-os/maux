@@ -1,0 +1,21 @@
+*---------------------------------------------------------------
+* stdio.equ -- stdio.s's cross-module constants, split out
+* 2026-08-29 for the S9 REL route: stdiofl.s (stdio's other
+* half), print.s and ld.s reference these, and a REL module
+* cannot export an equate (Merlin-8 ENT is code labels only --
+* learning:01M08WQ2HCRMDM46TQCPWXQSKN), so equates every module
+* must see at assembly time live in equ files. Put by every
+* manifest that puts stdio.s, right after zp.equ. `put`-only
+* file: no code, no org, no dsk.
+*
+* LC_FREE_RW / LC_KRN_RW: the LC soft switches stdio's buffer
+* path flips -- stdio.s's own header carries the naming-vs-
+* address story (check_modules pins name->address per site).
+* BOTH are write-ENABLING selects: only $C083 and $C08B may be
+* touched tree-wide now (docs/LANGUAGE-CARD.md, check-lc).
+*---------------------------------------------------------------
+LC_FREE_RW  equ   $C083          ;select the process's OWN free
+LC_KRN_RW   equ   $C08B          ;reselect the kernel/ProDOS-
+EXIT_WRFAIL equ   1
+SIOM_LINE   equ   1
+SIOM_FULL   equ   2

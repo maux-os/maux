@@ -1,0 +1,111 @@
+mli.equ -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+SHAPES BELOW ARE DOCUMENTATION for each util's own static
+parmlist declaration to match against -- this file defines no
+storage. The VALUE constants (PCOUNT_*, and the CREATE-field
+defaults cp.s uses) ARE real `equ`s, since those get referenced
+directly.
+
+`use`-only file (no code/org/dsk), same precondition discipline
+as memmap.equ/syscall.equ/errno.equ.
+----------------------------------------------------------------
+
+---- CREATE ($C0) -- TRM 4.4.1, 12 bytes total
+---------------------------- 0 param_count=7 | 1-2 pathname(ptr)
+| 3 access | 4 file_type 5-6 aux_type | 7 storage_type | 8-9
+create_date | A-B create_time
+
+----------------------------------------------------------------
+DESTROY ($C1) -- TRM 4.4.2 3
+----------------------------------------------------------------
+---- DESTROY ($C1) -- TRM 4.4.2, 3 bytes total
+----------------------------- 0 param_count=1 | 1-2
+pathname(ptr)
+
+----------------------------------------------------------------
+OPEN ($C8) -- TRM 4.5.1 6
+----------------------------------------------------------------
+---- OPEN ($C8) -- TRM 4.5.1, 6 bytes total
+-------------------------------- 0 param_count=3 | 1-2
+pathname(ptr) | 3-4 io_buffer(ptr) | 5 ref_num (1-byte RESULT --
+becomes the process's fd, per SYSCALL.md ruling 5's kernel-side
+fd<->refnum translation; liba/utils never see a raw MLI refnum)
+
+io_buffer is KERNEL-OWNED MAIN MEMORY, not a process address
+(architect review, merge-blocking finding): the MLI dereferences
+io_buffer CONTINUOUSLY while the file stays open (per-file state
+lives there between calls) and the MLI itself runs in main
+memory with no visibility into process banks at all -- a
+process-bank address in this field would be meaningless to it.
+Every util sets this field to $0000 (PROPOSED convention -- task
+#11 ratifies when it wires PRODOS_DELEGATE, translating the
+field to a real kernel-owned buffer address keyed by the same
+fd->refnum table ruling 5 already requires). CONTRAST with
+data_buffer (READ/WRITE, below) -- that field IS a genuine
+process-bank address; the kernel copyin/outs the transferred
+bytes through it via bankcopy, a completely different mechanism
+from how io_buffer is used. See docs/USERLAND.md "ABI
+RESOLUTIONS" for the two fields' semantics stated side by side.
+
+----------------------------------------------------------------
+READ ($CA) -- TRM 4.5.3 8
+----------------------------------------------------------------
+---- READ ($CA) -- TRM 4.5.3, 8 bytes total
+-------------------------------- 0 param_count=4 | 1 ref_num
+(fd) | 2-3 data_buffer(ptr) 4-5 request_count | 6-7 trans_count
+(2-byte RESULT -- the actual v1
+  surface's real transfer-count field; supersedes this slice's original
+  255-byte 1-byte-length draft entirely, per SYSCALL.md ruling 3)
+
+data_buffer IS a real process-bank address (unlike OPEN's
+io_buffer, above) -- the kernel copyin/outs the transferred
+bytes through it via bankcopy, the ordinary process-memory-
+access path every other syscall argument already uses. Each util
+reserves its own data_buffer normally (e.g. cat.s/cp.s's CBUF,
+ls.s's DIRBUF).
+
+----------------------------------------------------------------
+WRITE ($CB) -- TRM 4.5.4 8
+----------------------------------------------------------------
+---- WRITE ($CB) -- TRM 4.5.4, 8 bytes total -- same shape as
+READ --------
+
+----------------------------------------------------------------
+CLOSE ($CC) -- TRM 4.5.5 3
+----------------------------------------------------------------
+---- CLOSE ($CC) -- TRM 4.5.5, 3 bytes total
+------------------------------- 0 param_count=1 | 1 ref_num (fd)
+
+----------------------------------------------------------------
+CREATE field VALUES this round had
+----------------------------------------------------------------
+---- CREATE field VALUES this round had to pick concretely
+(liba/cp.s ---- needs a real, assemblable parmlist NOW;
+docs/SYSCALL.md ruling 6 ---- explicitly defers the EXACT byte
+layout's semantics to task #11 -- ---- these are reasonable,
+TRM-sourced defaults, not task #11's ruling):
+--   access ($C3): TRM Appendix B.4.2.3's own worked value -- D+RN+W+R
+--   bits set (destroy+rename+write+read enabled == "unlocked", the
+--   TRM's own stated usual default for a freshly created file.
+
+----------------------------------------------------------------
+filetype ($06  BIN) standard ProDOS
+----------------------------------------------------------------
+--   file_type ($06 = BIN): standard ProDOS type table (widely
+--   documented, e.g. every ProDOS type-code reference) -- chosen
+--   because v1 `cp` copies raw bytes with no type-preservation logic
+--   (GET_FILE_INFO isn't part of the v1 syscall surface, so cp cannot
+--   read the SOURCE file's real type to propagate it -- see
+--   docs/USERLAND.md "ABI RESOLUTIONS" for this limitation, noted
+--   there rather than silently shipped).
+
+----------------------------------------------------------------
+storagetype ($01  seedling) TRM Appendix
+----------------------------------------------------------------
+--   storage_type ($01 = seedling): TRM Appendix B.4.2.1 -- the only
+--   storage_type a CALLER may specify to CREATE (ProDOS grows seedling
+--   -> sapling -> tree automatically as the file's EOF grows; you
+--   cannot directly CREATE a sapling/tree).

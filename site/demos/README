@@ -1,0 +1,250 @@
+site/demos -- demos as code
+===========================
+
+A demo is ONE Python file that is both a gate and a screencast.
+
+    make check-demo-fedgrep    run it as assertions (the sweep does this)
+    make check-demos           every demo in this directory
+    make demos                 record every demo to build/demos/ (Mac,
+                               release time; needs ffmpeg; not in any sweep)
+
+Because the film is made by the file the sweep runs, a demo cannot rot
+unnoticed: it goes red in the sweep before anyone films it broken
+(docs/SITE.md sec 3, docs/RECORDER.md).
+
+The two modes
+-------------
+
+GATE MODE (scripts/demo_record.py DEMO.py). Runs on the person-like
+driver scripts/e2e_term.py (class Term) over verilogapple's MCP, on a
+copy-on-write copy of build/play.po. say(), hold() and fast() do
+nothing; the expect_* calls are the assertions. No screen_image, no
+ffmpeg, so it runs on the sweep box.
+
+RECORD MODE (--record OUTDIR). The same file, on a Term whose every step
+is a whole video frame (34,016 cycles = 1/30 s of emulated time) with one
+screen_image after it. Key gaps are a seeded 3-5 frames (100-167 ms), so
+a recording is a deterministic function of (demo, seed, image, floppy,
+verilogapple build). A failed expect_* aborts the recording and leaves
+nothing in OUTDIR. Output, under OUTDIR/NAME/:
+
+    NAME.mp4  NAME.webm   2x upscale of a 720x468 frame: a 720x432
+                          picture area (the //e's 560x384 centred in it,
+                          the card's picture filling it) with a 36-row
+                          key strip BELOW it
+    poster.png            the screen at t.poster() (default: the first
+                          say, else the last frame)
+    NAME.vtt              the say() captions, timed in emulated seconds
+    transcript.txt        the settled screen at every expect_*
+    frames.sha256         one hash per output frame (the determinism
+                          oracle; check-recorder compares these)
+
+The machine is the same in both modes and on every run: the Timemaster
+clock is pinned OFF (reset clock:false), because verilogapple seeds it from
+the host's wall clock at every cold reset and a recording made a minute
+later would otherwise start from a different time. So `date` says "no valid
+clock reading" and `ls -l` shows no mtime; do not film either.
+`demo_record.py --host-clock` turns the card back on, for measurements.
+
+The strip shows every key sent for about a second: printable keys grouped
+into words, control keys named (RET, ESC, TAB, DEL, ^C, ^Z ...) in amber.
+Inside fast(n) it also shows an xN badge and the emulated cycle count.
+Crisp pixels only: screen_image has no CRT mode. The //e's 560x384
+picture sits between 80-pixel black pillars of a 720-wide frame; the
+UltraTerm's picture (backend 'ut', below) fills it.
+
+A demo file
+-----------
+
+    DEMO = dict(
+        name='fedgrep',              # must equal the file name
+        title='grep, written in vi',
+        backends=('text80', 'ut'),   # the displays it is filmed and gated
+                                     # on: text40, text80, ut (the Videx
+                                     # UltraTerm); backend='text80' is the
+                                     # one-element form
+        image='fed',                 # play, full (the release disk: nas,
+                                     # ld, make, liba; hello.py), or a
+                                     # build_demo_images.py disk
+        floppy='ddshrink',           # OPTIONAL: a 5.25" floppy in slot 6
+                                     # drive 1 (recorder FLOPPIES table)
+        gate='check-demo-fedgrep',   # must be check-demo-<name>
+    )
+
+    def run(t):
+        ...
+
+The Makefile builds check-demo-<name> from the files in this directory;
+adding site/demos/foo.py adds check-demo-foo and puts it in check-demos
+with no Makefile edit. The first thing run(t) sees is a settled shell
+prompt. Do not call boot(): the harness did, and `boot(c, 'text80')`
+ends on a check that matches the echoed `$ vidmode 80` line
+(learning:01M3KY2AS0XJ22DY89S7R728GC), which the harness follows with
+t.wait_prompt().
+
+The demo API, all methods of `t`
+--------------------------------
+
+From Term (scripts/e2e_term.py; read docs/E2E-TERM.md first):
+    press(key)  type_human(s)  enter()  wait(s, label)  wait_prompt(label)
+    run_cmd_echoed(cmd, label)    wait for the prompt, type cmd (it must
+                                  echo), RET. The expect_* below read
+                                  the output of THIS command.
+    CTRL_C CTRL_D CTRL_Z ESC      key constants ('\x0c' is ^L, a
+                                  clean screen: there is no clear(1))
+
+Added by the recorder:
+    type_line(text, label)        type text a key at a time, require the
+                                  echo, press RET (for a here-doc body)
+    say(text, over=False)         a caption BEAT: the cue opens, the screen
+                                  holds with no key for the reading time
+                                  (1.2 s + 55 ms a char, 2.4-6.5 s), the
+                                  cue closes, 0.45 s of quiet, then your
+                                  next line runs. Never type under a
+                                  caption: a key sent while a cue is open
+                                  raises RecorderError (gate and record).
+                                  over=True narrates a wait with no typing
+                                  (a compile): it returns at once, may
+                                  overlap output, and endcue() waits it
+                                  out before the next key. Not inside fast()
+    hold(seconds)                 dwell: record mode steps the machine,
+                                  so the cursor and the clock stay honest
+                                  (hold(0) steps nothing)
+    fast(n)                       context manager: keep one frame in n,
+                                  badge and cycle counter on each kept
+    poster()                      the next frame is the poster
+    popover(text, seconds)        THE ONE OVERLAY ON THE PICTURE, by the
+                                  operator's ruling (2026-10-20): hold
+                                  `seconds`, with a small bordered box
+                                  of `text` over the lower right of the
+                                  Apple screen. Call it last. Never in
+                                  the poster or the captions. Gate mode:
+                                  hold(), after the same refusals as
+                                  record mode: a character the 5x7 font
+                                  lacks raises, and so does a popover in
+                                  fast(). fedgrep.py ends with one.
+    output(label)                 the settled output rows of the last
+                                  run_cmd_echoed command, as a list
+    expect_lines(spec, label)     spec is a list of rows (content AND
+                                  order) or an int (a row count)
+    expect_text(text, label)      the same, rows given as one string
+    expect_cmp_silent(label)      the command printed nothing
+    expect(cond, label)           a plain assertion that names itself
+
+"Settled" means the prompt is back and two polls in a row are identical
+(a paused-CPU snapshot can catch a scroll half done,
+learning:01M1AH9XWGC8ZS7HNBJVJ2JHXW). The assertions never depend on
+slice size, which is why both modes are gated
+(learning:01M1QY8TDRAX1N92CZQ143Q614). They check content and order, not
+row membership: a tool whose failure is "print its input unchanged" passes
+a membership test (learning:01M317VKBTQPCDM2DNMD36N1QV), so assert the
+rows, or the count, or the silence.
+
+Worked example: fedgrep.py (W3, docs/DEMO-FEDGREP.md)
+----------------------------------------------------
+
+grep is named for the ed command g/re/p. The demo types a six-line shell
+script (a here-doc handed to ed) into vi, `cat`s it back and requires the
+six lines it typed, in order; shows the Federalist Papers on the image
+(`ls | wc -l` is 85, `head` of No. 10 says MADISON); runs the script on
+No. 10 and requires exactly the lines the HOST finds holding the word in
+the same bytes (scripts/demo_host.py reads the image the guest booted a
+copy of); runs the real grep and requires the SAME rows; captures both
+to files and requires `cmp` to print nothing; then does the same over
+the papers headed MADISON with xargs, under fast(), and ends with the
+operator's popover. The script is plain text, no macros.
+
+Its teeth, seen red: /bin/ed, /bin/grep or /bin/cmp replaced by a copy
+of /bin/cat each turn the gate red at the row that uses it. To try one
+by hand:
+
+    python3 scripts/demo_record.py site/demos/fedgrep.py \
+        --setup 'cp /bin/cat /bin/grep'
+
+--setup types its command at the shell before the demo starts, unfilmed;
+the mount is copy-on-write, so the image is untouched.
+
+`--floppy PATH` puts that file in slot 6 drive 1 instead of the demo's
+own DEMO['floppy'] (a flipped byte, a truncated disk). The recorder
+mounts a floppy BEFORE boot() (boot's reset keeps it; mounting after a
+text40 boot's pokes would cold-reset them and boot native 80), checks the
+mount reply, and hands the demo the path it mounted as `t.floppy`, so a
+demo can compare the file actually in the drive with the host's oracle.
+The mount is copy-on-write: the file is never written.
+
+The recorder's own tests use fixtures/demos/mygrep.py, the earlier film
+of the same joke (a five-line script typed with `cat >`, run on grep's
+manual page). It lives there, not here, so the site shows one film of
+the joke; check-recorder's rows and teeth on it are unchanged.
+
+Adding a demo
+-------------
+
+1. Write site/demos/NAME.py (above). Pick the backend on purpose: at true
+   speed a scroll is 15k cycles a line on text40 and 40k on native 80
+   (learning:01M1JNVYS4E6K0DX5CCSJYD5GE), and that is what a viewer sees.
+2. `make check-demo-NAME` until green; then break the subject once and
+   watch it go red (rename a command on the demo's image with --setup).
+3. `python3 scripts/demo_record.py site/demos/NAME.py --record /tmp/x
+   --no-encode` is the fast way to look at the transcript and captions;
+   `make demos` encodes.
+4. Keep it ASCII (check-ascii covers this directory).
+5. Everything under build/demos/ is generated and is never committed.
+
+Freshness stamps and film sizes (docs/RECORDER.md "Freshness stamps")
+--------------------------------------------------------------------
+
+`make demos` also writes NAME.stamp.json (NAME-ut.stamp.json for the
+card) beside each film: sha256 of this script, of the disk image it
+booted, of every recorder module it loaded (demo_host.py and the rest),
+of the verilogapple binaries and ROMs, the ffmpeg version, and of the
+film's own files. `make check-site` and `make site` (whenever build/demos
+holds films) recompute them and fail a film whose script, image or any of
+those changed since it was recorded, a film with no stamp, a stamp that
+belongs to another film, a demo without its films once any exist, and any
+mp4, webm or poster whose size is not the one size the recorder declares
+(scripts/demo_stamp.py). So editing a demo script, or demo_host.py, means
+re-recording: `make demos`. The stamps are generated files under
+build/demos/ and are never committed.
+
+Two displays (docs/DEMO-UT.md, docs/DEMO-UT-NOTES.md)
+-----------------------------------------------------
+
+Every demo here declares backends=('text80', 'ut'): the //e's native 80
+columns and the Videx UltraTerm. ONE does not, and it is the only kind
+of exception there is: lssys.py crosses a `bye` window, and during one
+the card is not the selected display at all (byelaunch.s hands the
+glass back to the motherboard; measured in docs/DEMO-W17-NOTES.md), so
+a card film would freeze on the farewell for the whole tenant run and
+an expect_* taken there would read leftover maux text. A demo that
+declares one display says why, in its own docstring. The card has its own video, which
+screen_image does not draw, so the recorder draws it on the host from
+ultraterm_state (CRTC registers, the $C0B3 attribute latch, 4 KB of VRAM)
+through the card's own character ROM: scripts/demo_ut.py, proved against
+verilogapple's renderer by scripts/check_ut_render.py. The phosphor is
+green (0x40FF30, fast_sdl's colour for the card); the //e is white.
+
+    make check-demo-NAME     gates NAME on EVERY display it declares, then
+                             requires the same keys and the same text
+    make demos               records every display: NAME.mp4 NAME.webm
+                             poster.png NAME.vtt transcript.txt for the
+                             //e, NAME-ut.mp4 ... poster-ut.png ... for
+                             the card, side by side in build/demos/NAME/
+    demo_record.py --backend ut DEMO.py     one display only
+
+SAME KEYS, SAME TEXT is a rule, not a convention: the keys sent and the
+settled screen at every expect_* must be identical on both displays, or
+the gate is red and names the first difference. So run(t) must not know
+the display. Two things differ by nature and are handled by the harness
+and not by forking a demo: the //e boot types `vidmode 80` and the card's
+does not (so the card's boot runs `true`, to spend the same PID, and both
+clear the screen, unfilmed), and the MCP's screen_text decodes an inverse
+cell on the //e's 80 columns wrongly (inverse `sh` reads as `3(`), which
+the recorder's own screen() corrects from the text pages. Every checkpoint
+is the raw machine screen: nothing is ever substituted for what was
+scraped, and there is no way to pass the rows a checkpoint should hold.
+
+Not here: the asciinema cast and the site generator.
+
+Font licence: scripts/demo_font.py is an original 5x7 font drawn for this
+repository (MIT), traced from nothing and containing no Apple ROM data.

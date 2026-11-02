@@ -1,0 +1,70 @@
+title: A typo, caught
+description: One wrong letter in hello.s. make fails; nas run by hand sends its complaint to a file with 2>, and the file and line number take vi straight to the mistake.
+demo: typo
+---
+<div class="band demo">
+<h1>A typo, caught</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / typo</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/typo.py; examples/hello/hello.s; examples/hello/Makefile -->
+<p class="lead">A build error, read and fixed the old way. The film copies the
+hello example, changes one letter in <code>vi</code> (<code>jsr PUTS</code> becomes
+<code>jsr PUTZ</code>), and runs <code>make</code>, which fails. <code>nas</code> has said what is wrong, on
+<code>make</code>'s screen, but it scrolls away. Run alone, with its complaints sent to a
+file, it keeps them: <code>nas hello.s 2&gt; ERRS</code>, and <code>cat ERRS</code> reads
+them again, the label, the file and the line. <code>vi</code> goes straight to that line, the letter is put back, and
+<code>make</code> builds a program that says <code>hello, world</code>.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>What nas says, and where</h2>
+<!-- src: src/asm/nas.pla; docs/NAS.md -->
+<p>An unknown label is reported as <code>nas: unknown label PUTZ (hello.s line 35)</code>,
+followed by <code>nas: pass 2 failed</code>. Both lines go to standard error, file
+descriptor 2, so <code>2&gt;</code> catches them and the screen stays quiet; the
+success line, <code>nas: 32 bytes -&gt; hello.o</code>, goes to standard output. The
+line number counts from 1 in the file named in the parentheses, which is what
+<code>vi</code> counts, so <code>:35</code> lands on the mistake. (<code>vi +35</code> is
+not accepted here, so the film types the colon form.)</p>
+
+<h2>Why there is no make clean</h2>
+<!-- src: site/demos/typo.py -->
+<p>The film runs with the clock card off, so every file has one date, and with a
+clock card ProDOS would date files only to the minute. Either way <code>make</code>
+can miss an edit that came soon after a build. It does not matter here: this failure (an
+unknown label, found in the second pass, before the object file is opened) leaves no <code>hello.o</code>, which the film shows with
+<code>ls</code>, so after the repair <code>make</code> has nothing stale to trust.</p>
+
+<h2>The old ways</h2>
+<!-- src: docs/man/ed.1; docs/man/sh.1 -->
+<p>The captions lean on two Unix facts. The Bourne shell of Version 7 already
+redirected a file descriptor chosen by a leading digit, as in <code>2&gt;&amp;1</code>:
+see the V7 <a href="https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/man/man1/sh.1">sh(1)</a>
+page. And the V7 <a href="https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/man/man1/ed.1">ed(1)</a>
+page lists its diagnostics: <code>?</code> for errors in commands, and <code>?name</code>
+for an inaccessible file.</p>
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/typo.py; scripts/teeth_typo.py; docs/VERIFICATION.md (check-demos, check-recorder) -->
+<p>This film is made by <code>site/demos/typo.py</code>. Run as assertions, the same
+file is {{gen:demogate}}, and it runs with the rest of the tests, on both displays. The line number comes
+from the host reading the lesson's <code>hello.s</code>, so the film cannot drift from
+the lesson. It requires that <code>make</code> prints the <code>nas</code> command,
+nas's two lines and make's own failure line; that <code>nas hello.s 2&gt; ERRS</code>
+prints nothing to the screen; that <code>ERRS</code> holds exactly the two lines, with
+the right file and line; that no <code>hello.o</code> is left; that after the repair
+<code>cmp</code> against the lesson's file is silent; and that the rebuilt program says
+<code>hello, world</code>. The checks themselves were tested: with <code>nas</code> replaced by a
+copy of <code>true</code>, with a line added at the top of the lesson's file, and with
+the film expecting the wrong line, it fails at the row that checks <code>make</code>'s
+output.</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

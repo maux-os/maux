@@ -1,0 +1,90 @@
+.\" paste.1 -- maux's paste(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as cut.1/head.1.
+.\" Rendered at build time to build/man/PASTE.TXT and staged on the
+.\" play image as /usr/man/PASTE: `more /usr/man/PASTE`.
+.TH PASTE 1 "September 14, 2026" maux
+.SH NAME
+paste \- merge lines of files
+.SH SYNOPSIS
+.B paste
+[
+.B \-s
+] [
+.BI \-d " list"
+]
+.I file
+...
+.SH DESCRIPTION
+.I Paste
+merges lines from each named
+.IR file .
+At least one
+.I file
+is required; a lone
+.B \-
+in place of a file name means standard input.
+.PP
+Without
+.BR \-s ,
+each output line is the corresponding line of every
+.I file
+in turn, joined by the delimiter list (see
+.B \-d
+below) and terminated with one newline.  A
+.I file
+that has already run out of lines contributes an empty field
+for the rest of the run \(em output continues until every
+.I file
+is exhausted, not merely the first one.
+.PP
+.B \-s
+serializes instead: one output line
+.I per file,
+that file's own lines joined by the delimiter list.  An empty
+file contributes no output line at all.
+.PP
+.BI \-d " list"
+uses the characters of
+.I list,
+cycling and wrapping as needed, as the join delimiter instead
+of the default
+.BR <tab> .
+The cycle restarts at the first character of
+.I list
+at the start of every output line.  The four escapes
+.BR \e n ", " \e t ", " \e\e ", and " \e 0
+stand for a newline, a tab, a literal backslash, and nothing at
+all (not a NUL byte), respectively.  An empty
+.I list
+is an error.
+.SH FILES
+/usr/man/PASTE  this page
+.SH "SEE ALSO"
+cut(1)
+.SH DIAGNOSTICS
+Exit status is 0.
+Without
+.BR \-s ,
+every
+.I file
+must open before any output is produced; if one does not, a
+diagnostic naming it is written to standard error, nothing is
+written to standard output, and the exit status is 1.  With
+.BR \-s ,
+each
+.I file
+is opened and processed in turn; one that does not open is
+skipped with a diagnostic, the remaining operands are still
+processed, and the exit status is 1 if any operand failed to
+open.  2 for a usage error, including no
+.I file
+operand at all, or a malformed
+.B \-d
+.IR list .
+.SH BUGS
+A line longer than 255 bytes is truncated at that length.  In
+the default (parallel) mode, at most 5 files may be open at
+once (this system's fixed 8-descriptor-per-process table, minus
+the standard 3); a 6th operand is refused before any file is
+opened.

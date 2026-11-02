@@ -1,0 +1,46 @@
+.\" Derived from Research UNIX V6 stty(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/stty.1
+.\" Retrieved 2026-09-19; archived response SHA256: 864f5589c02e9c517b0c8cde985f8422b7cbf7523fa5d373fa860a12f0247f87
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH STTY 1 "September 19, 2026" maux
+.SH NAME
+stty \- set terminal options
+.SH SYNOPSIS
+.B stty
+.RI [ option ...]
+.SH DESCRIPTION
+.I Stty
+sets certain I/O options on the current output terminal.
+With no argument, it reports the current settings of the options.
+The option strings are selected from the following set:
+.TP
+.B raw
+Disable input line assembly and line editing.
+.TP
+.B \-raw
+Restore input line assembly.
+.TP
+.B echo, \-echo
+Enable or disable echoing of typed characters.
+.TP
+.B opost, \-opost
+Enable or disable treating a carriage return as a newline.
+With -opost, CR only returns the column; LF advances the line.
+.TP
+.B sane
+Restore cooked input, echo and output postprocessing.
+.PP
+Several options can be supplied together, for example:
+.PP
+.B stty raw \-echo
+.SH FILES
+/usr/man/STTY  this page
+.SH "SEE ALSO"
+reset(1), vidmode(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 if standard output is not a console, 2 for invalid options or too many operands.
+.SH BUGS
+At most five option words are accepted. Raw mode does not turn off interrupt signalling. Baud rates, parity, erase/kill character settings and saved-state operands are not implemented.

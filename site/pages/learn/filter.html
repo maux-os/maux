@@ -1,0 +1,61 @@
+title: Your own filter
+description: Write upcase in assembly, a program that reads standard input and writes it raised, and pipe it with the rest of the system.
+lesson: l3
+---
+<h1>L3. Your own filter</h1>
+<p class="crumb"><a href="/learn/">Learn</a> / L3</p>
+
+<!-- src: docs/SITE.md sec 5 -->
+<p class="lead">Goal: a program of about forty lines that composes with every other
+program on the machine.</p>
+
+<h2>What you need</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p><a href="/learn/asm-hello/">L2</a>: you can assemble, link and run a program.
+This lesson builds by hand with <code>nas</code> and <code>ld</code>;
+<a href="/learn/make/">L5</a> hands that to <code>make</code>.</p>
+
+<h2>The file</h2>
+<!-- src: examples/upcase/upcase.s -->
+<p>The program reads one byte at a time with <code>GETC</code> until end of
+file, raises it if it is a letter from a to z, and writes it with
+<code>PUTC</code>.</p>
+{{file:examples/upcase/upcase.s}}
+
+<h2>The session</h2>
+<!-- src: scripts/check_examples.py (row_l3) -->
+<p>The program is run three ways: with its input redirected from a file
+(<code>&lt;</code>), as the last stage of a pipe, and in the middle of one.</p>
+{{gen:session}}
+
+<h2>What just happened</h2>
+<!-- src: examples/upcase/upcase.s; src/liba/print.s -->
+<p>A maux program has three files open when it starts: standard input (0),
+standard output (1) and standard error (2), the constants <code>FD_STDIN</code>,
+<code>FD_STDOUT</code> and <code>FD_STDERR</code> from <code>/usr/inc/sc.fd.equ</code>.
+<code>GETC</code> takes the file number in <code>X</code>; the byte comes back in
+<code>A</code> with the carry clear, and a set carry means end of file. The shell
+connects those three files before the program starts, so <code>upcase</code> neither
+knows nor cares whether its input is a file, a keyboard or another program.</p>
+
+<!-- src: README.md (Text); examples/upcase/upcase.s -->
+<p>The one subtle line is the test for a letter. maux writes text with the high bit
+set and ends lines with <code>$8D</code>; a file that came from another Apple II
+program has the high bit clear and ends lines with <code>$0D</code>. The program
+tests only the low seven bits and passes every other byte through untouched, so it
+gives back the convention it was given. That is the rule for every maux filter. The
+session's second line is <code>#!/BIN/SH</code> because it is the shell script from
+L1, raised.</p>
+
+<!-- src: docs/EXAMPLES-NOTES.md sec 3 -->
+<p>You may notice the pipelines stop at three programs. A pipeline of four, such as
+<code>ls /bin | ./upcase | sort | head -3</code>, prints
+<code>sh: syntax error</code>: the shell holds at most three stages. Three is
+enough for this lesson.</p>
+
+<h2>Try next</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p>Make a second filter, <code>downcase</code>, by changing the range test and the bit
+you clear. Which instruction changes? Which one sets a bit instead?</p>
+
+{{gen:lessonnav}}

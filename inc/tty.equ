@@ -1,0 +1,52 @@
+*---------------------------------------------------------------
+* tty.equ -- the tty backend identifiers.
+*
+* HOISTED OUT OF tty.s (S9 L4, 2026-08-30). Merlin-8's `ENT`
+* exports code labels only -- an EQUATE cannot cross the linker
+* -- so a constant two REL modules both name has to be shared at
+* ASSEMBLY time, through a put file. Equates emit nothing, so
+* the move is byte-neutral; check-bytes is the proof.
+*---------------------------------------------------------------
+*-- TTY_BK40 joined its siblings here 2026-08-30: the console
+*-- store (tty4.s) is the first cross-module user, and an
+*-- EQUATE cannot be exported under REL -- check-librel refuses
+*-- it by name. It sat in tty.s only because nothing outside
+*-- that file had needed it.
+TTY_BK40    equ 0              ;//e 40-column text page
+TTY_BKUT    equ 1              ;Videx UltraTerm, slot 3
+TTY_BKN8    equ 2              ;native //e 80-column (aux half
+                               ;of text page 1 via 80STORE+
+                               ;PAGE2 -- see tty2.s N8_STORE)
+*-- 254, not 96 (2026-09-03): jump scroll (tty4.s TTY_JSCROLL)
+*-- can only look ahead within the staged chunk, and at 80
+*-- columns 96 bytes held one line. 254 is the ceiling -- P_FD
+*-- indexes it as a byte and TTY_WRITE compares #TTY_OWBUF_SZ+1.
+TTY_OWBUF_SZ equ 254
+VC_RAW_MASK equ 63
+VC_COUNT    equ 4
+
+*-- VC_ST_SIZE -- the per-console state struct's extent.
+*-- DECLARED
+*-- here rather than derived in tty.s, because a label-derived
+*-- equate can neither cross the Merlin linker nor move to a put
+*-- file. tty.s carries `err VC_ST_END-VC_STATE-VC_ST_SIZE`, so
+*-- this number cannot drift from the struct it describes.
+*-- 302->305 (VT102 slice 1, CONSOLE-VT102.md): VC_MTOP/VC_MBOT
+*-- (DECSTBM margins) + VC_DECCKM (application cursor keys), 3
+*-- new bytes. inc/mm.annex.equ's VC_SLOT_RESV grew to
+*-- match -- see that file for the free-space check.
+*-- 305->307 (VT102 slice 2/3): VC_IRM (smir/rmir) + VC_XENL
+*-- (the deferred-wrap pending flag), 2 more new bytes.
+*-- 307->312 (VT102 slice 5): VC_G0/VC_G1/VC_GL/VC_ACS/VC_SCS,
+*-- the character-set state (SCS designators + SO/SI).
+*-- 312->318 (VT102 slice 6, finding VT7): the DECSC stash grew
+*-- from row/col to the VC_DSC_N-byte block (rendition, pending
+*-- wrap, G0/GL/G1/ACS) -- 6 more bytes.
+*-- 318->319 (VT102 slice 7): VC_AWM, autowrap (DECAWM).
+*-- 319->320 (UltraTerm bold, merged 2026-09-13): VC_ATTRMODE,
+*-- what the emphasis bit MEANS on the card (ESC [ ? 3001 h/l).
+VC_ST_SIZE  equ 320
+*-- VC_DSC_N -- the DECSC block's length: VC_ROW..VC_ACS and
+*-- VC_SAVE_ROW..VC_SAVE_ACS (tty.s), copied as one run by
+*-- TTY_CRSR_SAVE/RSTR (tty2.s) and VCA_SLTCRSR (tty5.s).
+VC_DSC_N    equ 8

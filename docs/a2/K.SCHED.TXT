@@ -1,0 +1,356 @@
+sched.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+PUT-included module (no ORG/DSK -- same convention as
+bankprobe.s/entry.s). OPERATOR RULING implemented verbatim
+(docs/TASKS.md #6, docs/SCHED.md):
+  (1) RUN QUEUE -- a circular array of pids (RUNQ_CAP = PCB_COUNT+1 = 49
+      bytes + head/tail bytes), pop-head-to-run / push-tail, round-robin.
+  (2) "Everyone else" is a SET, not an ordered queue -- physically just
+      each PCB's PCB_STATE + PCB_WCHAN byte (docs/MEMMAP.md #2.2, task #6
+      ratification). Legitimate ONLY because in v1 a process can block
+      ONLY itself (wait/pipe/tty-read; no signals yank others) -- so
+      mid-run-queue removal never happens, and "who is blocked on chan
+      X" needs no index beyond a linear scan (SCHED_WAKEUP), O(48) --
+      a scan of the 48-byte main-memory wait shadow K_WAIT_SHD, not of
+      the annex PCBs (WAKE-1, 2026-10-21; below).
+
+PRECONDITION ON THE INCLUDER (same put/use gotcha as
+bankprobe.s/entry.s): the includer must, in this order, before
+`put`ting this file in:
+  1. `use inc/memmap.equ`   (PCB_* offsets/values, ANNEX_STRUCTS_A,
+                                  PCB_COUNT, BANKSEL/RAMRDAUX/RAMRDMAIN/
+                                  RAMWRTAUX/RAMWRTMAIN/ALTZPAUX)
+  2. `put  src/kernel/entry.s`  (K_CALLER_SP, K_SWITCH, K_TARGETBANK,
+                                  K_TARGETSP, K_RESULT, K_RESULT_ERR --
+                                  this file WRITES all of these; entry.s's
+                                  KERNEL_EXIT/KERNEL_IRQ_SERVICE are the
+                                  only READERS of the first three, see
+                                  that file's "TASK #6 LANDING" note)
+Forward references (K_CALLER_SP etc. defined by entry.s,
+possibly `put` physically AFTER this file in a given top-level
+assembly) resolve fine -- merlin32's 2-pass assembly over the
+whole linear source, same convention ffpage.s already relies on
+for KERNEL_ENTRY.
+
+ZERO PAGE: this module's own brackets flip RAMRD/RAMWRT only,
+NEVER ALTZP (the PCB array lives in aux bank 0's FLAT $0800+
+region -- RAMRD/RAMWRT-governed, not the ALTZP/LC-governed range
+the process-LC copy path worries about) -- so, unlike entry.s's
+K_CALLER_SP-class cells, this module's own scratch is free to
+live in ordinary zero page; ZP is immune to RAMRD/RAMWRT (only
+ALTZP steers it), and this module never touches ALTZP at all.
+Window $E0-$ED, clear of entry.s's own $F3-$FC kernel ZP cells
+(no collision -- checked against that file).
+
+KERNEL-DATA-READ DISCIPLINE (docs/SYSCALL.md #5.1), applied
+throughout: every RAMWRTAUX-only bracket below (writes are
+always safe inline -- RAMWRT does not gate instruction fetch)
+reads/writes ONLY registers, zero page, or the (K_PCB_PTR),y
+indirection deliberately targeting the annex -- NEVER an
+absolute ordinary-main-memory address. In particular,
+SCHED_WAKEUP reads only main memory (the wait shadow) and
+opens a WRITE-only RAMWRT bracket per woken pid, closed before
+the shadow store and the RUNQ_PUSH -- the "absolute main-
+memory access while RAMWRT=aux" mistake this codebase has
+already made three times (docs/SYSCALL.md #7.7/#5.1) is
+avoided by ordering, not by buffering (WAKE-1 removed
+K_WAKE_BUF).
+
+RAMRD-GOVERNS-INSTRUCTION-FETCH (the OTHER half of that same
+rule, learning:01KW1GTYGVYAPQRGS5P7J66RWD -- a bug this task's
+OWN testing found and fixed, not inherited): unlike RAMWRT
+(writes only), RAMRD governs ALL reads in $0200-$BFFF, including
+the CPU's OWN OPCODE FETCHES. This module's routines are
+ordinary flat code living SOMEWHERE in that same $0200-$BFFF
+range (wherever the assembler placed them -- no special home,
+unlike copyin/copyout) -- so NONE of them may ever flip RAMRDAUX
+inline and keep executing their own instructions afterward: the
+very next opcode fetch would be redirected into the annex bank
+instead of this module's own code, a wild jump (confirmed by
+direct emulator inspection: `regs`/`peek`/`until_write` showed
+execution corrupted within a handful of instructions of the
+first inline `STA RAMRDAUX`, eventually hitting a stray $00 byte
+and parking in KERNEL_BRK_TRAP). Every annex READ in this file
+therefore goes through PCB_READ_FIELDS, which delegates to
+entry.s's COPYIN_ENTRY -- low-main-stack-page resident, fetch-
+immune to RAMRD by construction -- rather than re-deriving a
+second RAMRD-safe mechanism.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+SCH_SWITCH -- A = requeue flag (0 =
+----------------------------------------------------------------
+---------------------------------------------------------------
+SCH_SWITCH -- A = requeue flag (0 = outgoing process is not
+runnable right now -- SCH_SLEEP already marked it
+PCB_BLOCKED -- do not push it back to the run queue; nonzero =
+outgoing stays runnable -- preemption/ yield -- push it to the
+run-queue tail). Called from SCH_TICK (timer IRQ path),
+SCH_YIELD (syscall path), and SCH_SLEEP (syscall path).
+K_CURPID always names the actual RUNNING pid at entry --
+SCH_START set it initially, and this routine always leaves
+it correctly updated before returning.
+
+Sets K_SWITCH/K_TARGETBANK/K_TARGETSP (entry.s's own cells --
+see that file's "TASK #6 LANDING" note) so
+KRN_EXIT/KRN_IRQ_SVC's shared insertion point
+performs the actual bank change on their way out -- this
+routine never writes BANKSEL/ALTZP for the actual process
+resumption itself (SCH_START is the one exception, at boot,
+when there is no KRN_EXIT/KRN_IRQ_SVC return in
+flight to piggyback on).
+
+SPECIAL CASE -- run queue empty: if no other pid is runnable,
+there is nothing to switch TO. If the outgoing process is
+still runnable (requeue!=0), this is simply "the only process
+left" -- cancel the switch (K_SWITCH stays 0) and let it keep
+running uninterrupted (exactly single-process steady state).
+If the outgoing process is NOT runnable (requeue=0, e.g. it
+just blocked) and the queue is ALSO empty, v1 has no idle
+process to fall back to -- a genuine deadlock, out of this
+task's scope (documented in docs/SCHED.md as a known v1
+limitation -- a real kernel wants an idle loop here). This
+routine parks defensively rather than silently corrupt state
+by "switching" to pid 0 (bank 0, the annex -- never a valid
+process bank).
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+SCH_TICK -- called once per serviced timer
+----------------------------------------------------------------
+---------------------------------------------------------------
+SCH_TICK -- called once per serviced timer tick, from the
+timer driver's IRQ-time hook (src/kernel/timer.s), AFTER the
+hardware source has been acknowledged. Decrements K_QUANTUM;
+on exhaustion, requests a preemptive switch (requeueing the
+outgoing process -- it is still perfectly runnable, just out
+of timeslice) by calling SCH_SWITCH. Runs entirely kernel-
+side (RAMRD/RAMWRT/ALTZP all still main at this point --
+KRN_IRQ_ENTRY's own flip already happened before this hook
+runs), so ordinary absolute reads of K_QUANTUM are safe here
+(this routine is NOT inside anyone else's RAMRD/RAMWRT=aux
+bracket). The optional tick hook runs before the quantum
+decrement so device pollers can wake a process and have it
+become eligible on this same tick.
+---------------------------------------------------------------
+K_NOSWITCH GATE (task #14 review finding): the ProDOS MLI is
+NOT reentrant, and docs/PRODOS-SPIKE.md's own measurement is
+that EVERY one of 73 observed VBL ticks landed while MLIACTV
+was nonzero -- i.e. ticks routinely fire inside live MLI
+calls. Preempting there would hand the CPU to a process that
+can issue its own MLI call on top of the interrupted one.
+process.s's MLI wrappers raise K_NOSWITCH for exactly that
+window.
+
+Holding the quantum (rather than decrementing toward a switch
+we then suppress) is deliberate: decrementing while gated
+would burn the timeslice invisibly and fire a switch the
+instant the MLI returned, at a point the outgoing process
+never got to run. The cost is that a process keeps the CPU for
+the length of its MLI call, which is bounded by the call
+itself.
+
+The tick HOOK still runs while gated -- keyboard polling and
+wakeups stay live, they just cannot force a context switch
+here.
+
+----------------------------------------------------------------
+PCB_RD_FIELDS -- A = field offset (within
+----------------------------------------------------------------
+---------------------------------------------------------------
+PCB_RD_FIELDS -- A = field offset (within a PCB entry, e.g.
+PCB_BANK), X = byte count. Reads X consecutive bytes starting
+at K_PCB_PTR+A from the annex into K_PCB_SCRATCH, via
+entry.s's COPYIN_ENTRY (page-1 resident, fetch-immune to RAMRD
+-- see this file's header for why every annex READ must go
+through it rather than an inline RAMRDAUX flip). BANKSEL must
+already select the annex (bank 0); this routine never touches
+it.
+
+Tail-calls COPYIN_ENTRY (`jmp`, not `jsr`) -- its own RTS
+returns directly to OUR caller, one JSR/RTS pair cheaper than
+nesting another layer. CLOBBERS X (COPYIN_ENTRY uses it as its
+own byte-loop counter) -- a caller using X as a live value
+across this call (SCH_WAKEUP's own pid-scan index) MUST
+PHX/PLX around it.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+SCH_CREATE -- A = pid, X = physical aux
+----------------------------------------------------------------
+---------------------------------------------------------------
+SCH_CREATE -- A = pid, X = physical aux bank. Initializes
+pid's PCB (PCB_SAVEDSP = $F9, matching docs/SYSCALL.md item
+11's synthesized- trapframe convention -- SP after a fresh
+6-byte frame -- so SCH_START/ SCH_SWITCH can launch it
+with ZERO first-launch special-casing, the same elegance item
+11 already bought EXIT_TAIL) and pushes it to the run-queue
+tail as PCB_RUNNABLE. Caller (this task's test harness; a real
+spawn() syscall in a later task) is responsible for having
+already stamped the bank's own $FFxx page and the synthesized
+frame at the top of its stack BEFORE this runs -- SCH_CREATE
+only touches the annex PCB, never the process bank itself.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+SCH_YIELD -- the cooperative-mode syscall
+----------------------------------------------------------------
+---------------------------------------------------------------
+SCH_YIELD -- the cooperative-mode syscall handler (wired
+into a dispatch table by the includer exactly like
+TCALL_ECHO in src/test/syscalltest.s -- this file has no
+opinion on the call number). Voluntarily gives up the
+remainder of the current timeslice; behaves identically to a
+preemptive switch from the SCHEDULER's point of view
+(requeue=1 -- yielding is not blocking) but is triggered by
+KRN_EXIT's syscall path instead of KRN_IRQ_SVC's
+tick path. This is the mechanism check-sched's cooperative-
+mode variant exercises with the timer probe forced away from
+any hardware IRQ source (docs/SCHED.md).
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+SCH_SLEEP -- A = wait channel (nonzero
+----------------------------------------------------------------
+---------------------------------------------------------------
+SCH_SLEEP -- A = wait channel (nonzero; caller's convention,
+e.g. an address associated with the resource being waited on
+-- v1 has no real caller yet, wait/pipe/tty-read land in a
+later task, but the mechanism is complete and independently
+testable). Marks the CURRENT process PCB_BLOCKED with
+PCB_WCHAN=A, then switches away WITHOUT requeueing it
+(requeue=0) -- a blocked process is deliberately NOT on the
+run queue; it enters the "everyone else" SET (docs/SCHED.md),
+found later only by SCH_WAKEUP's linear scan, never by run-
+queue membership. This is the operator ruling's load-bearing
+asymmetry: the run queue holds exactly the RUNNABLE-but-not-
+running set, nothing else.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+SCH_WAKEUP -- A = wait channel. The O(48)
+----------------------------------------------------------------
+---------------------------------------------------------------
+SCH_WAKEUP -- A = wait channel (WAKE-1, 2026-10-21). Scans
+K_WAIT_SHD, 48 MAIN-memory bytes, one per pid: the wait channel
+while that pid's PCB is PCB_BLOCKED, else 0 -- a cache of the
+annex PCBs, which stay the source of truth (ps/PSTAT read
+them). A match is marked PCB_RUNNABLE with WCHAN cleared in a
+write-only annex bracket, its shadow cell zeroed AFTER the
+bracket closes (an absolute store inside it lands in aux), and
+RUNQ_PUSHed at once: ascending pid order, as the old buffered
+push was. Channel 0 returns before the scan (0 is the idle
+shadow value; it would match every non-blocked slot). BANKSEL
+is left 0, as ever, so tick-context callers still restore the
+bank (PRC_SEL_CRBNK). The old scan read all 48 annex PCBs
+through PCB_RD_FIELDS: 11,030 cycles a call, measured in E0 and
+again in WAKE-1; the shadow scan is ~650 (docs/WAKE-1-NOTES.md).
+
+WAIT CHANNELS (SLEEP-1, 2026-10-21): $01-$2F wait (the waiter's
+pid), $80-$87 pipe read, $90-$97 pipe write, $A0-$A3 tty read,
+$A4 serial RX, $B0 SLP_CHAN (SYS_SLPUNTIL); 0 is "nobody". The
+timed wait is one global earliest deadline K_SLP_DL (K_SLP_ARM
+armed): PRC_SLPUNTIL lowers it and blocks on SLP_CHAN; SLP_TICK
+(tty.s, from TTY_TICK, so from SCH_TICK AND from MAIN_IRQ_SHIM) wakes
+SLP_CHAN when now - deadline >= 0 (signed modular) and restores the
+bank. Every sleeper reruns. docs/SLEEP-1-NOTES.md.
+
+THE SHADOW INVARIANT: shadow[p] != 0 iff PCB[p].STATE ==
+BLOCKED, and then shadow[p] == PCB[p].WCHAN. EVERY store that
+moves a PCB into or out of BLOCKED writes it: SCH_SLEEP (set),
+SCH_WAKEUP, PRC_SIG_SND (caught signal), PRC_ZOMB (exit, ^C,
+kill, BRK) and the default ^Z sweep (clear); SCH_INIT zeroes
+it. A writer that forgets is a lost wakeup, i.e. a hang. The
+census of all 13 STATE stores is docs/WAKE-1-NOTES.md sec 4,
+and `make check-wake` asserts the invariant at every
+SCH_WAKEUP/SCH_SWITCH/SCH_TICK entry and after every PCB or
+shadow store.
+
+THE PARENT SHADOW (WAIT-1, 2026-10-21). PRC_WAIT_CORE (process2.s;
+SYS_WAIT, SYS_WAITJOB) used to read all 47 annex PCBs through
+PCB_RD_FIELDS just to compare PCB_PARENT with K_CURPID: 12,744
+cycles a call, 383 calls (13.8k each, all-in) in a 144-command
+loop while ONE background job ran. K_PAR_SHD is 49 MAIN bytes
+(flat; the KBSS chain is full), REVERSED: pid p lives in cell
+48-p (PAR_CELL, sched.s), so the scan is a plain `dex/bne` from
+pid 1's cell (a flat `ds` minus a constant is not an absolute in
+the native build) and descending cells are ASCENDING pids. The
+cell holds PCB_PARENT while the slot is occupied and 0 while it
+is free. It only FILTERS: a pid whose cell equals K_CURPID is
+read from the annex (STATE, WCHAN, BANK, PARENT), and the real
+PARENT is compared again. 924 cycles a call with no match
+(+~170 per matching child). Writers: SCH_INIT (zero), PPCB_WR_
+PAR (procfd.s; spawn and fork, the ONLY nonzero writer),
+PRC_REAP_ONE (clear its own slot's cell). Orphans keep today's
+semantics: a dead parent's pid stays in the live child's cell
+and PCB_PARENT, a reused pid ADOPTS the child, and nothing
+reparents. Invariant at every PRC_WAIT_CORE entry and syscall
+exit (not inside one masked reap): cell == PCB_PARENT for an
+occupied slot, 0 for a free one. docs/WAIT-1-NOTES.md; gate
+`make check-wait`.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+SCH_INIT -- boot-time setup. Zeroes the
+----------------------------------------------------------------
+---------------------------------------------------------------
+SCH_INIT -- boot-time setup. Zeroes the run queue and marks
+every one of the PCB_COUNT annex entries PCB_UNUSED. MUST run
+before any SCH_CREATE/SCH_START/SCH_WAKEUP call --
+SCH_WAKEUP's linear scan trusts K_WAIT_SHD to be meaningful
+for EVERY slot, so SCH_INIT also zeroes the 48 wait-shadow
+cells and the parent-shadow cells K_PAR_SHD (main memory, after
+the annex bracket); skipping this leaves
+KBSS holding ProDOS boot leftovers, which would spuriously
+match a channel and wake a process that never slept. Cycle cost: one-time, ~48 * (PCB_PTR_FOR + one bracketed
+byte write) -- measured and cited in docs/SCHED.md, not
+estimated here.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+PCB_PTR_FOR -- A = pid (0-47). Sets
+----------------------------------------------------------------
+---------------------------------------------------------------
+PCB_PTR_FOR -- A = pid (0-47). Sets K_PCB_PTR = PCB_ARRY_ADDR
++ pid*PCB_ENT_SIZE (16 -- power-of-two, so pid<<4 via four
+ASL/ROL pairs, no multiply routine needed; see memmap.equ's
+PCB_ENTRY ratification note for why the entry size stayed a
+power of two). Pure register/ZP work -- safe to call from
+inside a RAMRD/RAMWRT=aux bracket (touches no absolute main-
+memory address), which SCH_INIT/SCH_SWITCH/SCH_WAKEUP
+all do. Clobbers A.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+RUNQ_PUSH (A = pid) / RUNQ_POP (-> A =
+----------------------------------------------------------------
+---------------------------------------------------------------
+RUNQ_PUSH (A = pid) / RUNQ_POP (-> A = pid, 0 if empty).
+Ordinary kernel-main-memory operations -- NEVER called from
+inside a RAMRD/RAMWRT bracket (SCH_SWITCH does all its
+RUNQ_PUSH/RUNQ_POP work BEFORE opening its own annex bracket;
+SCH_WAKEUP pushes each woken pid AFTER closing that pid's
+bracket -- see both routines). Pid 0 doubles as the "empty/no such
+process" sentinel because bank 0 is never a process
+(docs/ARCHITECTURE.md's ownership table) -- a real pid is
+never 0.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+SCH_START -- no arguments. Pops the first
+----------------------------------------------------------------
+---------------------------------------------------------------
+SCH_START -- no arguments. Pops the first pid off the run
+queue (deterministic: whichever SCH_CREATE call happened
+first, since RUNQ_PUSH/POP is strict FIFO) and launches it.
+Called exactly ONCE, at boot, after every SCH_CREATE. NEVER
+RETURNS -- ends in `JMP $FF22` (EXIT_TAIL), the same "cold
+launch is not a special case" elegance as a freshly-spawned
+process's first return (docs/SYSCALL.md item 11): this
+routine's OWN job is just "become SCH_SWITCH's incoming half
+with no outgoing half," so it shares that routine's PCB-read
+shape exactly.
+---------------------------------------------------------------

@@ -1,0 +1,112 @@
+.\" Original maux page, MIT, 2026-10-22.
+.\" Historical-source decision: maux-specific; plasm is David Schmenk's PLASMA compiler, cooked by plascut. No historical UNIX namesake.
+.\" Rendered by make man-pages; staged on the play image in /usr/man/.
+.TH PLASM 1 "October 22, 2026" maux
+.SH NAME
+plasm \- compile PLASMA source to a module
+.SH SYNOPSIS
+.B plasm
+.RB [ \-[W][O[2]][N] ]
+.I source
+.RI [ module ]
+.SH DESCRIPTION
+Compile a PLASMA source file to a relocatable module that
+.BR plasma (1)
+runs. This is David Schmenk's PLASMA compiler, unchanged except its load
+address (RELADDR $2000), built into a
+single executable (a "cooked" program) so it starts like any command.
+.PP
+With no
+.I module
+the output name is the source name with its extension replaced.
+The command line is the program's own name followed by its arguments, as on
+Dave's system; there is no throwaway first argument.
+.PP
+The source may be in either text convention: ProDOS-standard text (bare
+carriage return, bit 7 clear) or maux text as
+.BR vi (1)
+and
+.B cat >
+write it (bit 7 set, line end $8D). Both read the same.
+.PP
+.B include "inc/cmdsys.plh"
+works from any directory. It is looked for under
+.B inc/
+in the current directory first; if that fails, PLASM looks for the same name in
+.B /usr/inc
+(read only). Any path beginning
+.B inc/
+gets this fallback, until plasm first creates or destroys a file
+(its output), after which it is off for the rest of the run.
+.PP
+Run the result with
+.BR "plasma module" .
+.SH EXAMPLE
+.nf
+$ cat > hello.pla
+include "inc/cmdsys.plh"
+puts("Hello, world.\en")
+done
+^D
+$ plasm hello.pla hello.mod
+$ plasma hello.mod
+Hello, world.
+.fi
+.SH LIMITS
+.B The compiler shares one 46 KB process bank
+with its own tables, so it can compile only SMALL programs: the code and
+data buffer is about 540 bytes (plasm prints it:
+.BR "Data+Code buffer size = $021A" ).
+A hello-world, a sieve and similar short programs fit; programs of a few
+hundred lines such as the PLASMA samples
+.B test.pla
+and
+.B rpncalc.pla
+stop with
+.BR "overflowed code table" .
+This is an accepted limit of the 64 KB-bank design, not a fault in the source.
+Larger programs need the compiler built on a machine with more room.
+.PP
+.B plasm exits 0 after a compile error
+(this is PLASMA's own behaviour). A makefile must not trust the exit status:
+remove the old module first (\fBrm -f X.mod\fR) and list the new one after
+(\fBls X.mod\fR). make runs recipe lines with no shell and there is no
+\fBtest\fR on the release disk; \fBls\fR succeeds when the module exists
+and fails, stopping make, when it does not. A lesson makefile is therefore:
+.nf
+all:
+<tab>rm -f hello.mod
+<tab>plasm hello.pla hello.mod
+<tab>ls hello.mod
+.fi
+.PP
+A source or output name longer than 31 characters overflows plasm's own name
+buffers (an upstream defect); keep names short.
+The command line as a whole is limited to 127 characters
+.RB ( "rt: command line too long" ).
+.SH FILES
+.TP
+/bin/plasm
+the compiler.
+.TP
+/usr/inc/cmdsys.plh
+the PLASMA runtime header, Dave's file with maux line ends.
+.TP
+/mnt/MAUX/PLRT, /mnt/MAUX/PLLIB
+the runtime and support modules
+.B plasma
+needs to run a compiled module.
+.TP
+/usr/man/PLASM
+this page
+.SH "SEE ALSO"
+plasma(1), nas(1)
+.SH DIAGNOSTICS
+Errors are printed with the source line and a caret.
+Exit status is 0 even after an error (see LIMITS).
+A command line longer than 127 characters is refused with status 2.
+.SH BUGS
+Only small programs fit (see LIMITS). The optimizer module is not available in
+the cooked compiler, so the
+.B \-O
+option prints "Optimizer disabled".

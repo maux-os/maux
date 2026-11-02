@@ -1,0 +1,393 @@
+.\" sed.1 -- maux's sed(1), in the V7 man(1) shape (docs/SED.md).
+.\" Rendered at build time to build/man/SED.TXT and staged on the
+.\" play image as /usr/man/SED: `more /usr/man/SED`.
+.\"
+.\" Structure and several sentences follow the Seventh Edition
+.\" sed(1) page (V7/usr/man/man1/sed.1), redistributed under the
+.\" Caldera International "Ancient UNIX" license of 23 January
+.\" 2002 (docs/man/CALDERA-LICENSE, the full text):
+.\" Copyright(C) Caldera International Inc. 2001-2002.
+.\" All rights reserved. Redistribution and use in source and
+.\" binary forms, with or without modification, are permitted
+.\" provided that the conditions in that file are met; it is
+.\" provided AS IS with the disclaimer stated there.
+.TH SED 1 "September 11, 2026" maux
+.SH NAME
+sed \- stream editor
+.SH SYNOPSIS
+.B sed
+[
+.B \-n
+] script [ file ] ...
+.br
+.B sed
+[
+.B \-n
+] [
+.B \-e
+script ] ... [
+.B \-f
+sfile ] ... [ file ] ...
+.SH DESCRIPTION
+.I Sed
+copies the named
+.I files
+(standard input default) to the standard output,
+edited according to a script of commands.
+Each
+.B \-e
+adds its argument to the script and each
+.B \-f
+adds the contents of
+.IR sfile ;
+the pieces are joined with newlines, in order.
+With neither, the first operand is the script.
+The
+.B \-n
+option suppresses the default output, as does a first
+script line that is exactly `#n'.
+.PP
+A script consists of editing commands, one per line
+or separated by `;', of the form
+.IP
+[address [, address] ] [!] function [arguments]
+.PP
+Blanks may precede the function, and a `#' begins a comment
+that runs to the end of the line.
+.PP
+In normal operation
+.I sed
+cyclically copies a line of input into a
+.I pattern space
+(unless there is something left after a `D' command),
+applies in sequence all commands whose
+.I addresses
+select that pattern space,
+and at the end of the script copies the pattern space
+to the standard output (except under
+.BR \-n )
+and deletes it.
+A second buffer, the
+.IR "hold space" ,
+is empty at the start and is touched only by the
+`g', `G', `h', `H' and `x' commands.
+Each space holds up to 2047 characters; a space grown past that
+by `s', `N', `G' or `H' is a fatal error, not a truncation.
+An input line longer than 255 characters is truncated there.
+.PP
+An
+.I address
+is either a decimal number that counts input lines cumulatively
+across files, a `$' that addresses the last line of input, or a
+context address `/regular expression/' \- or `\ecREc' with any
+other single character
+.I c
+as the delimiter \- in the style of
+.IR ed (1),
+where the escape `\en' matches the newline embedded in the
+pattern space by `N' or `G' and an empty regular expression
+`//' means the last one used.
+.PP
+A command with no addresses selects every pattern space.
+A command with one address selects each pattern space that
+matches the address.
+A command with two addresses selects the inclusive range from
+the first pattern space that matches the first address through
+the next pattern space that matches the second.
+(If the second address is a number less than or equal to the
+line number first selected, only one line is selected.)
+Thereafter the process is repeated, looking again for the first
+address.
+A `!' after the addresses applies the function to the pattern
+spaces
+.I not
+selected.
+.PP
+In the following list the maximum number of addresses each
+function takes is in parentheses.
+An argument denoted
+.I text
+consists of one or more lines, all but the last of which end
+with `\e' to hide the newline; any other `\e' in text is removed
+and the next character taken literally.
+The V7 form `a\e' followed by a newline and the text is the
+portable one; `a text' on one line is also accepted
+(leading blanks dropped; `a\etext' keeps them).
+An argument denoted
+.I rfile
+or
+.I wfile
+must terminate the command line.
+Each
+.I wfile
+is created before processing begins;
+`/dev/stdout' names the standard output.
+There can be at most 4 distinct
+.I wfile
+arguments, and at most 48 commands and 16 labels in a script.
+.TP
+(1)\|a\e
+.br
+.ns
+.TP
+.I text
+Append.
+Place
+.I text
+on the output before reading the next input line.
+.TP
+(2)\|b\ label
+Branch to the `:' command bearing the
+.IR label .
+If
+.I label
+is empty, branch to the end of the script.
+A label ends at the end of the line or at a `;'.
+.TP
+(2)\|c\e
+.br
+.ns
+.TP
+.I text
+Change.
+Delete the pattern space.
+With 0 or 1 address or at the end of a 2-address range, place
+.I text
+on the output.
+Start the next cycle.
+.TP
+(2)\|d
+Delete the pattern space.
+Start the next cycle.
+.TP
+(2)\|D
+Delete the initial segment of the pattern space through the
+first newline.
+Start the next cycle without reading new input.
+.TP
+(2)\|g
+Replace the contents of the pattern space by the contents of
+the hold space.
+.TP
+(2)\|G
+Append the contents of the hold space to the pattern space.
+.TP
+(2)\|h
+Replace the contents of the hold space by the contents of the
+pattern space.
+.TP
+(2)\|H
+Append the contents of the pattern space to the hold space.
+.TP
+(1)\|i\e
+.br
+.ns
+.TP
+.I text
+Insert.
+Place
+.I text
+on the standard output.
+.TP
+(2)\|l
+List the pattern space on the standard output in an
+unambiguous form:
+`\e\e', `\ea', `\eb', `\ef', `\en', `\er', `\et' and `\ev' as those
+escapes, other non-printing characters as three-digit octal
+`\e\fIddd\fR', a `$' at the end, and long lines folded at 69
+characters with a `\e'.
+.TP
+(2)\|n
+Copy the pattern space to the standard output (unless under
+.BR \-n ).
+Replace the pattern space with the next line of input.
+If there is no next line, quit without running the rest of the
+script.
+.TP
+(2)\|N
+Append the next line of input to the pattern space with an
+embedded newline.
+(The current line number changes.)
+If there is no next line, quit
+.I without
+copying the pattern space to the output; `$!N' is the portable
+spelling.
+.TP
+(2)\|p
+Print.
+Copy the pattern space to the standard output.
+.TP
+(2)\|P
+Copy the initial segment of the pattern space through the first
+newline to the standard output.
+.TP
+(1)\|q\ [exit-code]
+Quit.
+Branch to the end of the script.
+Do not start a new cycle.
+The exit status is
+.IR exit-code ,
+or 0.
+.TP
+(2)\|r\ rfile
+Read the contents of
+.IR rfile .
+Place them on the output before reading the next input line.
+A file that cannot be read is silently nothing.
+.TP
+(2)\|s/regular expression/replacement/flags
+Substitute the
+.I replacement
+string for instances of the
+.I regular expression
+in the pattern space.
+Any character may be used instead of `/'.
+For a fuller description see
+.IR ed (1)
+and REGULAR EXPRESSIONS below.
+.I Flags
+is zero or more of
+.RS
+.TP
+g
+Global.
+Substitute for all nonoverlapping instances of the
+.I regular expression
+rather than just the first one.
+.TP
+p
+Print the pattern space if a replacement was made.
+.TP
+.I n
+.I n
+= 1 \- 512.
+Substitute for just the
+.IR n th
+occurrence of the
+.IR "regular expression" ;
+with
+.B g
+as well, the
+.IR n th
+and every later one.
+.TP
+w\ wfile
+Write.
+Append the pattern space to
+.I wfile
+if a replacement was made.
+.RE
+.IP
+In the
+.I replacement
+an `&' stands for the matched text, `\e1' to `\e9' for the text
+matched by the corresponding `\e(' `\e)' subexpression, `\en' for a
+newline, and a `\e' before any other character (a newline
+included) for that character itself.
+.TP
+(2)\|t\ label
+Test.
+Branch to the `:' command bearing the
+.I label
+if any substitutions have been made since the most recent
+reading of an input line or execution of a `t'.
+If
+.I label
+is empty, branch to the end of the script.
+.TP
+(2)\|w\ wfile
+Write.
+Append the pattern space to
+.IR wfile .
+.TP
+(2)\|x
+Exchange the contents of the pattern and hold spaces.
+.TP
+(2)\|y/string1/string2/
+Transform.
+Replace all occurrences of characters in
+.I string1
+with the corresponding character in
+.IR string2 .
+The lengths of
+.I string1
+and
+.I string2
+must be equal.
+`\en' is a newline, `\e\e' a backslash.
+.TP
+(2)\|!\ function
+Don't.
+Apply the
+.I function
+(or group, if
+.I function
+is `{') only to lines
+.I not
+selected by the address(es).
+.TP
+(0)\|:\ label
+This command does nothing; it bears a
+.I label
+for `b' and `t' commands to branch to.
+.TP
+(1)\|=
+Place the current line number on the standard output as a line.
+.TP
+(2)\|{
+Execute the following commands through a matching `}' only
+when the pattern space is selected.
+.TP
+(0)\|
+An empty command is ignored.
+.SH "REGULAR EXPRESSIONS"
+The regular expressions are POSIX basic regular expressions
+(the one engine shared with
+.IR ed (1),
+.IR ex (1),
+.IR vi (1)
+and
+.IR grep (1)):
+an ordinary character matches itself;
+`.' matches any character;
+`[\fIset\fR]' matches any character of the set, `[^\fIset\fR]' any
+character not in it, with ranges `a\-z' and the classes
+[:alpha:] [:digit:] [:alnum:] [:upper:] [:lower:] [:space:]
+[:blank:] [:punct:] [:print:] [:cntrl:] [:graph:] [:xdigit:];
+`\e(' `\e)' group, and `\e1' to `\e9' match what the corresponding
+group matched;
+`*' matches zero or more of the preceding item, `\e{\fIn\fR,\fIm\fR\e}'
+between
+.I n
+and
+.I m
+of it (`\e{\fIn\fR\e}' exactly
+.IR n ,
+`\e{\fIn\fR,\e}' at least
+.IR n ),
+and `\e+' and `\e?' one or more and zero or one;
+`^' at the start and `$' at the end anchor the match, `\en'
+matches the embedded newline, and `\e' before any other
+character takes it literally.
+A bare `{', `+', `?', `(' or `)' is an ordinary character.
+The match is the leftmost one, and the longest at that position.
+There is no alternation and no `\-E'.
+.SH FILES
+/usr/man/SED  this page
+.SH "SEE ALSO"
+ed(1), ex(1), grep(1), more(1)
+.SH DIAGNOSTICS
+A script error is reported as
+.RI "`sed: " "message" " near char " N "'",
+.I N
+being the offset into the assembled script text; the exit status
+is 2.
+Exit status is otherwise 0, the argument of `q', or 2 when a
+file could not be opened (the remaining input is still
+processed) or a space overflowed.
+.SH BUGS
+An input line is cut at 255 characters.
+`N' at the end of input follows POSIX and BSD (no output), not
+GNU.
+A `\e' before the delimiter inside a bracket expression is not
+special; the delimiter itself is literal there.

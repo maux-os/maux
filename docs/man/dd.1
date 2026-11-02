@@ -1,0 +1,56 @@
+.\" Derived from Research UNIX V6 dd(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/dd.1
+.\" Retrieved 2026-09-19; archived response SHA256: e8005b34d7f641f84d70a7097cf447ef747b37d405fb0e574976dafe48c30550
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH DD 1 "September 19, 2026" maux
+.SH NAME
+dd \- copy files in blocks
+.SH SYNOPSIS
+.B dd
+.RI [ option=value " ...]"
+.SH DESCRIPTION
+.I Dd
+copies the specified input file to the specified output.
+The standard input and output are used by default.
+The input and output block size may be specified.
+.TP
+.B if=file
+Input file.
+.TP
+.B of=file
+Output file. By default it is replaced with a new ProDOS BIN file.
+.TP
+.B bs=n
+Input/output block size in bytes, 1 through 4096; default 512.
+.TP
+.B count=n
+Copy at most n input blocks, rather than continuing until end of input.
+.TP
+.B skip=n
+Skip n blocks of the input file before copying.
+.TP
+.B seek=n
+Seek n blocks into the output file before copying.
+.TP
+.B conv=notrunc
+Open the existing output without replacing it or shortening it.
+.PP
+After completion, dd reports the number of whole and partial input and
+output blocks. For example:
+.PP
+.B dd if=input of=copy bs=512
+.PP
+All numbers are decimal, without suffixes.
+Skip and seek require named files and must fit a 24-bit byte offset.
+Do not use the same file as input and output in the default replacing mode.
+.SH FILES
+/usr/man/DD  this page
+.SH "SEE ALSO"
+cp(1), bpatch(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for I/O failures, 2 for invalid operands.
+.SH BUGS
+No raw-device copying, independent ibs/obs sizes, character conversions, noerror or sync mode. Block counts are limited to 65535. This command is on its dedicated development image, not the ordinary play command roster.

@@ -1,0 +1,82 @@
+*---------------------------------------------------------------
+* byeres.equ -- shared constants between byeres.s (assembled
+* STANDALONE at $D100, embedded into procbye.s via putbin --
+* the asrom.s/proshimpg.s literal-address idiom) and procbye.s
+* (which installs the blob and must reach into it at fixed
+* offsets without a shared assembler symbol table -- these are
+* two SEPARATE assemblies, so only numeric literals cross).
+*
+* BYE_ORG and BYE_BLOB_LEN are load-bearing constants, chosen
+* up front. The six _A ("address") constants are DERIVED --
+* read off byeres.s's own -v1 listing after every edit (docs
+* MEMORY note: "Listing addresses are per-build") -- and pinned
+* here by hand under names distinct from byeres.s's own labels
+* (BYE_LEAVE the equ vs BYE_LEAVE the label would collide in
+* ONE assembly). byeres.s carries an `err` tripwire beside each
+* labeled cell comparing it against the matching _A constant,
+* so a value that drifts out of sync fails THAT assembly loudly
+* rather than sending procbye.s to the wrong address silently.
+*---------------------------------------------------------------
+BYE_ORG      equ   $D100
+BYE_BLOB_LEN equ   768        ;exactly what QUIT copies
+                              ;($D100-$D3FF)
+
+* -- read off byeres.s's own -v1 listing (2026-09-26 build,
+* -- second pass: page-1 save/restore moved to K_BYE_BANK's own
+* -- aux $0180-$01FF, and the RESTORE half moved again, into
+* -- BYE_START itself (the $1000 trampoline) -- BYE_BACK is LC-
+* -- resident and cannot safely flip ALTZP at all, see
+* -- docs/BYE-SLICE1.md). BYE_LEAVE_A shifted too this time
+* -- (BYE_START grew).
+BYE_LEAVE_A   equ  $D138
+BYE_BANKNO_A  equ  $D312
+BYE_SAVEVLO_A equ  $D313
+BYE_SAVEVHI_A equ  $D314
+BYE_SAVE80_A  equ  $D315
+BB_ARMVEC_A   equ  $D316
+BB_RESVEC_A   equ  $D318
+
+* -- 2026-09-26: the second save bank (the annex) and the /RAM
+* -- reconnect/redisconnect state -- BYE_BACK's own annex
+* -- restore and PRC_RAMREDISC vector. Read off byeres.s's -v1
+* -- listing after every edit, same as the six above.
+BYE_BANKNO2_A equ  $D31A
+BB_HADRAM_A   equ  $D31B
+BB_RAMDVEC_A  equ  $D31C
+
+* -- 2026-09-26 slice 2 (docs/BYE.md "Slice 2 launch"): 1 = a
+* -- tenant was named on this `bye` -- BYE_LEAVE jumps to
+* -- BYE2_ORG (the launch blob, below) instead of the bare-QUIT
+* -- trigger. Stamped from PBY_HASTEN, procbye.s. Read off
+* -- byeres.s's -v1 listing after every edit, same as the cells
+* -- above.
+BB_TENANT_A   equ  $D31E
+
+* -- BB_KSGVEC_A: KSEG_RELOAD's real address, stamped by
+* -- procbye.s -- appended AFTER every other stamped cell
+* -- (byeres.s's own comment at the matching `ds`), so it never
+* -- shifts when an earlier cell changes size. Re-derived
+* -- 2026-09-27 (docs/KSEG.md round 2): the `jsr BB_KSGCALL` +
+* -- `BB_KSGCALL jmp (BB_KSGVEC)` insertion shifted every cell
+* -- from BYE_BANKNO_A onward by +6 B -- values above and below
+* -- this line are the REAL -v1 listing addresses (`err`
+* -- tripwires temporarily disabled to get a clean build, then
+* -- restored; every value here checked against that listing,
+* -- not hand-derived from the diff).
+BB_KSGVEC_A   equ  $D31F
+
+* -- 2026-09-27 (docs/KSEG.md): byelaunch.s moved OUT of this
+* -- cross-assembly agreement entirely. It is no longer a
+* -- separate `putbin`'d blob at a hand-pinned address -- it is
+* -- now a segment MODULE, `put` directly into the same manifest
+* -- assembly as procbye.s (playtest.s's `org KSEG_ORG` block),
+* -- so procbye.s references its labels (BYE2_START, BL2_PSTG,
+* -- ...) as ORDINARY LINKED SYMBOLS. BYE2_ORG, BYE2_BLOB_LEN,
+* -- BYE_COMBO_LEN and BL2_PATH_A retire with it -- BYERES is
+* -- byeres.bin alone again (768 B, BYE_BLOB_LEN), and the
+* -- launch blob is loaded (and RELOADED after every tenant
+* -- return) as part of KSEG, not concatenated onto BYERES.
+* -- BYE_LEAVE still reaches it with a plain `jmp #KSEG_ORG`
+* -- (byeres.s cannot name BYE2_START -- separate assembly --
+* -- but KSEG_ORG is a FIXED hardware address, inc/mm.hw.equ,
+* -- and the segment's first module always starts there).

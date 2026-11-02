@@ -1,0 +1,51 @@
+.\" Derived from Research UNIX V6 uniq(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/uniq.1
+.\" Retrieved 2026-09-19; archived response SHA256: 61e85bf540421f2574b90d9cf47e2c7977bba5793a4fb74005923650d709dbac
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH UNIQ 1 "September 19, 2026" maux
+.SH NAME
+uniq \- report repeated lines
+.SH SYNOPSIS
+.B uniq
+.RB [ \-cdu ]
+.RB [ \-f " fields" ]
+.RB [ \-s " chars" ]
+.RI [ input " [" output ]]
+.SH DESCRIPTION
+.I Uniq
+reads the input file comparing adjacent lines.
+In the normal case, the second and succeeding copies of repeated lines
+are removed; the remainder is written on the output file.
+Note that repeated lines must be adjacent in order to be found;
+see sort(1).
+Input and output default to standard input and standard output.
+.TP
+.B \-u
+Print just the lines that are not repeated.
+.TP
+.B \-d
+Print one copy of just the repeated lines.
+.TP
+.B \-c
+Precede each selected line by its repeat count.
+.TP
+.B \-f fields
+Ignore this many initial fields in comparisons.
+A field is a string of non-space, non-tab characters with preceding blanks.
+.TP
+.B \-s chars
+Ignore this many further characters. Fields are skipped before characters.
+.PP
+The full original line is printed regardless of comparison skips.
+The -d and -u options are mutually exclusive.
+.SH FILES
+/usr/man/UNIQ  this page
+.SH "SEE ALSO"
+sort(1), comm(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for file I/O failures, 2 for usage errors.
+.SH BUGS
+Lines longer than 255 bytes are treated as several logical lines. An existing longer output file is not shortened; choose a new output file. Do not use the input as the output.

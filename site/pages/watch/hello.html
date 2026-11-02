@@ -1,0 +1,63 @@
+title: hello, world, in assembly
+description: Write hello.s and a Makefile in vi, build with make (nas, then ld), run it. The whole edit-assemble-run loop, on the machine itself.
+demo: hello
+---
+<div class="band demo">
+<h1>hello, world, in assembly</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / hello</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/hello.py; examples/hello/hello.s; examples/hello/Makefile -->
+<p class="lead">The oldest program, written and built without leaving the
+machine. The demo makes a directory, writes <code>hello.s</code> in
+<code>vi</code>, writes a <code>Makefile</code> in <code>vi</code>, runs
+<code>make</code>, which assembles with <code>nas</code> and links with
+<code>ld</code>, and runs the result. Then <code>make</code> again, which has
+nothing to do, and <code>ls -l</code>.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>A TAB, not eight spaces</h2>
+<!-- src: examples/hello/Makefile; docs/man/make.1 -->
+<p><code>make</code> wants a real TAB character before each command line, and
+<code>vi</code> on the machine inserts one when it is sent one. The film types
+the Makefile with those TABs, and <code>make</code> then runs the two commands
+it names, which would not happen with spaces: <code>make</code> running is the
+check that the TAB is real. (<code>cat</code> and the file's size are
+no proof, since a TAB is one byte and shows as eight columns, and the film's own
+text is what they are compared with.) The Makefile is the lesson's, less its
+comment line, including its <code>clean</code> rule.
+
+<h2>The short source</h2>
+<!-- src: examples/hello/hello.s; src/liba -->
+<p>The program is the one in the first assembly lesson, less its comment
+header, which nobody wants to watch typed. <code>ext</code> names two routines,
+<code>PUTS</code> and <code>EXIT</code>, which <code>ld -l a</code> pulls out of
+<code>liba</code>, maux's C-less libc. The linker puts the module first, at
+<code>$0800</code>, and writes the program as a <code>BIN</code> file whose
+<code>aux_type</code> is that load address.</p>
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; docs/VERIFICATION.md (check-demos, check-recorder) -->
+<p>This film is made by <code>site/demos/hello.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests, on both displays. It requires
+that the code and data lines typed are, token for token, those of the lesson's
+<code>hello.s</code> and that the Makefile's lines are, exactly, those of the lesson's
+<code>Makefile</code>: what is typed is checked against the lesson's own files;
+that <code>cat</code> reads both files back exactly as typed; that
+<code>make</code> prints the <code>nas</code> command, nas's report, and the
+<code>ld</code> command, in that order; that <code>./hello</code> prints
+<code>hello, world</code>; that a second <code>make</code> prints nothing; that the host, reading the disk the machine wrote, finds <code>hello</code> to be
+a <code>BIN</code> file whose <code>aux_type</code> is <code>$0800</code>; and
+that <code>ls -l</code> shows <code>hello</code> as <code>BIN</code>,
+<code>hello.o</code> as <code>$F8</code>, and the two text files with exactly
+the bytes typed.</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

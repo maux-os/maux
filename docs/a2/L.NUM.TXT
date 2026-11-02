@@ -1,0 +1,20 @@
+num.s -- design notes
+================================================================
+
+
+----------------------------------------------------------------
+U2DEC -- convert an unsigned 16-bit
+----------------------------------------------------------------
+----------------------------------------------------------------
+U2DEC -- convert an unsigned 16-bit value to a NUL-terminated
+decimal liba string (high-bit-set digits, per string.s's
+encoding rule -- built directly via `ora #$B0`, the
+merlin32-gotchas idiom for "make a digit high-bit-set", per
+learning:01KW1GTYGZ9TE2ZGCDG0V2CNE0).
+IN:  U2DEC_VAL/U2DEC_VAL+1 (zp.equ) = value, low/high byte
+     PTR1/PTR1+1 = destination buffer (caller-owned, >= 6 bytes: up to
+     5 digits for 0-65535, plus the NUL)
+OUT: A = digit count written, excluding the NUL CLOBBERS: A, X,
+Y, U2DEC_VAL/+1 (consumed -- destroyed by the
+          subtraction), U2DEC_SUB/+1, U2DEC_DIGIT, U2DEC_LZ.
+----------------------------------------------------------------

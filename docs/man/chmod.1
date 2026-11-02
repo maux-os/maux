@@ -1,0 +1,53 @@
+.\" Derived from Research UNIX V1 chmod(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/chmod
+.\" Retrieved 2026-09-19; archived response SHA256: 4e68b2bf4b8393dc797f9a596ec6e72d3b36b3c00102a0b024ec26e0ed40dcab
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH CHMOD 1 "September 19, 2026" maux
+.SH NAME
+chmod \- change file access
+.SH SYNOPSIS
+.B chmod
+.I +flags file ...
+.br
+.B chmod
+.I \-flags file ...
+.SH DESCRIPTION
+The mode of each file is changed.
+Unlike Research Unix,
+.I chmod
+uses ProDOS access flags, not octal modes or owner/group/other permissions.
+A leading + sets the named bits; a leading - clears them.
+.TP
+.B r
+Read enabled.
+.TP
+.B w
+Write enabled.
+.TP
+.B d
+Destroy enabled.
+.TP
+.B n
+Rename enabled.
+.TP
+.B b
+Backup needed.
+.PP
+For example,
+.B chmod \-dnw file
+locks a file against deletion, renaming and writing;
+.B chmod +dnw file
+unlocks it again.
+Unmentioned bits, file type, auxiliary type and timestamps are preserved.
+A failed operand is reported and the remaining files are attempted.
+.SH FILES
+/usr/man/CHMOD  this page
+.SH "SEE ALSO"
+ls(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if every file succeeds, 1 for access/change failures, 2 for invalid flags or missing operands.
+.SH BUGS
+Unix rwx and numeric modes are not supported. The leading + or - is required.

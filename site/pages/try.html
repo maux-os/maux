@@ -1,0 +1,56 @@
+title: Try
+description: Boot maux in your browser. The release disk running in an emulated enhanced Apple IIe, on this page.
+---
+<div class="band demo emuband">
+<h1>Try maux</h1>
+
+<!-- src: docs/SITE.md sec 10 D4 ("Spike, 2026-10-20", "Closed 2026-10-30"); src/kernel/process.s; docs/SUPPORT.md; docs/DEMO-PHOSPHOR.md -->
+<p class="lead">Hit the button below to play with maux in
+<a href="https://apple2ts.com/">Apple2TS</a>.</p>
+
+{{gen:tryemu}}
+</div>
+
+<h2>What to type first</h2>
+<!-- src: docs/FULLDISK.md sec 2; docs/man/man.1; docs/man/ps.1; docs/FULLDISK.md sec 2; docs/CONSOLE.md -->
+<ol>
+<li><code>ls /bin</code> &mdash; the commands, all of them on the disk.</li>
+<li><code>ps</code> &mdash; the processes. The BANK column is the memory bank each
+one lives in: that is what a process <em>is</em> here.</li>
+<li><code>man man</code> &mdash; the manual, paged on the alternate screen.
+<code>q</code> leaves it and the screen comes back.</li>
+<li><code>cd /usr/src</code>, then <code>ls</code> &mdash; maux's own source and its
+makefile, on the disk you are running.</li>
+<li><code>chvt 2</code> &mdash; a second console with a shell of its own;
+<code>chvt 1</code> comes back to this one, exactly as you left it.</li>
+</ol>
+<p><code>^C</code> interrupts, <code>^Z</code> suspends, and <code>^D</code>
+ends input.</p>
+
+<h2>The machine</h2>
+<!-- src: src/kernel/process.s (PRC_INIT, PRC_FREE_LIST); src/kernel/timer.s (TMR_INT_MB); site/facts.py (bank_top, min_ram_kb); docs/SITE.md sec 10 D4; docs/DEMO-PHOSPHOR.md -->
+<p>An enhanced IIe with a RamWorks-compatible card of {{fact:min_ram_kb}}&nbsp;KB, a
+mouse card in slot&nbsp;5 for the 60&nbsp;Hz clock tick, a Mockingboard in slot&nbsp;4,
+and the release disk on a SmartPort card in slot&nbsp;7. The card size is the
+smallest that covers the kernel's free list of process banks. The swatches under
+the screen pick the phosphor before the machine boots, and your choice follows
+you to <a href="/watch/">the films</a>.</p>
+
+<h2>The emulator</h2>
+<!-- src: docs/SITE.md sec 10 D4; docs/DEPENDENCIES.md sec "Operator-supplied ROMs" -->
+<p>Apple2TS, by Chris Torrence and its contributors, MIT licensed and on
+<a href="https://github.com/ct6502/apple2ts">GitHub</a>. It models the enhanced
+IIe, the RamWorks card, the mouse and Mockingboard cards and the SmartPort
+drive, and it supplies the Apple ROMs, which is why maux ships none. The frame
+above runs the machine alone, so the screen gets the whole box; the link under
+it opens Apple2TS in its own tab with all of its controls -- reset, speed, saved
+states, its own disk drives.</p>
+<p>maux's own gates boot this disk in the emulator's core, headless, and check
+that a session reaches a prompt and that the processes land in the banks the
+kernel says they should.</p>
+
+<h2>The same disk, on your own machine</h2>
+<!-- src: site/pages/get.html; docs/SUPPORT.md (rows "MAME apple2ee") -->
+<p>It runs in MAME, and on a real enhanced IIe with a RamWorks card and a
+SmartPort adapter: <a href="/get/">Get maux</a> has the download and both
+recipes.</p>

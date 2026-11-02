@@ -1,0 +1,27 @@
+*---------------------------------------------------------------
+* mm.mli.equ -- shared hardware/firmware addresses (docs/
+* MEMMAP.md #3b): the ProDOS MLI entry point and the AppleMouse
+* II PIA registers. Split out of inc/memmap.equ (docs/
+* SELFHOST-CONVERSION.md phase 1) as its own small file: only
+* src/kernel/mli.s, src/kernel/mouse.s, src/kernel/timer.s and
+* src/kernel/procfd.s reference these, a much narrower set than
+* the softswitch triggers in inc/mm.hw.equ.
+* Full design notes: I.MEMMAPE.TXT (docs/a2/), docs/MEMMAP.md
+* #3b
+*---------------------------------------------------------------
+
+* See I.MEMMAPE.TXT: "3b. Shared hardware/firmware addresses (o"
+
+MLI            equ   $BF00        ;ProDOS MLI entry -- JSR here,
+                                  ;DFB call#, DA parms. Was
+                                  ;duplicated in mli.s and
+                                  ;process.s.
+* -- AppleMouse II PIA registers (slot 5), addressed as literal
+* $C0Dx. -- Deliberately NOT written as $C080+(MOUSE_SLOT<<4)+n:
+* an earlier draft -- did and merlin32 mis-assembled it (see
+* src/kernel/timer.s's note). -- Were duplicated in mli.s and
+* timer.s.
+MOUSE_PRA      equ   $C0D0        ;PRA/DDRA
+MOUSE_CRA      equ   $C0D1        ;CRA
+MOUSE_PRB      equ   $C0D2        ;PRB/DDRB
+MOUSE_CRB      equ   $C0D3        ;CRB

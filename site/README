@@ -1,0 +1,145 @@
+site -- the maux website
+========================
+
+    make site            render build/site/   (needs mandoc; no image, no emulator. The
+                         /learn/ lessons need the sessions `make check-examples` wrote
+                         and a session of another build/full.po is an error;
+                         SITE_FLAGS=--skip-lessons skips the lesson pages)
+    make site-serve      serve it on http://127.0.0.1:8000/  (SITE_PORT=n to change)
+    make check-site      build, check, and run the self-test that plants defects
+    make site-preview    build/pages-preview/: the Pages tree from build/full.po + one zero
+                         block (maux-preview.po), built --local-preview; PREVIEW_PORT=8010,
+                         PREVIEW_APPLE2TS=URL (a local Apple2TS instead of apple2ts.com)
+    make site-preview-serve   serve it on 127.0.0.1 with Access-Control-Allow-Origin: *
+    make site-pages VERSION=X.Y.Z   build/pages/ from dist/maux-X.Y.Z/ (refuses on a bad
+                         bundle, a demo with no film, a stale lesson session); prints the
+                         publish commands, runs none (docs/RELEASE.md "Publishing the site")
+    make demos           (Mac, release time) record build/demos/; `make site` then
+                         copies them into build/site/watch/<demo>/
+
+Settings, via SITE_FLAGS='...' or python3 site/build.py ...:
+
+    --apple2ts-url URL   base of the Apple2TS link on /get/   (default https://apple2ts.com/)
+    --image-url URL      the hd1= disk URL in that link       (default: maux.po, relative)
+    --repo-url URL       where repo: links point              (default https://github.com/maux-os/maux/blob/main/)
+    --revision R         revision to print (else MAUX_REVISION, else git; omitted with neither)
+    --local-preview      allow localhost URLs (check-site fails on them otherwise)
+    --mandoc PATH        default $MANDOC, else mandoc
+    --man-only a,b,c     render only these man pages (self-test)
+    --examples DIR       where check-examples wrote the sessions (default build/examples)
+    --full-image PATH    the disk the sessions must have run on (default build/full.po)
+    --skip-lessons       build without the lesson pages (no check-examples run yet)
+
+Layout
+------
+
+    build.py      the generator, Python stdlib only
+    facts.py      every number on the site, with its source
+    pages/        one ASCII HTML fragment per route (about.html -> /about/,
+                  watch/fedgrep.html -> /watch/fedgrep/, index.html -> /)
+    templates/    page.html, the shell ([[title]] [[nav]] [[content]] ...)
+    static/       style.css; diagrams/*.svg (inlined by {{svg:NAME}})
+    demos/        the demo scripts (see demos/README)
+
+Output: build/site/ and build/site-cache/ (mandoc results, keyed by hash). Never
+committed.
+
+A page
+------
+
+    title: Short title
+    description: One sentence, for the meta tag.
+    demo: fedgrep           (only on watch/<demo>.html)
+    ---
+    <h1>...</h1>
+    <!-- src: docs/ARCHITECTURE.md sec Core idea -->
+    <p>...a claim about maux or the hardware...</p>
+
+Rules:
+- ASCII only. Typographic characters are entities (&mdash; &rsquo;).
+- Every paragraph that states a fact carries a src comment naming a file in
+  the tree. check-site refuses a missing file and a page with no src comment.
+- A heritage claim (who wrote a tool, which edition it first appeared in)
+  cites the tree's own man-page header (docs/man/X.1) where the tree has
+  one. Where the tree is silent, a BSD man page's HISTORY section is the
+  reference. Where NEITHER supports it, the page does not make the claim.
+  Name what backs each row in its `source` field in site/conformance.py.
+  Edition names, never typed years (check-site rejects a bare number).
+- Links are root-relative ("/watch/"); the build makes them relative. A link
+  into the repository is href="repo:docs/X.md" and must name a tracked file.
+  Never link the LAN-only Forgejo: check-site refuses it.
+- A page OUTSIDE pages/learn/ must not link INTO /learn/<lesson>/. The
+  lesson pages are absent in a --skip-lessons build (a gated mode: the
+  lessons need the sessions `make check-examples` writes), so such a link
+  is a broken link there and check-site says so. Link to /learn/ itself,
+  or name the lesson in prose. Lesson -> watch links are fine: the watch
+  pages are always built.
+- Placeholders: {{fact:NAME}}, {{svg:NAME}}, {{demo:NAME}}, {{gen:NAME}}.
+  gen blocks live in build.py as gen_NAME (hero, demogallery, player,
+  democommands, democaptions, demotranscript, demogate, ladder, syscalls,
+  download, verification, gatelist, manindexsummary, tryit, builtrev,
+  conformance_table, conformance_gaps, conformance_utils).
+
+A lesson page
+-------------
+
+A page under pages/learn/ has a `lesson: lN` header. It is built only if
+scripts/check_examples.py lists lN in LESSON_IDS, defines row_lN, and
+build/examples/lN/session.txt exists (`make check-examples` writes it, and
+nothing else does: its first lines record the git revision and the sha256 of
+the build/full.po it ran on; a session of another disk is "stale"). Use
+{{file:examples/DIR/NAME}} to include a lesson file verbatim, {{gen:session}} for
+the gate's session ("$ " lines were typed, "[ ... ]" lines are notes) and
+{{gen:lessonnav}} for previous/next, {{sessionout:CMD#N}} for the output of the Nth
+`$ CMD` of the session (a page never types a gate's output twice). docs/EXAMPLES.md is the contract.
+
+A fact
+------
+
+In facts.py, a function of the repository root returning the display string:
+
+    @fact('name', ['path/it/reads'], 'how it is derived')
+    def f_name(root): ...
+
+A fact whose source does not exist, or whose number cannot be found, is a build
+error, not a blank. A figure from a run belongs in evidence/ with its
+revision, and its fact must print that revision too. Do not invent a number: if
+nothing persists it, leave it off the page.
+
+A demo page
+-----------
+
+Add site/demos/NAME.py (demos/README), then site/pages/watch/NAME.html with
+`demo: NAME`, using {{gen:player}} and friends. A watch/ page with no demo file,
+and a demo with no page, are build errors. The page shows the video when
+build/demos/NAME/ has one, and otherwise the commands the script types.
+
+Running the gates on the box
+----------------------------
+
+scripts/box_gate.sh rsyncs with --delete, so an untracked vendor/ on the
+box is wiped on every run: keep vendor/ in the local worktree as a real
+directory (not a symlink; it is gitignored). check-site's self-test builds
+the lesson pages, so `make check-examples` must have run on the box first
+(`box_gate.sh check-examples check-site`).
+
+After a landing that changes a userland binary
+----------------------------------------------
+
+Both of check-site's recorded-artifact sets are keyed to the sha256 of the
+disk image they ran on: a film records the image it booted, a lesson page
+records the build/full.po its session was typed on. So any merge that
+changes even one utility turns both stale, and check-site goes red naming
+films it cannot know are only out of date rather than wrong. The films
+and sessions are NOT tracked, so this is a regeneration, not a commit.
+
+Regenerate in this order -- the same order docs/RELEASE.md gives for a
+release, and the order matters:
+
+    make check-examples demos       # examples FIRST, then the films
+    make check-site
+
+check-examples rebuilds images that the films boot, so recording first
+throws the recordings away: a subset re-record done before it came back
+stale again, with three of the seven freshly recorded films among the
+casualties. Record last, once every image has settled.

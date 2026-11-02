@@ -1,0 +1,128 @@
+.\" Derived from 4.3BSD-Reno ex(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=4.3BSD-Reno/src/usr.bin/ex/ex.1
+.\" Retrieved 2026-09-19; archived response SHA256: e640aa061fe3ee4cfc16cd6118069b647c6ff9a397a79504a4eec83bcb4e91c4
+.\" Licence: Berkeley file-local grant; see BSD-LICENSE and licenses(1).
+.\" Search: Earlier 2BSD/4.3BSD witnesses lacked an explicit permissive grant; selected this earliest verified file-local grant in the bounded archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.\" Copyright (c) 1980, 1990 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms are permitted provided
+.\" that: (1) source distributions retain this entire copyright notice and
+.\" comment, and (2) distributions including binaries display the following
+.\" acknowledgement:  ``This product includes software developed by the
+.\" University of California, Berkeley and its contributors'' in the
+.\" documentation or other materials provided with the distribution and in
+.\" all advertising materials mentioning features or use of this software.
+.\" Neither the name of the University nor the names of its contributors may
+.\" be used to endorse or promote products derived from this software without
+.\" specific prior written permission.
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\"     @(#)ex.1	6.6 (Berkeley) 7/24/90
+.\"
+.TH EX 1 "September 19, 2026" maux
+.SH NAME
+ex \- edit text with a swap-backed line editor
+.SH SYNOPSIS
+.B ex
+.RI [ file ]
+.SH DESCRIPTION
+.I Ex
+is the root of a family of editors.
+Display based editing is the focus of vi(1).
+On maux, ex and vi share their line-editing engine; ex stores text in
+a swap file so that the edited text need not fit in a process bank.
+.PP
+The buffer is a copy. Changes do not affect the original file until
+it is written.
+The basic addresses and a, i, c, d, p, r, w, s, g, v, m, t, j and =
+commands are described in ed(1).
+Type ex commands without vi's leading colon.
+.PP
+.B Differences from ed.
+Use # or nu for numbered printing; n is reserved for next-file editing
+and is not implemented.
+The default r address is the current line, not end of buffer.
+Join inserts a space between lines.
+Bare , and ; mean the current line, not the whole buffer:
+write 1,$ explicitly for every line.
+A number after s/// is a count of lines, not an occurrence number.
+.PP
+.B Command names.
+A command is named by its letters, as in POSIX ex, and may be
+shortened to a prefix: append, change, copy (co), delete, edit,
+global, insert, join, list, mark (ma), move, number (nu), print,
+quit, read, substitute, undo, vglobal, write, xit, and the
+one-letter k, t and z. Blanks may precede the name.
+A word that is none of these is refused, so that cxyz is no longer
+change: the message is
+.RI `` word :
+Not an editor command'' and nothing in the buffer changes.
+A verb followed by an operand it does not take (2d3, 2=x, 1zx)
+is refused with ``Trailing characters''. Counts, registers and
+print flags are not implemented.
+.PP
+.B Additional commands.
+.TP
+.B q, q!
+Quit, refusing unsaved changes unless ! is given.
+.TP
+.B wq, x
+Write and quit; x writes only when modified.
+.TP
+.B w! file
+Write, overriding the guard against overwriting a different existing file.
+.TP
+.B e file, e! file
+Replace the buffer by another file, with or without the unsaved-change guard.
+.TP
+.B u
+Undo the last change; another u redoes it. Undo is single-level.
+.TP
+.B kx, mark x
+Mark the addressed line with letter x.
+Use 'x as an address and '' for the previous-context mark.
+.TP
+.B ?pattern?
+Search backward, wrapping around. ?? and // reuse the last pattern.
+.TP
+.B l
+List text with nonprinting characters made visible.
+.TP
+.B z
+Print a window of text.
+.TP
+.B &
+Repeat the last substitution.
+.TP
+.B !command
+Run a shell command without changing the buffer.
+.TP
+.B range!command
+Replace the addressed lines by the command's output.
+.TP
+.B r !command, w !command
+Read command output into the buffer, or write the addressed text to a command.
+.PP
+For example,
+.B 1,$p
+prints the buffer and
+.B 1,$s/old/new/g
+replaces every occurrence.
+Shell commands use sh(1), including its real pipelines and its limitations.
+.PP
+The session uses EX.SWPxx in the working directory.
+Shell escapes also use temporary command/data files there.
+Quit normally to allow cleanup.
+.SH FILES
+/usr/man/EX  this page
+.SH "SEE ALSO"
+ed(1), vi(1), sh(1), licenses(1)
+.SH DIAGNOSTICS
+Normal completion returns 0; recorded command/file errors cause status 1, and initial working-area failure gives 2. Script-mode errors may be silent: inspect the exit status, not just visible question marks. Interactive ex prints the refusal message; vi shows it, or ``Command failed'' for an error with no message of its own, on the status line until the next key.
+.SH BUGS
+The line table holds 2048 lines; input lines/commands are bounded to 250 bytes and edited line descriptors to 254. Global commands have at most 250 pending matches. There is no full Berkeley option system, tags, multi-file next list, crash-recovery interface or transition from ex into visual mode. Start vi separately.

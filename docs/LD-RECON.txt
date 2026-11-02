@@ -1,0 +1,745 @@
+LD-RECON.txt -- recon for an `ld` front end on Merlin-8's LINKER.S
+task #8 next slice, 2026-08-20. READ-ONLY recon; no code written.
+
+All line numbers are DECODED source lines (src/merlin/patches.py's
+decode_lines() over the high-bit-ASCII, $8D-terminated vendor files) --
+they are 1:1 with vendor/merlin/*.S and with build/merlin_patched*/*.S
+(patches.py edits preserve line numbers by construction). Grading:
+[fact from source] = read directly off vendor/merlin or build/merlin_patched*;
+[fact, measured] = derived from an existing build artifact/gate output;
+[inference] = reasoned from source but not independently run/verified here.
+
+====================================================================
+HEADLINE FINDING (bears on every section below): LINKER.S IS ALREADY
+EMBEDDED, TODAY, INSIDE THE SAME CORE_BANK1 OBJECT as.s USES -- AND ITS
+OWN AUX SWITCHES WERE NEVER AUDITED.
+====================================================================
+
+vendor/merlin/MACASS.S:237 `ORG $D000`, :239 `PUT LINKER`, :241
+`PUT ASS.BNK1`, :254 `ORG $E5F0` (then PUT LIB/PRDEC, ASSMAIN, BRACKET,
+MSGS, OPCODES, GETLINE, SYMPRINT, PRINTENT). [fact from source] This is
+the SAME MACASS.S that scripts/build_ascore_image.py assembles for BOTH
+the hardware and process variants (docs/AS-DESIGN.md section 14). LINKER
+is PUT immediately before ASS.BNK1, both under the same `ORG $D000` --
+i.e. LINKER.S's object code IS the first bytes of CORE_BANK1
+(build/ascore-bank1.obj, build/ascore-process-bank1.obj), physically
+present in every `as` process's LC bank-1 today, dormant because nothing
+currently jumps to it.
+
+This directly contradicts docs/AS-P10-ENUMERATION.txt:4's stated scope:
+"NOT MACED.S/MACEXEC.S/INTERPRETER.S/LINKER.S, none of which `as.s`
+embeds." MACED/MACEXEC/INTERPRETER are correctly excluded (never PUT
+into MACASS.S's bank-1/bank-2 objects). LINKER.S is not like them -- it
+IS PUT into the object -- and its exclusion from that file's sweep looks
+to be an unverified assumption-by-analogy, not a checked fact. Net
+effect: LINKER.S's own READ.AUX/READ.MAIN/WRITE.AUX/WRITE.MAIN sites
+(9 of them, see Q3) were never sourced into P1's (phase B) or P10's
+(section 13/14) enumeration, and are still live, unpatched RAMRD/RAMWRT
+toggles sitting inside the artifact `as.s` already embeds. They are
+inert only because nothing currently transfers control to $D003.
+
+Good news half of the same finding, from the SAME PUT ordering: LINKER.S
+references the equate `SYMADR`, defined once in MACASS.S:187, BEFORE any
+PUT statement runs -- so LINKER.S's own `SYMADR`-relative code resolves
+against the SAME symbol P1 already patches. Confirmed by direct diff:
+
+  vendor/merlin/MACASS.S:187        SYMADR = $1000 ;Aux mem
+  build/merlin_patched_process/MACASS.S:187
+                                     SYMADR = $2000 ;maux P1: main-bank
+                                     symtab (was aux $1000)
+
+[fact, measured -- byte-read both files] So in the PROCESS-variant core
+`as.s` already builds, LINKER's dictionary base (DICPNT, LINKER.S:51-52)
+and its final linked-image destination (OBJPNT/DEST, LINKER.S:359-361)
+ALREADY compile to $2000, not stock's $1000, with zero further patching
+-- P1's relocation is a happy accident for `ld`, not something `ld` has
+to re-derive. See Q3/Q4 for what this does and does not fix.
+
+====================================================================
+1. ENTRY
+====================================================================
+
+There is no single documented callable vector analogous to the
+assembler's $E5F3 (ASMBLER). The linker's entry is a two-stage,
+self-modifying bank-switch idiom, and the REAL vector is $D003, not
+$D000:
+
+- vendor/merlin/LINKER.S:38 `JMP MAKDIC` (3 bytes, at $D000 -- "For USR
+  access", i.e. reachable from the USR pseudo-op / assembler-side
+  dictionary-entry code, NOT the linker's own entry).
+- LINKER.S:40 `ERR LINK-$D003` -- a build-time assertion that the `LINK`
+  label lands EXACTLY at $D003 (3 bytes past $D000, i.e. immediately
+  after the `JMP MAKDIC` stub). [fact from source]
+- LINKER.S:42 `LINK ROR PAGFLAG` is therefore the real entry point.
+
+Reached via MACED's own command dispatch, not a documented external
+contract:
+- vendor/merlin/COMMANDS.S:6-8: `ASC "LINK"` / `DFB 1,3,0` / `DA LINK-1`
+  -- command-table entry, argument types 1 (address expression) and 3
+  (string/filename), matching the manual's `LINK $addr,names` syntax.
+  [fact from source]
+- vendor/merlin/MACED.S:837-842:
+    LINK LD SOURCE       ;buffer must be EMPTY
+     SUB ENDSRC
+     BNZ RGERR           ;"range error" if SOURCE != ENDSRC (do NEW first)
+     RTN
+     JSR SAVPNT
+     JMP GOLINK
+  [fact from source; matches the existing learning "LINK requires an
+  empty source buffer"] The arg-type-1/3 parser (elsewhere in MACED/
+  COMMANDS, not traced further here) is what populates LOADADR ($16,
+  "ED puts load adrs here" per LINKER.S:9) and STRINGS ($860, "Filename
+  here" per LINKER.S:11) BEFORE this LINK label runs.
+- MACED.S:220-227:
+    ORG $D000
+    GOLINK BIT CONTROL!BANK1
+     BRK
+     BRK
+     PUT PAGINATOR
+     ERR *-$D100
+  [fact from source] `BIT CONTROL!BANK1` (3 bytes) flips in LC bank 1
+  (where LINKER+ASS.BNK1 physically live). The two `BRK`s are dead
+  filler in MACED's OWN bank-2 copy of this page -- they are never
+  executed, because by the time the CPU fetches the next opcode at
+  $D003, bank 1 is already switched in, and bank 1's $D003 is LINKER's
+  `LINK` entry (per the ERR assertion above). This is the classic
+  same-address dual-bank fall-through trick, the same shape as
+  ASSMAIN.S:2's `ASM JSR BNK1`. `ERR *-$D100` asserts this whole stub
+  is exactly 256 bytes, ending at $D100 -- i.e. GOLINK's own bank-2 copy
+  never overlaps LINKER/ASS.BNK1's bank-1 content past that page.
+
+Entry state: LINK is MOSTLY self-establishing, unlike ASM's documented
+R0/R1/R2/R5/R6/R7 contract. LINKER.S:42-62 (LINK's own prologue):
+ROR PAGFLAG (enable paginator), LSR JUST, compute OFFSET = LOADADR -
+SOURCE (relocation delta from the caller-supplied load address),
+DICPNT+1 := >SYMADR (compile-time $2000 in the process core, see
+headline finding), SPNT+1 := SOURCE+1 (the code-load pointer REUSES the
+now-empty source buffer as scratch memory -- LINKER.S:53-54), DICPNT
+low/SPNT low/ERCOUNT/DUPCNT/EXPFLG/LSTFLG all zeroed (LINKER.S:56-62).
+So the ONLY externally-supplied state LINK actually needs is: (a)
+LOADADR ($16/$17, numeric load address), (b) STRINGS ($860, the names
+FILE's own pathname -- not to be confused with the per-module pathnames
+INSIDE that file, see Q2), and (c) SOURCE/ENDSRC equal (buffer empty) --
+the SAME ZP cells the assembler's R5/R6/R7 contract already names.
+[fact from source, all four items]
+
+Return: does NOT return. Same non-return shape as the assembler's
+`JMP EDITOR`/ASEXIT, but LINKER always lands on a documented RESIDENT
+vector rather than falling into MACED code directly:
+- Success path, LINKER.S:351-380 (`LINKED`): after AUXMOVE (see Q4),
+  LINKER.S:380 `JMP HIT`. `HIT = $E02A` (LINKER.S:12), which is the SAME
+  address as `WRMVEC = INT+$2A` (MACEXEC.S:100, and INTERPRETER.S:518
+  `WRMVEC DA STARTUP ;Reset reentry`) once INT is relocated to $E000 at
+  cold BRUN -- i.e. HIT IS the warm-restart reentry vector. [fact from
+  source, cross-file equate match]
+- CONSTRAINT ERROR path, LINKER.S:221-240 (`ERRMEM`): prints the
+  "Constraint error: " message (inline-string SENDMSG, see Q6) then also
+  `JMP HIT` (LINKER.S:240) -- non-fatal-looking, returns to warm restart
+  with ORGFLG left alone (object NOT saved, since LINKED never ran).
+- Fatal file/memory errors, LINKER.S:336-344 (`FILERR`, reached from
+  MEMCHK's "prog too large" and from LOADIC/GETPL's mismatched-DICPNT
+  guard): sets ORGFLG (defeats OBJ save), `JSR JCLOSE`, `JSR WARMDIS`,
+  then `JMP JERROR` ($E015 = INT+$15, INTERPRETER.S:510 `JERROR JMP
+  ERRENTRY ;Print error msg routine`) -- a numeric MLI-style error code
+  in A. [fact from source] ERRENTRY's own tail was not traced in this
+  pass; INTERPRETER.S:519 `ERRTN DA WARM ;Error reentry` strongly
+  suggests [inference] it too eventually reaches warm restart, matching
+  Merlin's general error convention, but this is not independently
+  confirmed here.
+
+A direct-entry `ld` (bypassing MACED the way `as.s` bypasses editor-
+mediated ASM entry) would need to reproduce: the LC bank-1 flip itself
+(GOLINK's `BIT CONTROL!BANK1` -- trivial, a single softswitch read `as`
+does not currently need since it enters at $E5F0-based code, already in
+whichever bank the front end loaded), seed LOADADR + STRINGS, and land
+on SOURCE==ENDSRC (a state `as.s` already establishes for its own entry
+contract, reusable). This is a SMALLER, more self-contained entry
+contract than ASM's -- LINK asks for two caller values, not seven
+registers -- but it is reached through a bank-flip idiom `as.s` has
+never had to perform, since `as.s` never calls GOLINK/MACED at all.
+
+====================================================================
+2. INPUT: the names-file format, precisely
+====================================================================
+
+The on-disk byte format is already fully documented (learning:
+01M041MZER5YQJQYR7JP5N7F01): per module, a 1-byte length, then that many
+high-bit-ASCII pathname bytes, then a literal $00 terminator; the file
+ends with one more lone $00 (a `BRK` opcode byte, coincidentally $00 --
+the manual's own source, PI.NAMES.S, appends a real `BRK` instruction as
+the file's last byte). What was NOT previously documented is how
+LINKER.S actually CONSUMES that format -- traced here from source:
+
+- LINKER.S:63-69 (`]LOOP`/`:GOT`): copies STRINGS ($860, the LINK
+  command's OWN typed filename -- e.g. "NAMES" -- terminated by a $00
+  Merlin already keeps at end of any typed string) into DOSFNAM, then
+  `JMLI open;OD` opens THAT file (the names file itself, not a module).
+- LINKER.S:70-73: `MOV ODREF;RNREF` / `STA RCREF` / `STA RRREF` --
+  caches the open reference for later reads/newline/close, then
+  `JMLI newline;RN` -- MLI NEWLINE, which sets a per-open-file mark
+  CHARACTER (not shown in this file, but the effect below proves it is
+  $00). [fact from source + behavioral inference from the effect]
+- LINKER.S:74-78 (`LNKLOOP`): `JMLI read;RR` -- reads into IN+$80 ($280,
+  the SAME line-input buffer INTERPRETER.S uses elsewhere). Because
+  NEWLINE armed a $00 mark character, ONE MLI READ call returns exactly
+  one length-prefixed record: [1 length byte][that many high-bit chars]
+  [trailing $00 consumed as the delimiter]. `LDY IN+$80` (the record's
+  own length byte) is checked: 0 means the record was the file's FINAL
+  lone $00 (no length, no chars) -- i.e. EOF -- so the names file is
+  closed (`JMLI close;RC`) and control moves to FIXEXT (external
+  resolution, Q1's success path leads here). Nonzero means a real module
+  name follows.
+- LINKER.S:79-84 (`:MV`): copies the just-read record (length byte AND
+  chars, Y down to 0, i.e. REVERSE order) into DOSFNAM. This is the
+  per-module pathname, now ready to open as a REL object file.
+- LINKER.S:83-113: the module's own code is then loaded via `JSR JRLOAD`
+  (LINKER.S:106) -- `JRLOAD = INT+$18 = $E018` (INTERPRETER.S:511 `JRLOAD
+  JMP RLOAD ;Load LNK file by linker`), a resident $E0xx entry LINKER.S
+  is the ONLY caller of anywhere in the embedded chain (grep confirms;
+  see Q6). RLOAD's own body was not traced in this pass (not in
+  LINKER.S; presumably in MACEXEC.S/PRODOS-adjacent code, unexamined).
+  ADRS (LINKER.S:87-89) is set to the current SPNT (the running "next
+  load address" high/low pair, LINKER.S:83-86); after the call, RWGOT
+  (bytes actually read) adjusts SPNT forward (LINKER.S:107-112) and BLEN
+  minus RWGOT (two's-complemented into PL, LINKER.S:113-121) becomes the
+  countdown for the module's own trailing DICTIONARY portion, read next
+  via GENTRY's byte-at-a-time `JMLI read` (LINKER.S:168-174, reusing the
+  SAME open reference).
+
+Length limits: the per-module pathname's length byte is a single byte
+(max 255), matching ProDOS's own pathname-length-byte convention used
+elsewhere in Merlin's STR/ASC output. [inference from format] STRINGS
+itself (the names-FILE's own pathname, distinct from the per-module
+names) is bounded by MACED.S:74 `STRINGS = RNGLIST+$60 ;Cannot write
+above $89F` -- a small buffer, room for one ordinary ProDOS pathname.
+[fact from source] DOSFNAM (reused for both the names file's own path
+and, later, each module's path) is the same 64-byte buffer the DSK/SAV
+machinery uses per the existing learning ($BDC0-family convention).
+
+====================================================================
+3. THE AUX DEPENDENCY: every READ.AUX/READ.MAIN/WRITE.AUX/WRITE.MAIN
+   touch in LINKER.S
+====================================================================
+
+9 literal switch-instruction occurrences in LINKER.S itself, forming 5
+logical open/close brackets (some closes are shared subroutines called
+from more than one open site):
+
+  LINE  SWITCH        SITE / BRACKET                        CALLED FROM
+  90    WRITE.AUX     open A -- code-address dict write      (inline)
+  104   [JSR BUMPDIC] closes A via BUMPDIC's WRITE.MAIN (325)
+  151   WRITE.AUX     open B -- PUTDIC, 4-byte EXT entry      (inline)
+  157/158 [JSR BUMPDIC x2] closes B via BUMPDIC (325); 2nd
+          call is a redundant pointer-advance already in MAIN
+  177   WRITE.AUX     open C -- LOADEE, dict-terminator byte  (inline)
+  179   WRITE.MAIN    closes C (tight, same routine)
+  320   READ.AUX      open D -- GETPL, generic dict-byte read (inline)
+  322   READ.MAIN     closes D (tight, same routine)
+  325   WRITE.MAIN    BUMPDIC's own close (shared by A and B)
+  390   WRITE.AUX     open E -- FIXEXT, mark end of dict       (inline)
+  395   WRITE.MAIN    closes E (tight, same routine)
+
+Bracket pairs: A(90/325-via-104), B(151/325-via-157), C(177/179),
+D(320/322), E(390/395). [fact from source, all line numbers verified by
+direct grep of the decoded file] GETPL (bracket D) is a subroutine
+called from 12 static sites across FIXEXT/GETEX/BYSYM/HAVSYM/FINDENT
+(LINKER.S:397,399,406,409,411,413,419,424,434,435,440,447) -- every one
+of those 12 calls re-executes the same READ.AUX/READ.MAIN pair.
+BUMPDIC (the A/B close) is called from 3 static sites (104, 157, 158).
+
+None of these 9 sites, nor GETPL's/BUMPDIC's callers, appear in
+docs/AS-P10-ENUMERATION.txt's 33-touch table -- confirmed by direct
+re-grep of that file (it lists only ASS.BNK1.S/ASSMAIN.S/SYMPRINT.S
+rows) and by that file's own header, which excludes LINKER.S on the
+"as.s doesn't embed it" premise this recon's headline finding refutes.
+**Net: LINKER.S carries its own, complete, unaudited RAMRD/RAMWRT
+bracket set, structurally identical in shape to what P1/P10 already
+handled elsewhere (open/close pairs around a byte or short run of dict
+bytes) -- but never swept, never patched.** [fact, gap identified by
+direct comparison]
+
+A second aux dependency, NOT a raw switch but a shared-code exposure:
+LINKER.S's external-symbol resolution (FINDENT/NXSY/LOOKEN, LINKER.S:
+498-535) calls `GETSYM`/`GETSYM0` (LINKER.S:501,503,505,509,511,520,522,
+529) -- these are DEFINED in ASS.BNK1.S:1398-1399 (`GETSYM INY` /
+`GETSYM0 STA READ.AUX`), i.e. the assembler's OWN symbol-table read
+primitive, whose READ.AUX/READ.MAIN bracket at ASS.BNK1.S:1399-1401 IS
+one of P1's 25 patched sites (docs/AS-P10-ENUMERATION.txt:34-35,
+docs/AS-DESIGN.md section 7's own patch list). So LINKER.S's dictionary-
+vs-ENT/EXT symbol search rides on ALREADY-patched, bank-agnostic code;
+only LINKER.S's OWN direct dictionary I/O (the 9 sites above) is
+unpatched. Two different aux dependencies, two different states of
+readiness.
+
+Counts, for the design doc: 9 literal touch sites / 5 logical brackets
+in LINKER.S proper (unpatched); 0 of those in the existing 33-touch P1+
+P10 table; 1 shared subroutine (GETSYM0) already inside P1's coverage
+and reused by LINKER.S as-is.
+
+====================================================================
+4. OUTPUT: what the linker emits, where, and its size limits
+====================================================================
+
+Build location: MAIN memory, starting at the (now-empty) source buffer
+(conventionally $0901), advancing via SPNT as each module is JRLOAD'd in
+(Q2) and its dictionary consumed. Fixups happen IN PLACE on those bytes
+via FIXCODE/MAKPNT (LINKER.S:196-289) -- relative-label relocation
+(add/subtract OFFSET) and external-symbol patching (FINDENT resolves an
+EXT against another module's ENT, then reuses FIXCODE with the
+resolved OFFSET).
+
+Final move, LINKER.S:346-380 (`LINKED`): the ENTIRE built image is moved
+from main memory to AUX $1000 (stock) / process $2000 (patched core,
+per the headline finding) via `AUXMOVE = $C311` (LINKER.S:36), called at
+LINKER.S:371. [fact from source] `AUXMOVE` is a BUILT-IN //e 80-column
+firmware entry point (the $C1xx-$CFxx expansion-ROM range, not language-
+card RAM, not the $F800-$FFFF monitor, not an $E0xx resident cell) --
+a THIRD class of external dependency beyond monitor-ROM and $E0xx-
+resident, not covered by P6's original six-entry enumeration or by any
+existing `as` finding. Whether this address is reachable/correct from
+inside a maux process (does $C000-$CFFF I/O space bypass RamWorks bank
+selection the way it bypasses LC banking? is SLOTC3ROM/INTCXROM state
+guaranteed?) was NOT verified in this pass -- flagged as an open
+question, not a fact either way. [inference/open item]
+
+LINKER.S:357-370 also sets `OBJPNT` ($E2) and `OBLEN` ($E4) to point at
+the just-moved image (address, length) -- the SAME two zero-page cells
+`as.s`'s WRITEOBJ already found colliding with `inc/zp.equ`'s
+PTR1/PTR2 (docs/AS-DESIGN.md section 14, "a zero-page collision in
+as.s's own WRITEOBJ"). A `ld` front end reusing `as.s`'s existing
+WRITEOBJ pattern (capture OBJPNT/OBLEN into front-end-owned cells BEFORE
+any liba call touches PTR1/PTR2) directly inherits that already-solved
+fix -- but must apply it, not assume it, since `ld` is a different
+program image.
+
+Merlin itself does NOT save to disk (confirmed independently here,
+matching learning:01M08WQ2HCRMDM46TQCPWXQSKN): LINKER.S never issues an
+MLI CREATE/OPEN/WRITE for the LINKED image, only sets the pointers and
+`JMP HIT` back to warm restart, same as the manual states. A `ld` front
+end must perform the save itself (open/write/close via liba, or a
+direct MLI bridge -- see Q6/Q1's shim discussion) reading OBJPNT/OBLEN
+exactly as `as.s`'s WRITEOBJ already does for the assembler's own
+output. Output naming/type: the saved file's ProDOS type is whatever
+the LAST ASSEMBLY's TYP directive left set -- LINKER.S never touches a
+type byte anywhere in this file (confirmed: no SETINFO/TYP-adjacent code
+in LINKER.S). `ld` must set the type explicitly post-write.
+
+Size limits: two independent kinds.
+- Manual-documented capacity ceilings (learning:01M08WQ2HCRMDM46TQCPWXQSKN):
+  linked object <= ~$A100 bytes, dictionary <= $B000 bytes.
+- A LIVE, per-link, module-supplied ceiling: `ERR \$addr` inside a REL
+  module compiles to a link-time CONSTRAINT ERROR check. Traced here:
+  LINKER.S:221-240 (`ERRMEM`, reached from SPECODE's `BMI ERRMEM` at
+  LINKER.S:207-208 when a fixup's flag byte has the sign bit set --
+  the ERR pseudo-op's own encoding, per learning:01M08WQ2HCRMDM46TQCPWXQSKN's
+  manual citation) computes the module's effective end-of-load address
+  (SPNT + LOADADR) and compares it against the ERR-declared ceiling
+  (ACL+1/ACL+2); if the module's last byte reaches or exceeds it, prints
+  "Constraint error: " (inline SENDMSG) plus the offending address via
+  PRNTAX, then `JMP HIT` (no save). [fact from source] This constraint
+  is baked into whichever module DECLARES it at assembly time -- `ld`
+  does not supply or control it directly, only benefits (or is stopped)
+  by whatever the linked modules' own source already asserts.
+
+====================================================================
+5. ERRORS: how they are reported, and what a front end reads
+====================================================================
+
+Same cell pair the assembler uses, confirmed reused here, not
+reinvented: ERCOUNT (aux-ZP $1D) initialized to 0 at LINK entry
+(LINKER.S:59), incremented at `:INERR` (LINKER.S:493-496) once per
+UNRESOLVED external ("not resolved", LABMSG path, LINKER.S:488-496) and
+once per DUPLICATE ENT resolution (LINKER.S:462-467, "- duplicate ",
+falls into `:INERR` too). DUPCNT (aux-ZP $89) is zeroed at LINKER.S:60
+but this file never increments it -- both duplicate- and unresolved-
+external errors count against ERCOUNT only in LINKER.S, unlike the
+assembler which may use DUPCNT for its own, unrelated purpose. [fact
+from source] The final banner (LINKER.S:376-379, `JSR BYTPRN`) prints
+length and error count by calling the SAME BYTPRN routine GETLINE.S's
+assembler-side banner uses (same-bank JSR, no cross-bank call needed
+since LINKER+ASS.BNK1 share the LC bank and GETLINE is PUT into the
+$E5F0-based half of the SAME MACASS.S build) -- i.e. it prints
+ERCOUNT+DUPCNT exactly as the assembler's own "bytes, Errors: N" line
+does. A front end reads ERCOUNT (+DUPCNT, always 0 here) after LINKED
+returns control (via HIT) for an exit status, structurally identical to
+how `as.s` already turns ERCOUNT+DUPCNT into its own exit code.
+
+Separately, FATAL errors (bad names-file, dictionary/memory overflow,
+CONSTRAINT ERROR) do NOT go through ERCOUNT at all -- they abort via
+FILERR's numeric code through JERROR/ERRENTRY (a completely different,
+MLI-style numeric-error print, LINKER.S:338-345) or ERRMEM's own
+"Constraint error: " message-then-HIT (no error count touched, no save,
+LINKER.S:233-240). A front end cannot rely on ERCOUNT alone to detect
+these; it would need to distinguish "reached HIT via LINKED" (success,
+even if ERCOUNT>0 means externals unresolved) from "reached HIT via
+ERRMEM" (constraint violation, no object) from "reached warm restart via
+JERROR" (open/memory/dictionary failure) -- three different completion
+shapes collapsing onto essentially the same non-return exit, which is a
+harder signal to disambiguate headlessly than the assembler's single
+ERCOUNT+DUPCNT convention. [inference, risk -- see summary]
+
+====================================================================
+6. ROM / $E0xx SURFACE the linker calls
+====================================================================
+
+Extracted by grepping every JSR/JMP/JMLI target in LINKER.S and
+classifying each against equates found across the vendor tree.
+
+  NAME       ADDRESS   KIND               INLINE-STRING?   CALLED FROM (LINKER.S)
+  CROUT      $FD8E     monitor ROM        no               LINKER.S:376 (already P6-known)
+  PRBYTE     $FDDA     monitor ROM        no               via PRNTAX (ASS.BNK1.S:7-9,
+                                                             same-bank, already P6-known)
+  AUXMOVE    $C311     80-col firmware    no                LINKER.S:371 -- NEW, not
+                                                             monitor-ROM, not $E0xx; see Q4
+  SENDMSG    $E033     $E0xx resident     YES (inline str)  LINKER.S:386 "Externals:",
+                                                             :234 "Constraint error: ",
+                                                             :488 "not", :539 "resolved ",
+                                                             :466 "- duplicate " -- 5 call
+                                                             sites, ALL inline-string,
+                                                             already known-dangerous per
+                                                             the as.s SENDMSG_IMPL fix
+                                                             (bare RTS executes the text)
+  WARMDIS    $E01B     $E0xx resident     no (plain sub)    LINKER.S:342 (FILERR path) --
+                                                             already known/stubbed for `as`
+  JERROR     $E015     $E0xx resident     no (takes err# in A) LINKER.S:344 (FILERR) --
+                                                             NOT previously enumerated for
+                                                             `as` (as.s never reaches an
+                                                             ASSMAIN-side fatal-error path
+                                                             that uses it); NEW for `ld`
+  JCLOSE     $E00C     $E0xx resident     no (plain sub)    LINKER.S:233,341 -- NEW,
+                                                             not in any existing `as` stub
+                                                             list
+  JRLOAD     $E018     $E0xx resident     no (loads a file) LINKER.S:106 -- NEW, and
+                                                             LINKER-ONLY: grep of the
+                                                             whole embedded chain finds
+                                                             no other caller
+  KEYCHK     (bank-1)  same-bank sub      n/a               LINKER.S:480 (":WHERE",
+                                                             pagination pause on the
+                                                             resolved-externals listing) --
+                                                             already P4-neutered for `as`;
+                                                             reused here for free
+  BYTPRN,    (bank-1)  same-bank subs     n/a               shared with GETLINE.S's own
+  PRINTENT                                                  banner/listing code, no new
+                                                             stub needed (same object)
+  open/read/ MLI $BF00 real ProDOS call  n/a                LINKER.S:69,74,77,169 (via
+  close/                                                    JMLI macro, LIB/ASSMACROS.S:
+  newline                                                   79-83) -- see below, THE
+                                                             central new risk
+
+MLI mechanics, traced past the JMLI macro (LIB/ASSMACROS.S:79-83:
+`JMLI MAC / LDX #]2PARMS / LDA #]1 / JSR ENTRY`) to its shared gateway,
+`ENTRY` (INTERPRETER.S:538-553):
+
+  ENTRY STA ECMD          ;save the MLI call number
+   STX PARMADR             ;save the param-block pointer
+   JSR SETBNK              ;"Set rtn flags & switch bnks"
+   STA MAINZP               ;$C008 -- ALTZP OFF, i.e. leave the
+  JPRO JSR MLI              ; process's own zero page
+   ECMD DFB open
+   PARMADR DA OPARMS
+  MERRTS STA AUXZP         ;$C009 -- ALTZP back ON
+   BIT CONTROL             ;$C080 -- LC bank/control softswitches,
+   BIT BANK                ; restoring whichever LC bank (1 or 2)
+   BVS BNKOK                ; was active before the call
+   BIT CONTROL!BANK1!ENABLE
+   BIT CONTROL!BANK1!ENABLE
+  BNKOK BCS ERROR
+  GOBACK RTS
+
+[fact from source, INTERPRETER.S:538-553, equates at :63-69: CONTROL=
+$C080, BANK1=%1000, ENABLE=%0011, MAINZP=$C008, AUXZP=$C009] EVERY
+open/read/close/newline call the linker makes (Q2's names-file loop, and
+GENTRY's per-byte dictionary read) goes through this gateway, which
+explicitly flips ALTZP OFF then back ON, and does LC-bank1/bank2
+softswitch bookkeeping, around the raw `JSR MLI` ($BF00). This is a
+DIFFERENT switch class from RAMRD/RAMWRT (READ.AUX/READ.MAIN/WRITE.AUX/
+WRITE.MAIN, Q3's subject) -- MAINZP/AUXZP select which ZERO PAGE (and,
+by extension, stack) is live, and CONTROL/BANK1/ENABLE select which LC
+bank is mapped at $D000-$FFFF. Neither class was in scope for P1's or
+P10's audit (both audits were explicitly RAMRD/RAMWRT-only, per
+docs/AS-P10-ENUMERATION.txt's own header). `as.s` never exercises this
+gateway at all -- its own "P8 is unnecessary" finding (docs/AS-DESIGN.md
+section 8) is specifically about DIRFLG-gated MLI calls in DODSK/
+ASSMAIN's cleanup path, a DIFFERENT code path from ENTRY. `ld` cannot
+make the same "P8 unnecessary" argument: LINKER.S's open/newline/read/
+close calls are UNCONDITIONAL (not gated behind any flag P7 already
+neuters), so `ld` WILL drive ENTRY, and ENTRY WILL flip ALTZP/LC-bank
+state on every single names-file or dictionary byte read. What that
+means inside a maux process (whose scheduler owns ALTZP/LC-bank
+selection as the process's identity) was not evaluated in this pass --
+flagged as the single largest open risk (see summary).
+
+Not called by LINKER.S (present in the shared $E0xx block but unused
+here, listed for completeness against P6's original six-entry
+enumeration): PRHEX ($FDE3), MONWAIT ($FCA8), GETLN2 ($FD6F), HOME,
+EXECWRM/EXEC ($E003/$E006), JBELL ($E027), GOREAD/GOSAVE ($E021/$E024).
+
+====================================================================
+7. SIZE: LINKER.S's assembled size, placement, and coexistence with
+   ASS.BNK1
+====================================================================
+
+Placement: CONFIRMED structurally (Q1/headline) -- LINKER.S is PUT
+first, immediately at `ORG $D000` (MACASS.S:237-239), with ASS.BNK1
+following at MACASS.S:241, both ending before the `ORG $E5F0` jump at
+MACASS.S:254 that resumes for ASSMAIN/BRACKET/etc. This is the SAME
+object build/ascore-bank1.obj / build/ascore-process-bank1.obj already
+represents.
+
+Combined size: build/ascore-bank1.obj = 4045 bytes, build/ascore-as.obj
+= 4674 bytes (both measured via `ls -la build/`, 2026-08-20); 4045+4674
+= 8719, matching docs/AS-DESIGN.md sections 7/14's independently-reported
+"MACASS reports the SAME 8719 bytes" from the real-Merlin STEPBYSTEP
+rebuild. [fact, measured] So CORE_BANK1 (4045 bytes) = LINKER.S + ASS.
+BNK1.S combined object, and CORE_AS (4674 bytes) = the ASSMAIN/BRACKET/
+MSGS/OPCODES/GETLINE/SYMPRINT/PRINTENT half.
+
+LINKER.S's OWN share of the 4045 bytes was NOT isolated in this pass.
+Attempted: assembling the patched MACASS.S PUT chain under host merlin32
+(decoding every needed file -- LINKER.S, MERLIN.GP.S, MLI/CODES.S,
+LIB/PRDEC.S, LIB/ASSMACROS.S, BRACKET.S, MSGS.S, OPCODES.S, GETLINE.S,
+PRINTENT.S, COMMANDS.S -- to plain ASCII via decode_lines and laying out
+the correct LIB/ and MLI/ subdirectories) to get an independent -v1
+listing. It crashes merlin32 (exit 134, no diagnostic output) rather
+than assembling. docs/AS-DESIGN.md section 10 already documents that a
+clean merlin32 rebuild of this exact source needs hand-applied dialect
+workarounds (custom ASC delimiters, `#"""`/`#'''` quoting, `DS` negative
+rewind, `ERR \$expr` ceiling asserts, a `USR =` macro byte-count
+mismatch) that were "not itself deposited yet" -- this pass did not
+repeat that investigation (out of scope/budget for a read-only recon),
+so LINKER.S's isolated byte count remains an open item, not a fact.
+[gap, not attempted further] As a rough scale check only: LINKER.S is
+546 decoded source lines / 9803 raw (high-bit) bytes, versus ASS.BNK1.S
+at roughly 1521 decoded source lines (its last routine, ROUTBL, is at
+line 1514-1521) / 21495 raw bytes -- LINKER.S is proportionally about a
+quarter to a third of ASS.BNK1.S's source bulk, which would put its
+assembled share in a rough 900-1400 byte band of the 4045-byte combined
+object if source-line density and object-code density track similarly
+[inference, weak -- not a substitute for an actual assembly].
+
+Coexistence verdict: LINKER.S and ASS.BNK1.S do NOT need to be, and
+currently ARE NOT, separate embeds -- they already coexist in ONE
+bank-1 object by stock Merlin's own PUT order, and `as.s` already
+carries that combined object into every process it starts (dormant,
+per the headline finding). A `ld` front end could, in principle, reuse
+the EXACT SAME CORE_BANK1 blob `as.s` already embeds and BLOCKCP's into
+$D000 -- no new core artifact required -- provided the aux-switch gap
+(Q3) and the MLI-gateway risk (Q6) are closed first.
+
+====================================================================
+SUMMARY (also see the final chat message)
+====================================================================
+
+Entry/exit shape: LINK's real vector is $D003 (not $D000), reached only
+via a LC-bank-1 self-modifying flip (GOLINK, MACED.S:220-227); entry
+needs just LOADADR+STRINGS+empty-source-buffer (simpler than ASM's
+7-register contract); exit is non-return, `JMP HIT` ($E02A = WRMVEC) on
+success or on CONSTRAINT ERROR, or `JMP JERROR` ($E015) on fatal
+open/memory errors -- three distinct completion shapes collapsing onto
+"never returns," harder to disambiguate headlessly than ASM's single
+ERCOUNT+DUPCNT convention.
+
+Names-file format, in two lines: per module, [1 length byte][high-bit
+ASCII pathname][$00]; file ends with one more lone $00. Consumed one
+record per MLI READ by arming NEWLINE's mark-character to $00 at open
+time (LINKER.S:73), not by manual byte-scanning.
+
+Aux-touch counts: LINKER.S itself carries 9 literal RAMRD/RAMWRT switch
+instructions / 5 logical brackets, ALL unaudited by P1 or P10 (both
+scoped to a 10-file list that omits LINKER.S on an incorrect "not
+embedded" premise) despite LINKER.S being physically inside the SAME
+CORE_BANK1 object those patches already ship in. Separately, LINKER.S's
+dictionary/OBJPNT addressing already inherits P1's SYMADR $1000->$2000
+relocation for free (same shared equate, MACASS.S:187), and its ENT/EXT
+symbol search calls into GETSYM0 (ASS.BNK1.S:1399), already inside P1's
+25-site patch.
+
+ROM/$E0xx list, with inline-string flags: CROUT/PRBYTE (monitor ROM,
+plain, already known) + AUXMOVE ($C311, 80-col firmware, plain, NEW
+dependency class) + SENDMSG ($E033, $E0xx, INLINE-STRING, 5 call sites,
+already known-dangerous) + WARMDIS ($E01B, $E0xx, plain, already
+stubbed for `as`) + JERROR/JCLOSE/JRLOAD ($E015/$E00C/$E018, $E0xx,
+plain subroutines, all three NEW -- never stubbed or exercised by
+`as.s`) + KEYCHK/BYTPRN/PRINTENT (same-bank, already handled) + the
+`ENTRY` MLI gateway (INTERPRETER.S:538), which flips ALTZP and LC-bank
+softswitches around every open/read/close/newline call -- a switch
+class neither P1 nor P10 audited at all.
+
+Size verdict: LINKER.S is NOT a separate embed question -- it already
+ships inside build/ascore-bank1.obj (4045B, part of the 8719B MACASS
+total) as a side effect of stock Merlin's own `PUT LINKER` / `PUT
+ASS.BNK1` order at `ORG $D000`. Its own isolated byte count was not
+obtained (merlin32 crashes on this source without repeating AS-DESIGN
+section 10's dialect-workaround effort, out of scope here); a rough
+line-count-ratio estimate puts it around 900-1400 bytes of the 4045.
+
+Three biggest risks for `ld`:
+
+1. The MLI `ENTRY` gateway (Q6) flips ALTZP (MAINZP/AUXZP, $C008/$C009)
+   and LC bank1/bank2 softswitches around every names-file/dictionary
+   MLI call -- a switch class `as.s` never had to confront (its own
+   "P8 unnecessary" finding does not transfer) and neither P1 nor P10
+   audited. This is the linker's version of bug 4 (docs/AS-DESIGN.md
+   section 12-14), but in a completely different switch family, and it
+   fires on the VERY FIRST names-file byte read, not just on object
+   output.
+
+2. LINKER.S's own 9 RAMRD/RAMWRT sites (Q3) are a second, independent,
+   currently-undiscovered instance of bug 4's exact shape -- dormant
+   only because LINK has never been invoked from inside a maux process.
+   The fix is mechanically identical to P10 (delete the brackets,
+   verified balanced pairs) but has never been attempted or gated.
+
+3. Ambiguous completion signal (Q1/Q5): success (HIT via LINKED),
+   constraint-violation (HIT via ERRMEM, no object, no ERCOUNT signal),
+   and fatal open/memory errors (JERROR, a totally different numeric-
+   code path) all look alike from outside ("control reached a resident
+   vector and stopped") -- a front end needs a way to tell these apart
+   that `as.s`'s single ERCOUNT+DUPCNT-at-ASEXIT convention did not have
+   to solve, likely by checking ORGFLG (cleared only by LINKED) in
+   addition to ERCOUNT before deciding whether to attempt the save.
+
+====================================================================
+ADDENDUM 2026-08-20 -- phase LD-A spike results (live-verified, not
+read-only recon): all four spikes run, three by direct source trace,
+one (LD-A1) by live disk-image-patched run against vendor/VALIDATE.PO
+under verilogapple's fast backend. Full verdicts are in
+docs/LD-DESIGN.md's dated "Phase LD-A results" section; this addendum
+holds the bulky supporting evidence.
+====================================================================
+
+LD-A1 SUPPORT -- the file-offset formula is TWO CONSTANTS, not one.
+
+The task brief's formula (file_offset = mem_addr - $D000 + 8388,
+anchored on GOLINK's signature 2C 88 C0 00 00) is CONFIRMED but is
+valid ONLY for the bank-2 hunk GOLINK itself lives in (MACED's own
+$D000 page, MACED.S:220-227). [fact, live-verified: `2C 88 C0 00 00`
+occurs at exactly file offset 8388 in BOTH /MERLIN.SYSTEM and
+/SAVE/MERLIN.SYSTEM's logical bytes, read via a2til, and occurs
+NOWHERE else in either file]
+
+LINKER.S's OWN bank-1 hunk (the physical bytes at $D000-$D003+ when LC
+bank 1, not bank 2, is selected -- i.e. LINK's real entry) lives at a
+DIFFERENT additive constant: file_offset = mem_addr - $D000 + 4292.
+[fact, live-verified] Derivation: LINK's own 13-byte prologue signature
+`66 A2 46 EE A5 16 85 E6 A5 17 85 E7 38` (ROR PAGFLAG / LSR JUST / LDA
+LOADADR / STA ADRSV / LDA LOADADR+1 / STA ADRSV+1 / SEC -- chosen
+because none of these bytes depend on the SYMADR patch, so the
+signature is identical in stock and P1-patched builds) occurs at
+exactly file offset 4295 in both MERLIN.SYSTEM files, and NOWHERE else;
+4295 - 3 (LINK is $D003, 3 bytes past the JMP MAKDIC stub at $D000) =
+4292. The two hunks are exactly 8388 - 4292 = 4096 ($1000) bytes apart
+in the file -- consistent with bank-1's hunk being stored first,
+padded to a flat 4K region, with bank-2's hunk (containing GOLINK)
+immediately following. **Using the GOLINK-anchored constant (8388) to
+patch LINKER's own bytes lands 4096 bytes into the WRONG hunk** (inside
+GOLINK/PAGINATOR's own bank-2 page) -- a live trap for whoever reaches
+for "the" offset formula without checking which hunk they need.
+
+LD-A1 SUPPORT -- SAVPNT traced (MACEXEC.S:488-503), confirmed inert to
+LINKER.S. MACED.S:841/954 both `JSR SAVPNT` immediately before `JMP
+GOLINK`/other dispatch. SAVPNT itself (MACEXEC.S:495-503): `BIT
+CONTROL!ENABLE!BANK1` (twice, the standard LC write-enable double-read
+idiom) to reach bank 1, `LDX #5 / STX BASIC-1` ("set up byte for bank
+recognition in PRTR command" -- the PRinTeR command, editor-only), a
+6-byte `MOV SOURCE,X;PNTSAV,X` loop copying SOURCE/HIMEM/ENDSRC into
+PNTSAV, then `BIT CONTROL` (back to bank 2) and `RTS`. PNTSAV is a
+SAVE-FOR-LATER-RESTORE cell: MACED's own warm-restart path uses it to
+put the EDITOR's buffer pointers back after LINK returns control to
+$E02A, so the user's edit session resumes where it left off. LINKER.S
+itself never reads PNTSAV, BASIC-1, or anything else SAVPNT touches --
+confirmed by grep of every symbol SAVPNT writes against every reference
+in LINKER.S (none). **SAVPNT is MACED's own resume-editing bookkeeping,
+irrelevant to LINK's own correctness** -- the ONLY externally-supplied
+state LINK's prologue (LINKER.S:42-62) actually consumes is LOADADR,
+STRINGS, and SOURCE==ENDSRC, exactly as LD-RECON section 1 already
+inferred, now confirmed by tracing the one MACED-side call this recon
+had NOT yet traced.
+
+LD-A1 SUPPORT -- live run detail (verilogapple fast backend, scratch
+copies of vendor/VALIDATE.PO, never the vendored file itself):
+
+- Baseline: booted to the `%` menu, typed `NEW` (forces SOURCE==ENDSRC)
+  then `LINK $2000,NAMES` (NAMES is a real on-disk file written for
+  this spike: one record, length-byte 4 + high-bit "NOPE" + $00, then
+  the terminating lone $00 -- deliberately a NONEXISTENT module
+  pathname). `until_pc(pc=$D003)` hit at cycle 4,625,721. At that exact
+  instant: ALTZP=true, LOADADR=$2000 (exact match to the typed
+  address), SOURCE=$0901=ENDSRC=$0901 (empty buffer, exact match).
+  Stepping further, the screen printed `2000 NOPE` (LINKER.S's own
+  PRNTAX + the names-file record it just read and copied into DOSFNAM)
+  then `46 FILE NOT FOUND` (ProDOS MLI error 46, exactly the expected
+  outcome of `JMLI open` on the deliberately-nonexistent "NOPE" path) --
+  a clean, sane, CORRECT failure, not garbage execution. This
+  independently confirms the whole names-file consumption pipeline
+  (LINKER.S:63-78) ran for real: open NAMES, arm NEWLINE's $00 mark,
+  read one record, copy it to DOSFNAM, attempt to open it as a module.
+  (One live wrinkle: a peek of aux $860 at the SAME instant read all
+  zero bytes rather than the "NOPE" text LD-RECON's STRINGS account
+  predicts. Given LOADADR was exactly correct and the SCREEN'S OWN
+  later echo of "NOPE" independently proves the string data reached
+  DOSFNAM correctly, this reads as a peek-timing/offset artifact, not a
+  contract violation -- flagged, not chased further.)
+- Poison-without-redirect control: same scratch disk, same NAMES file,
+  ONE byte changed -- file offset 4295 (computed via the bank-1
+  constant above), the `66` (ROR PAGFLAG) opening LINK's own code,
+  replaced with `00` (BRK). Same NEW + LINK $2000,NAMES sequence.
+  Screen: `D005-    A=01 X=FF Y=0B P=33 S=FB` then a bare `*` --
+  the Apple II monitor's classic BRK-trap banner, with the printed
+  address ($D005) exactly `$D003+2`, the well-known BRK return-address
+  convention. This is unambiguous proof the patched byte was fetched
+  and executed as a real opcode by the CPU -- the disk-image patch
+  reached genuine LC-bank-1 execution, not a stale/cached copy.
+
+LD-A3 SUPPORT -- ENTRY's call sites in LINKER.S, corrected attribution.
+Two DIFFERENT switch-touching mechanisms are both reachable from
+FIXEXT/GETEX/BYSYM/HAVSYM/FINDENT-family code and are easy to conflate:
+GETPL (LINKER.S:314-323, `STA READ.AUX / LDA (PL),Y / STA READ.MAIN`)
+is the RAMRD/RAMWRT-only bracket (Q3's subject, no MLI, no ALTZP) with
+LD-RECON's already-documented 12 static call sites, all AFTER a
+module's dictionary is already resident in memory (external-symbol
+RE-SCANNING). GENTRY (LINKER.S:168-174, `LDA #read / LDX #RWPARMS /
+JSR ENTRY`) is the SEPARATE, MLI-backed, per-BYTE FILE READ (Q6's
+ENTRY gateway) used ONCE while a module's dictionary is FIRST LOADED
+FROM DISK: 4 calls per LOADIC fixup entry (LINKER.S:137,140,142,144)
+plus 1 call per LOADEE tail byte (LINKER.S:176) -- i.e. ENTRY (and
+therefore the ALTZP/LC-bank flip) fires roughly once per raw
+DICTIONARY BYTE of every module, at load time, not merely once per
+file open/close. This is the dominant MLI call-volume term for any
+module with a nontrivial ENT/EXT table.
+
+LD-A3 SUPPORT -- RLOAD (INTERPRETER.S:1319, JRLOAD's target) has ITS
+OWN, separate ALTZP-touching mechanism, independent of the shared
+ENTRY gateway. RLOAD opens with `JSR SETBNK / STA MAINZP` directly
+(INTERPRETER.S:1321-1322) -- NOT a call through ENTRY -- then issues
+its whole code-portion load (OPENFILE/GETEOF/NEWLINE/READ, all via the
+GOMLI/GOMLIX macros, which per LIB/ASSMACROS.S's `EXTENTRY` path do
+`JSR MLI` directly with NO per-call ALTZP/bank flip of their own) as
+ONE BATCH, restoring AUXZP only once at the end via `BVS JRETMER / JMP
+RETMER` (INTERPRETER.S:1395, 1409+). So RLOAD's own bracket is COARSE
+(one flip per module, already efficient) while GENTRY's is FINE (one
+flip per dictionary byte). Consequence for LD-DESIGN section 5: Route 1
+("bridge ENTRY, stop touching ALTZP/LC") does not, by itself, cover
+RLOAD's independent MAINZP/AUXZP touch -- JRLOAD's own body (already an
+LD-A4 stub target since `ld` must replace its file I/O with a maux
+syscall anyway) has to be rewritten too, or the bridge is incomplete.
+
+LD-A2 SUPPORT -- ORGFLG traced end to end (INTERPRETER.S:34/MACASS.S:172
+`ORGFLG = $E8 ;Valid object flag / Non 0 if more than 1 org` -- a cell
+LINKER.S REUSES from the assembler's own "multiple ORG defeats save"
+convention, not a LINK-specific allocation). All three exit shapes,
+read directly off LINKER.S:
+  - LINKED (success, LINKER.S:372-380): `LDY #0 / STY ORGFLG` --
+    unconditionally CLEARS ORGFLG to 0 before `JMP HIT`.
+  - ERRMEM (constraint error, LINKER.S:221-240): no ORGFLG reference
+    anywhere in the routine -- exits via the SAME `JMP HIT` with
+    ORGFLG UNTOUCHED, i.e. still whatever it was on entry to LINK.
+  - FILERR (fatal, LINKER.S:336-345): `LDA #13 / STA ORGFLG` sets it
+    to a nonzero sentinel, but exits via `JMP JERROR` ($E015), a
+    DIFFERENT vector -- already distinguished by which exit pad fires,
+    per LD-DESIGN section 1's own plan.
+LINK's own prologue (LINKER.S:42-62, which zeroes DICPNT/SPNT/ERCOUNT/
+DUPCNT/EXPFLG/LSTFLG) does NOT zero ORGFLG -- confirmed by direct
+re-read of every line in that span. So ORGFLG's value at $D003 is
+whatever the front end (or a prior MACED operation) left it as; LINK
+does not establish it itself.

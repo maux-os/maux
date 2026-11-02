@@ -1,0 +1,45 @@
+*---------------------------------------------------------------
+* startup.equ -- process-startup convention: where argc/argv
+* live at process entry. RATIFIED, docs/SYSCALL.md ruling 13
+* (item 13, "argv staging") -- both placement AND content shape,
+* closing this out entirely; this file's convention is what the
+* kernel actually implements now, not a proposal it might
+* revise.
+* Full design notes: L.STARTUPE.TXT (docs/a2/)
+*---------------------------------------------------------------
+
+* 2026-08-17 (docs/LIMITS.md): these now DERIVE from the
+* canonical argv-block addresses in inc/memmap.equ instead
+* of recomputing the layout from PRC_LOWFREE. Both sides used to
+* describe the same three addresses independently -- this file
+* from PRC_LOWFREE, the kernel from its own copies in
+* process.s -- and that is the mechanism by which the two layers
+* came to disagree about what happens when argv is too big (the
+* kernel truncated silently, sh errored). One layout, one place.
+*
+* The limit is the kernel's, and it is in BYTES: ARG_MAX (1280)
+* of packed strings plus ARGV_PTR_LIM (255) of pointer array,
+* both derived from the memory map. spawn() returns ERR_2BIG
+* rather than staging a prefix, so a program can trust that if
+* it started at all, its ARGC/ARGV are complete.
+*
+* THE ENVIRONMENT LIVES HERE TOO (docs/SYSCALL.md item 13c,
+* 2026-08-22). It is not a second block: envc follows argv's
+* pointer array and envp's own pointers follow envc, all inside
+* ARGV, and envp's strings follow argv's inside PRC_ARGV_STR --
+* so ARG_MAX and ARGV_PTR_LIM are now budgets for the PAIR.
+*
+*   ARGC                     argc
+*   ARGV+0                   argv[0..argc-1], 2 bytes each
+*   ARGV+2*argc              envc
+*   ARGV+2*argc+1            envp[0..envc-1], 2 bytes each
+*
+* envc's address depends on argc, so it is NOT an equ: read it
+* with src/liba/env.s's GETENV, which does that arithmetic once
+* and is the only thing that should. A program the kernel
+* spawned always has a real envc byte, zero when the parent
+* passed no environment.
+ARGC        equ   PRC_ARGV_HDR   ; 1 byte
+ARGV        equ   PRC_ARGV_PTRS  ; argc * 2 bytes
+ARGVPAGE    equ   PRC_ARGV_HDR   ;kept: older code names the
+                                 ;block by its page

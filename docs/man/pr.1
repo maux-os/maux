@@ -1,0 +1,183 @@
+.\" pr.1 -- maux's pr(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as env.1/man.1.
+.TH PR 1 "October 8, 2026" maux
+.SH NAME
+pr \- paginate files for printing
+.SH SYNOPSIS
+.B pr
+[
+.BI + page
+] [
+.BI \- column
+] [
+.B \-adFmt
+] [
+.BI \-e [ char ][ gap ]
+] [
+.BI \-i [ char ][ gap ]
+] [
+.BI \-h " header"
+] [
+.BI \-l " lines"
+] [
+.BI \-n [ char ][ width ]
+] [
+.BI \-o " offset"
+] [
+.BI \-s [ char ]
+] [
+.BI \-w " width"
+] [
+.I file
+.IR .\|.\|. ]
+.SH DESCRIPTION
+.I Pr
+writes each
+.I file
+(standard input if none is given) to standard output, broken
+into pages: a 5\-line header
+.RI ( date ,
+the file's name or
+.BR \-h 's
+.IR header ,
+and a page number), the file's own lines, and enough trailing
+blank lines to fill the page \(em even the LAST page of a short
+file is padded out to the full page length. Multiple
+.I file
+operands each start their own page numbering at 1 and name
+themselves in their own header; with no operand, the header
+names no file at all.
+.PP
+The header's
+.I date
+is the file's own last\-modification time (or the current time,
+for standard input) \(em never the time
+.I pr
+itself ran.
+.SH OPTIONS
+.TP
+.B \-t
+Write neither header nor trailer, and never break the output
+into pages at all \(em every line is copied straight through.
+.TP
+.BI \-l " lines"
+Set the page length (default 66). At most
+.I lines
+\-10 lines of file content appear on any one page. A
+.I lines
+too small to leave room for even one content line under a
+header falls back to the
+.B \-t
+shape (matching this tree's own oracle host, measured live).
+.TP
+.BI \-h " header"
+Replace the file's own name in the header with
+.IR header .
+.TP
+.BI \-n [ char ][ width ]
+Number each line of file content, right\-justified in a field
+.I width
+characters wide (default 5), followed by
+.I char
+(default a tab). Both are optional and, if given, must be
+ATTACHED to the option
+.RI ( \-n:3 ,
+not
+.RI "\-n \ :3)."
+.TP
+.B \-d
+Double\-space the file's content lines.
+.TP
+.BI \-o " offset"
+Indent every output line, header included, by
+.I offset
+spaces.
+.TP
+.BI + page
+Skip every page before
+.IR page ,
+without affecting its own page numbering \(em the file is still
+read in full.
+.TP
+.BI \- column
+Write
+.I column
+text columns per page, filled DOWN each column in turn (the
+default 1 is the plain layout). A page holds
+.I lines
+\-10 rows (the page length itself under
+.BR \-t );
+the last, short page is as short as it can be, left columns
+first. Columns are as wide as (width \- (column \- 1)) / column
+(default width 72) and a longer line is TRUNCATED to that, the
+last column included. Spaces between columns are written as
+tabs, as under
+.BR \-i .
+A page of columns that does not fit in memory (more than 1024
+lines, or a text arena of roughly 38 KB) is refused with a
+message and exit status 1; nothing is ever written short.
+.TP
+.B \-a
+With
+.BI \- column ,
+fill each row across before starting the next.
+.TP
+.B \-m
+Merge: one column per
+.IR file ,
+read in lockstep. At most five real files (a process has eight
+file descriptors and three are standard input, output and error);
+a sixth is refused before anything is read. A
+.B \-
+operand is standard input and takes no descriptor. A file that
+has run out leaves its cell empty and the others keep their
+columns. The header names no file. Not with
+.BI \- column .
+.TP
+.BI \-s [ char ]
+Separate columns with
+.I char
+(default tab) instead of padding. The default width becomes 512.
+.TP
+.BI \-w " width"
+Line width for columns (default 72). Without
+.B \-s
+at most 254: column positions are kept in 8 bits.
+.TP
+.BI \-e [ char ][ gap ]
+Expand input tabs (or
+.IR char )
+to every
+.I gap
+th column (default 8) before the line is cut into columns.
+.TP
+.BI \-i [ char ][ gap ]
+Write runs of two or more spaces as tabs (or
+.IR char )
+at every
+.I gap
+th column (default 8); a lone space stays a space and spaces
+at the end of a line are dropped. Assumed for more than one
+column.
+.TP
+.B \-F
+Page boundaries are a form feed in place of the blank padding
+lines. No effect under
+.BR \-t .
+.SH FILES
+.br
+/usr/man/PR  this page
+.SH "SEE ALSO"
+cat(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 if a file could not be opened or
+a limit above was exceeded, 2 for a usage error.
+.SH BUGS
+A short last page of columns is filled left first (4, 4, 2 for
+ten lines in three), as BSD does; GNU balances (4, 3, 3). Under
+.B \-n
+every column cell is numbered; BSD and GNU lay the number out
+differently from each other and from this. A file's modification
+date is real wall\-clock time, so two runs of the same command
+print different headers by design.

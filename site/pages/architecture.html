@@ -1,0 +1,192 @@
+title: Architecture
+description: How maux uses a RamWorks card, in four pictures, and where the design is written down.
+---
+<h1>Architecture</h1>
+
+<!-- src: docs/ARCHITECTURE.md sec Core idea -->
+<p class="lead">A RamWorks card gives the enhanced IIe extra 64K banks of
+auxiliary memory, and one register, <code>$C073</code>, chooses which bank the
+auxiliary-memory switches see. maux gives each process one of those banks.
+Because ALTZP moves the zero page and the hardware stack along with it, a
+bank switch swaps the registers' working set, the stack and the whole address
+space in one motion.</p>
+
+<!-- src: docs/ARCHITECTURE.md sec Core idea -->
+<p>Every process sees the same logical address space from <code>$0000</code>,
+so nothing is relocated and an ordinary assembler's output runs as it is.
+It is a poor man's MMU with 64K pages.</p>
+
+<h2>1. Who owns what</h2>
+<figure class="diagram">
+{{svg:banks}}
+<figcaption>Main memory, the annex in aux bank 0, and one bank per process.</figcaption>
+</figure>
+
+<!-- src: docs/MEMMAP.md sec 1.1, 1.2 (and the task #11 amendment); docs/BYE.md sec 2026-09-27; docs/KSEG.md; src/test/playtest.s -->
+<p>Main memory holds the kernel and ProDOS 8, which shares the machine. The
+shipped kernel is assembled at <code>$2000</code> and runs up to about
+<code>$97E8</code>, so it borrows the hires pages for itself; text page 1 stays the
+display. The language card is ProDOS 8's (the MLI and its drivers), and the
+<code>$BF00</code> global page is in main RAM. maux's own use of the card is bank 2:
+the <code>bye</code> resident window at <code>$D100-$D3FF</code> and the kernel's cold
+segment at <code>$D400</code>. The <code>$FF00</code> vector page is ProDOS's too; maux
+patches two bytes of it, the IRQ vector.</p>
+<!-- src: docs/MEMMAP.md sec 2.1, 2.2 -->
+<p>Aux bank 0 is the kernel's annex: the process table, the per-process working
+directories, the pipe rings and the other per-process kernel structures. It has to be
+bank 0 because the video scanner reads auxiliary memory from bank 0 and nowhere else (see
+the 80STORE story below). Every other bank is one process.</p>
+
+<!-- src: docs/ARCHITECTURE.md sec Core idea ("The one-page invariant"); docs/MEMMAP.md sec 1.1 -->
+<p>User space is <code>$0000-$BFFF</code> plus <code>$D000-$FEFF</code>. The
+whole <code>$C000-$CFFF</code> window is carved out: it is I/O and slot ROM,
+always main, never process memory. The kernel's entire footprint in a
+process bank is the <code>$FF00-$FFFF</code> page the hardware already claims
+for vectors.</p>
+
+<!-- src: src/kernel/process.s (PRC_INIT); src/kernel/kbye.s; facts: bank_top, process_max, min_ram_kb -->
+<p>The release kernel does not probe for banks. It starts with a fixed list: banks
+{{fact:bank_top}} down to 2 are free for processes, and the shell is bank 1. So maux uses banks
+<code>$00</code> to <code>$0F</code> and nothing else. It needs a RamWorks-compatible card
+with at least {{fact:min_ram_kb}} KB (a period RamWorks II or III main board fully
+populated gives exactly that), and it runs at most {{fact:process_max}} processes besides the
+kernel. The <code>bye</code> save banks come from the same list. A boot-time bank probe exists
+in the tree and is linked only into a test image. The population the gates exercise is
+dense; sparse and aliased cards are not verified.</p>
+
+<h2>2. A context switch</h2>
+<figure class="diagram">
+{{svg:switch}}
+<figcaption>One interrupt, process A to process B.</figcaption>
+</figure>
+
+<!-- src: docs/ARCHITECTURE.md sec Process model ("Kernel entry/exit") -->
+<p>Both ways into the kernel, the <code>JSR $FF00</code> syscall door and the
+interrupt door, build the same six-byte frame on the process's own stack, so
+one exit tail serves both. The kernel then switches ALTZP and the stack
+pointer to its own, does its work, writes the next process's bank number to
+<code>$C073</code>, flips ALTZP back, and returns by <code>RTI</code> onto
+the other process's stack. The one rule inside the switch is that nothing is
+pushed between the ALTZP flip and <code>TXS</code>: for that moment the stack
+page belongs to somebody else.</p>
+
+<!-- src: src/kernel/timer.s (TMR_INT_MB, TIMER_ISR_NOP and header comments); docs/ARCHITECTURE.md sec Scheduling, Bank management -->
+<p>Preemption comes from a 60 Hz tick. At boot the kernel probes for an AppleMouse
+card and uses its vertical-blanking interrupt; failing that, it looks for a Mockingboard
+and runs the 6522's timer 1 free-running at about 60 Hz. With neither, no hardware source is
+armed and the tick counter never advances. Writes to
+<code>$C073</code> also trip the paddle strobe, so joystick reads need the
+scheduler held briefly. The register is write-only and is not cleared by a
+reset, so the kernel never trusts what it last selected: it keeps its own
+copy of the current bank and writes the register before any aux access.</p>
+
+<!-- src: docs/ARCHITECTURE.md sec Core idea ("No hardware protection -- stated axiom") -->
+<p>What this does not buy is protection. Soft switches are plain addresses,
+and any process can write <code>$C073</code>, flip RAMRD or execute
+<code>SEI</code>. Bank-per-process gives isolation for correctness, not
+security: a well-behaved process cannot touch another by accident, and a
+wild store into <code>$C0xx</code> can take the machine down.</p>
+
+<h2>3. fork, and the trap in the copy</h2>
+<figure class="diagram">
+{{svg:fork80}}
+<figcaption>A bank copy that silently copies main onto itself.</figcaption>
+</figure>
+
+<!-- src: docs/ARCHITECTURE.md sec Process model ("spawn() is the primary process-creation call") -->
+<p>The primary way to start a program is <code>spawn</code>: allocate a bank,
+stamp its <code>$FFxx</code> page, load the image, apply the file-descriptor
+actions. Nothing is copied from a parent. <code>fork</code> exists too, as the
+slow path for programs that need it: it clones the process's bank.</p>
+
+<!-- src: docs/FORK.md sec "The 80STORE bracket, and why it is load-bearing here" -->
+<p>The copy is where the trap is. With 80STORE set, RAMRD and RAMWRT are
+ignored for <code>$0400-$07FF</code> and, with HIRES also set, for
+<code>$2000-$3FFF</code>; only PAGE2 routes them. A bank-copy loop that does
+not bracket those windows with CLR80STORE and SET80STORE reads and writes
+main memory instead of the aux bank, so main is copied onto itself. Nothing
+crashes and nothing is logged; the child simply never receives that window.</p>
+
+<!-- src: docs/FORK.md -->
+<p>maux's first fork design was reasoned from first principles and had no
+bracket, and it was wrong: the IIe's documented soft-switch behaviour
+says exactly what 80STORE does to those windows. The design was corrected from the documentation, and the gate for
+<code>fork</code> sets both switches on purpose, because with them off it
+passes with the bracket deleted. Hardware claims on this site, and in the
+tree, are checked against the manuals and on an emulator, not against
+what seems plausible.</p>
+
+<h2>4. bye: leave maux, run ProDOS, come back</h2>
+<figure class="diagram">
+{{svg:bye}}
+<figcaption>Suspend the system into a bank ProDOS cannot see; run a ProDOS 8 program; restore.</figcaption>
+</figure>
+
+<!-- src: docs/BYE.md sec "What it is for", "The mechanism the machine already has"; docs/man/bye.1 -->
+<p>The reason is testing. The loop is: edit in <code>vi</code>, assemble with
+<code>nas</code>, link with <code>ld</code>, build with <code>make</code>, all
+under maux, and then run the result on ProDOS 8 itself, not under a shim. ProDOS's
+QUIT call, MLI <code>$65</code>, copies <code>$D100-$D3FF</code> from language-card
+bank 2 to <code>$1000</code> and jumps there; every program selector works by replacing that
+window. <code>bye</code> puts a small resident there, so the QUIT the program makes to
+leave is the moment maux is restored.</p>
+
+<!-- src: docs/BYE.md sec "2026-09-26, OPERATOR RULING", "2026-09-27"; docs/man/bye.1 -->
+<p>Plain ProDOS 8 knows only aux bank 0 (through <code>/RAM</code>), so main memory and the
+annex are saved into two RamWorks banks it cannot see. For the program,
+<code>/RAM</code> is reinstalled, empty, as ProDOS makes it; on the way back it is
+removed again and whatever the program wrote there is discarded. The program runs on a
+machine that is, as far as it can tell, freshly booted. ProDOS's QUIT carries no status,
+so <code>bye</code> cannot return the program's outcome to the shell: whether it succeeded
+is whatever it left on the volume.</p>
+
+<h2>Read further</h2>
+<!-- src: docs/README.md sec "Documentation map"; docs/ARCHITECTURE.md sec "Current reading guide" -->
+<p>The design is written down in the repository, in the order it was
+decided. Start with the current-state documents; read the design diaries for the
+reasoning, but trust the source and the gates over an old status line.</p>
+
+<p>The links below point into the source repository.</p>
+
+<h3>Start here</h3>
+<!-- src: docs/README.md; docs/PROJECT-STATE.md -->
+<ul>
+<li><a href="repo:docs/PROJECT-STATE.md">PROJECT-STATE</a>: what works, what is proven, what is not, and the accepted risks.</li>
+<li><a href="repo:docs/README.md">The documentation map</a>: which document is the authority for which question.</li>
+<li><a href="repo:docs/ARCHITECTURE.md">ARCHITECTURE</a>: the invariants (one bank per process, the <code>$FFxx</code> page, no hardware protection) and the dated design history.</li>
+</ul>
+
+<h3>The machine</h3>
+<!-- src: docs/MEMMAP.md; docs/SYSCALL.md; docs/FORK.md; docs/BYE.md; docs/CONSOLE.md -->
+<ul>
+<li><a href="repo:docs/MEMMAP.md">MEMMAP</a>: byte-accurate layout of main memory, the annex and a process bank.</li>
+<li><a href="repo:docs/SYSCALL.md">SYSCALL</a>: the trapframe and the <code>JSR $FF00</code> ABI.</li>
+<li><a href="repo:docs/FORK.md">FORK</a>: the bank clone, the frame patch, and the 80STORE bracket.</li>
+<li><a href="repo:docs/BYE.md">BYE</a>: suspend maux, run a ProDOS program, come back.</li>
+<li><a href="repo:docs/CONSOLE.md">CONSOLE</a>: the terminal backends, virtual consoles, and the VT102 target.</li>
+<li><a href="repo:docs/JOB-CONTROL.md">JOB-CONTROL</a>, <a href="repo:docs/KSEG.md">KSEG</a> (the kernel cold segment in language-card bank 2) and <a href="repo:docs/DEV-BLOCK.md">DEV-BLOCK</a> (block devices).</li>
+</ul>
+
+<h3>The toolchain</h3>
+<!-- src: docs/NAS.md; docs/LD-NATIVE.md; docs/MAKE-POSIX.md; docs/REL-FORMAT.md -->
+<ul>
+<li><a href="repo:docs/NAS.md">NAS</a>: the native assembler and the boundary of what is still built on the host.</li>
+<li><a href="repo:docs/LD-NATIVE.md">LD-NATIVE</a>, <a href="repo:docs/REL-FORMAT.md">REL-FORMAT</a> and <a href="repo:docs/MAKE-POSIX.md">MAKE-POSIX</a>.</li>
+<li><a href="repo:docs/DEPENDENCIES.md">DEPENDENCIES</a>: what building and testing need, in two tiers.</li>
+</ul>
+
+<h3>The evidence</h3>
+<!-- src: docs/VERIFICATION.md; docs/SUPPORT.md; docs/KNOWN-LIMITATIONS.md; evidence/README.md -->
+<ul>
+<li><a href="repo:docs/VERIFICATION.md">VERIFICATION</a>, <a href="repo:docs/SUPPORT.md">SUPPORT</a> and <a href="repo:docs/KNOWN-LIMITATIONS.md">KNOWN-LIMITATIONS</a>; <a href="/conformance/">Conformance</a> shows how closely the tools follow POSIX, and <a href="/get/">Get</a> states the limits.</li>
+<li><a href="repo:evidence/README.md">evidence/</a>: archived sweep summaries and failure logs, one directory per revision.</li>
+<li><a href="repo:docs/POSIX-CONFORMANCE.md">POSIX-CONFORMANCE</a> and <a href="repo:docs/POSIX-GAPS.md">POSIX-GAPS</a>: the scoreboard and the named exceptions.</li>
+</ul>
+
+<h3>How to read them</h3>
+<!-- src: docs/README.md ("Subsystem documents can contain dated amendments") -->
+<p>A design document can contain dated amendments, and an old <code>NEXT</code> is
+not an assignment. When a document and the source disagree, the source and its
+named gate win. Hardware claims are checked against primary sources (manuals,
+patents, a second emulator) and graded as fact, likely or reported; only a
+fact is allowed to carry weight unchecked.</p>

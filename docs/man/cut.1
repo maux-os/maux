@@ -1,0 +1,103 @@
+.\" cut.1 -- maux's cut(1), in the V7 man(1) shape. An original
+.\" page (this project's own text, not copied from a historic
+.\" cut(1)), so it carries no third-party notice -- MIT like the
+.\" code, same posture as head.1. Rendered at build time to
+.\" build/man/CUT.TXT and staged on the play image as
+.\" /usr/man/CUT: `more /usr/man/CUT`.
+.TH CUT 1 "September 14, 2026" maux
+.SH NAME
+cut \- cut out selected fields of each line of a file
+.SH SYNOPSIS
+.B cut
+.B \-b
+.I list
+[
+.B \-n
+] [ file ] ...
+.br
+.B cut
+.B \-c
+.I list
+[ file ] ...
+.br
+.B cut
+.B \-f
+.I list
+[
+.BI \-d " delim"
+] [
+.B \-s
+] [ file ] ...
+.SH DESCRIPTION
+.I Cut
+selects portions of each line of each named
+.I file
+(standard input default) and writes them to the standard
+output.  Exactly one of
+.BR \-b ", " \-c ", " \-f
+must be given.
+.PP
+.I List
+is a comma-separated list of numbers and number ranges,
+one-based:
+.I N
+selects one position,
+.I N\-M
+a range,
+.I N\-
+everything from
+.I N
+to the end of the line, and
+.I \-M
+everything from the start of the line through
+.IR M .
+The positions or fields named need not be in order, and may
+overlap; each is still selected only once, and the output
+carries them in the order they appear in the line, not the
+order they appear in
+.IR list .
+.PP
+.B \-b
+and
+.B \-c
+select
+.I list
+as byte or character positions.  This machine has no multibyte
+characters, so the two are the same operation, and
+.B \-n
+(which asks that a multibyte character not be split) is
+accepted with
+.B \-b
+but has nothing to do.
+.PP
+.B \-f
+selects
+.I list
+as delimiter-separated fields, the default delimiter being
+.BR <tab> .
+.BI \-d " delim"
+names a different delimiter, exactly one character.  The
+delimiter separating two selected fields in the output is the
+same byte as the input delimiter.
+.PP
+A line containing no delimiter byte is written unchanged,
+.I list
+notwithstanding, unless
+.B \-s
+is given, in which case it is suppressed entirely.
+.SH FILES
+/usr/man/CUT  this page
+.SH "SEE ALSO"
+grep(1), sed(1), tr(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if a file named on the command line could
+not be opened -- that file is skipped, a diagnostic naming it
+is written to standard error, and the remaining operands are
+still processed; 2 for a usage error, including a missing or
+duplicated mode flag, a malformed
+.IR list ", or a " \-d
+argument that is not exactly one character.
+.SH BUGS
+A line longer than 255 bytes is truncated at that length before
+.I list
+is applied.

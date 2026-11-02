@@ -1,0 +1,47 @@
+.\" Original maux page, MIT, 2026-09-19.
+.\" Historical-source decision: House assembler and dialect; Research UNIX as(1) describes an incompatible PDP-11 assembler.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH NAS 1 "September 19, 2026" maux
+.SH NAME
+nas \- assemble maux 6502 source
+.SH SYNOPSIS
+.B nas
+.RB [ \-o " object" ]
+.I source
+.SH DESCRIPTION
+Assemble source in the maux Merlin-derived dialect.
+The source directives select flat binary or Merlin REL output.
+The default output name is A.OUT; -o must precede the source name.
+For example:
+.PP
+.B nas \-o hello.o hello.s
+.PP
+REL objects can be linked with ld(1).
+NAS is the assembler used by the native make + nas + ld rebuild.
+It is distinct from the older Merlin/Sweet16 as(1).
+.PP
+The supported dialect includes 6502 instructions, enabled 65C02
+instructions, labels, expressions, include directives, data directives
+and ENT/EXT relocation records. It is the project's implemented subset,
+not every Merlin macro facility.
+Source may be in either text convention: maux text (high bit set,
+lines ended by $8D, what vi(1) writes) or ProDOS-standard text (low
+ASCII, lines ended by $0D); a PUT file may differ from the file that
+names it. An undefined symbol is an error, as in Merlin:
+.PP
+.B nas: unknown label NAME (FILE line N)
+.PP
+FILE and N name the file being read, a PUT file counting its own
+lines. An EXT symbol is not undefined.
+Diagnostics identify source errors; a failed assembly must not be used
+as a successful build product.
+.SH FILES
+/usr/man/NAS  this page
+.SH "SEE ALSO"
+as(1), ld(1), nm(1), make(1)
+.SH DIAGNOSTICS
+Exit status is 0 on successful assembly, 1 for reported failures.
+Diagnostics (usage, unknown label, branch out of range, phase error, pass failures, write failures) go to standard error; the report "nas: N bytes -> FILE"
+goes to standard output.
+.SH BUGS
+There is no -l listing option. NAS itself is a host-built PLASMA/native executable; the native world rebuild does not rebuild its compiler or cooker. NAS is staged on native toolchain images, not the ordinary play command roster.

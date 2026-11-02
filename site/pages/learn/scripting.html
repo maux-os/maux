@@ -1,0 +1,106 @@
+title: Shell scripting
+description: Three small scripts, one idea each: arguments and tests, loops and case, and grep rebuilt from ed with a here-document.
+lesson: l4
+---
+<h1>L4. Shell scripting</h1>
+<p class="crumb"><a href="/learn/">Learn</a> / L4</p>
+
+<!-- src: docs/SITE.md sec 5 -->
+<p class="lead">Goal: write three scripts, each with one idea: <code>count</code> tests
+its arguments, <code>each</code> loops and matches names, <code>mygrep</code> drives
+<code>ed</code> from a here-document and cleans up after itself.</p>
+
+<h2>What you need</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p><a href="/learn/shell-hello/">L1</a>: a script is a text file that starts with
+<code>#!/bin/sh</code>. Nothing from the assembly lessons.</p>
+
+<!-- src: docs/SH-FEATURES.md; docs/man/sh.1 -->
+<p>maux's <code>sh</code> is the Bourne shell of Research Unix Version 7 with a few
+later conveniences, and it has no shell functions: V7 had none either. That fixes
+what these scripts can use.</p>
+
+<!-- src: docs/EXAMPLES-NOTES.md sec 3; docs/man/sh.1 -->
+<p>Writing them also turned up shell behaviour that is wrong today. These are
+defects, reported to the release and <strong>not yet fixed</strong>; the scripts below
+keep clear of them, and so should yours:</p>
+<ul>
+<li>A pipeline of more than three stages is refused with
+<code>sh: syntax error</code>. That one is a documented limit, not a defect
+(the manual says "at most three stages").</li>
+<li>A <code>$( )</code> inside an <code>if</code>, <code>for</code> or
+<code>while</code> body runs more than once, even in a branch that is not taken. A
+multi-line <code>for</code> typed at the prompt does the same. Its side effects
+happen every time, and a variable the body sets is still empty the first time.</li>
+<li>Positional parameters (<code>$1</code>, <code>$#</code>) are not visible inside
+<code>$( )</code>. That is how this shell is built today; POSIX says they should be
+visible.</li>
+<li>A three-stage pipeline of bare command names, such as
+<code>ls | tr a-z A-Z | sort</code>, fails inside a script <em>file</em> with
+<code>sh: command not found</code> printed three times. It works at the prompt, and in
+a script given absolute command paths, as <code>sh &lt; file</code>, or read with
+<code>. file</code>.</li>
+<li>When the last stage of a pipeline cannot be started, <code>$?</code> is 0.</li>
+</ul>
+
+<h2>The files</h2>
+<h3>count: arguments and tests</h3>
+<!-- src: examples/scripts/count -->
+<p><code>$#</code> is the number of arguments, <code>$1</code> the first,
+<code>[ -f ... ]</code> tests for an ordinary file, and <code>exit 1</code> ends the
+script with a failure status.</p>
+{{file:examples/scripts/count}}
+
+<h3>each: loops and case</h3>
+<!-- src: examples/scripts/each -->
+<p><code>for f in *</code> loops over the file names the shell expands;
+<code>case</code> matches each against patterns; <code>while read line</code> takes
+lines from standard input, here a file given after <code>done &lt;</code>. The
+<code>$( )</code> on the last line runs a command and puts its output in the line.</p>
+{{file:examples/scripts/each}}
+
+<h3>mygrep: a here-document, <code>trap</code> and <code>set -e</code></h3>
+<!-- src: examples/scripts/mygrep -->
+<p>Everything between <code>&lt;&lt;EOF</code> and <code>EOF</code> is the standard input
+of <code>ed</code>. The name <code>grep</code> is the ed command
+<code>g/re/p</code>: global, regular expression, print.</p>
+{{file:examples/scripts/mygrep}}
+
+<h2>The session</h2>
+<!-- src: scripts/check_examples.py (row_l4) -->
+<p>Each script is typed with <code>cat &gt; name</code> and ended with
+<kbd>^D</kbd> (control-D, end of file). <code>cmp</code> then compares what you
+typed with the copy on the disk; if it prints a line, you mistyped.</p>
+{{gen:session}}
+
+<h2>What just happened</h2>
+<!-- src: docs/SH-FEATURES.md -->
+<p><code>./count</code> with no argument took the first branch and printed the usage
+line; with a file that does not exist it took the last. The shell's
+<code>$?</code> holds the status of the last command, and the session prints it
+with <code>echo $?</code>: <code>0</code> means success, anything else failure. That
+is the entire contract between a program and a script.</p>
+
+<!-- src: examples/scripts/each; docs/SH-FEATURES.md -->
+<p><code>each</code> takes a directory as its operand and changes to it
+(<code>cd $1</code>) before it looks at anything; the change belongs to the script's
+own process, so your shell is still where you left it. It writes the listing to a
+file under <code>/tmp</code> named with <code>$$</code>, the shell's own process
+number, so two copies never share one, and reads it back with
+<code>while read line ... done &lt; file</code>. The word <code>2 files</code> on
+its last line came from <code>$(ls | wc -l)</code>.</p>
+
+<!-- src: examples/scripts/mygrep; docs/man/ed.1 -->
+<p><code>mygrep</code> printed the same lines, in the same order, as the real
+<code>grep</code>. <code>set -e</code> makes the script stop at the first command that
+fails; <code>trap 'rm -f $tmp; exit 1' 2</code> says "if signal 2 arrives (^C), delete
+the temporary file and stop". The last line of the session shows that nothing named
+<code>mygrep</code> was left in <code>/tmp</code>.</p>
+
+<h2>Try next</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p>Write <code>backup</code>: a script that copies the files you changed to a second
+volume, then archives them with <code>nulib2</code>. Give it a usage message and
+check its status the way <code>count</code> does.</p>
+
+{{gen:lessonnav}}

@@ -1,0 +1,18 @@
+# edasm-lc.patch -- rewrite EDASM's read-ROM language-card switches to
+# read-RAM, so it sees proshim's copied monitor (in LC RAM, console
+# redirected to fd) instead of the real ROM.
+#
+# Apply to the parts that need only this: EDASM.SYSTEM, EDASM.ASM,
+# EDASM.SWAP. (EDASM.ED needs this AND five console bytes -- use
+# edasm-ed.patch there.)
+#
+# Contains NO Apple bytes -- only the transform. Run on a maux volume
+# holding a REAL EDASM disk's files:
+#     bpatch edasm-lc.patch EDASM.SYSTEM
+#     bpatch edasm-lc.patch EDASM.ASM
+#     bpatch edasm-lc.patch EDASM.SWAP
+#
+# Commons: learning:01M1XH5NKEKR7VN47ZMZQFKE26 (the read-ROM->read-RAM
+# rewrite proshim's monitor-in-RAM needs). Host equivalent:
+# scripts/patch_edasm.py.
+flip-lc

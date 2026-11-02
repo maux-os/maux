@@ -1,0 +1,68 @@
+title: Find your way around
+description: pwd, cd, ls, head and wc on a root directory the kernel owns, with the disk's volume under /mnt.
+lesson: l0
+---
+<h1>L0. Find your way around</h1>
+<p class="crumb"><a href="/learn/">Learn</a> / L0</p>
+
+<!-- src: docs/SITE.md sec 5 -->
+<p class="lead">Goal: learn where things are, with five commands (<code>pwd</code>,
+<code>cd</code>, <code>ls</code>, <code>head</code>, <code>wc</code>) you will use in every
+later lesson. No files to write.</p>
+
+<h2>What you need</h2>
+<!-- src: docs/SITE.md sec 5; docs/FULLDISK.md -->
+<p>A booted maux with the release disk, at the <code>$</code> prompt. Nothing from
+an earlier lesson.</p>
+
+<h2>The session</h2>
+<!-- src: scripts/check_examples.py (row_l0) -->
+<p>Every line after a <code>$ </code> was typed, a key at a time, by the gate
+<code>check-examples</code>, on the machine, and the lines under it are what the
+screen showed. The dates in this ladder's <code>ls -l</code> listings read
+<code>-</code> because the test machine has its clock card switched off.</p>
+{{gen:session}}
+
+<h2>What just happened</h2>
+<!-- src: docs/VROOT.md -->
+<p><code>/</code> is not a directory on any disk. It is a small table the kernel
+owns, with <code>bin</code>, <code>dev</code>, <code>etc</code>, <code>mnt</code>,
+<code>tmp</code> and <code>usr</code> in it. The disk's own volume, named
+<code>MAUX</code>, is mapped under <code>/mnt</code>, and <code>/bin</code>,
+<code>/etc</code>, <code>/tmp</code> and <code>/usr</code> are that volume's
+<code>BIN</code>, <code>ETC</code>, <code>TMP</code> and <code>USR</code>
+directories. That is why a freshly booted shell starts in
+<code>/mnt/MAUX/</code> and why <code>ls</code> there shows the same directories
+you reach through <code>/</code>.</p>
+
+<!-- src: docs/DEVFS.md; docs/man/ls.1 -->
+<p><code>/dev</code> holds the devices: <code>null</code>, the terminals
+<code>tty</code> to <code>tty4</code>, the serial port <code>ttya0</code> and the
+disk <code>s7d1</code>. They are listed like files because to a program they are
+files: <code>cat</code>, redirection and pipes treat them the same way.</p>
+
+<!-- src: docs/PRODOS-VERSION.md; docs/VROOT.md -->
+<p>Names are ProDOS names underneath, so a directory made by the disk builder is
+stored upper case (<code>pwd</code> printed <code>/usr/MAN/</code> for
+<code>/usr/man</code>), while a file you create keeps the case you typed.
+The two refer to the same thing: ProDOS ignores case when it looks a name up.</p>
+
+<!-- src: docs/man/ls.1; docs/man/head.1; docs/man/wc.1; docs/MAN.md -->
+<p><code>/usr/man</code> holds the manual, one file per page, as formatted
+<code>nroff</code> output: plain text with overstrikes, which the console draws as
+emphasis. <code>head -1 ECHO</code> shows the first line of the page for
+<code>echo</code>; <code>man echo</code> shows the whole page through
+<code>more</code>, a screenful at a time (<code>q</code> quits). The session uses
+<code>pwd</code>, <code>cd</code>, <code>ls</code>, <code>head</code> and
+<code>wc</code>; the last of them counts lines, and the pipe in
+<code>ls /bin | wc -l</code> sends one program's output to another's input. That
+is the idea the rest of the ladder builds on. The number it prints is the number of
+programs on the disk.</p>
+
+<h2>Try next</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p>Find out how many pages the manual has (<code>ls /usr/man | wc -l</code>), then
+read the page for <code>ls</code> with <code>man ls</code>. Which flag lists a
+file's ProDOS type?</p>
+
+{{gen:lessonnav}}

@@ -1,0 +1,40 @@
+*---------------------------------------------------------------
+* entry.frame.equ -- syscall frame & copyin/copyout constants
+* (task #3, docs/SYSCALL.md)
+*---------------------------------------------------------------
+FRAME_Y     equ   $0101
+FRAME_X     equ   $0102
+FRAME_A     equ   $0103
+FRAME_P     equ   $0104
+FRAME_PCL   equ   $0105
+FRAME_PCH   equ   $0106
+COPYIN_ENTRY  equ   $0100
+COPYOUT_ENTRY equ   $0140
+* K_LCBANK -- the interrupted process's LANGUAGE-CARD BANK, and
+* the ONE cell here that deliberately lives in the PROCESS's
+* zero
+* page rather than main's. Every other cross-door cell was MOVED
+* OUT of ZP because it was written with ALTZP=aux and read with
+* ALTZP=main (docs/SYSCALL.md sec 7.5's second finding); this
+* one
+* is written aux and read aux ON PURPOSE. That is what makes it
+* per-process storage for free: the doors write it into
+* whichever
+* bank was interrupted, and an exit path reads it back AFTER its
+* own `sta ALTZPAUX`, which is by then the INCOMING process's
+* zero page. No table, no pid index, no scheduler involvement.
+* $00 = the default bank ($C08B), $80 = the other one ($C083) --
+* the value RDLCBNK2 returns, stored unconverted. A fresh bank
+* is
+* zeroed, so a never-yet-run process reads as default,
+* correctly.
+* Reserved against user programs in inc/zp.equ; see
+* docs/LANGUAGE-CARD.md for why the bank needs this and the
+* write-enable cannot have it.
+K_LCBANK    equ   $FF
+K_RESULT    equ   $F3
+K_RESULT_ERR equ  $F4
+K_CPY_PROC  equ   $F7
+K_CPY_MAIN  equ   $F9
+K_CPY_LEN   equ   $FB
+K_CPY_ERR   equ   $FC

@@ -1,0 +1,42 @@
+.\" Derived from Research UNIX V6 sleep(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/sleep.1
+.\" Retrieved 2026-09-19; archived response SHA256: 7d9869a5760d28c72a6d98e32b7acae96b38b3085a343064246cc4d82f920069
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH SLEEP 1 "September 19, 2026" maux
+.SH NAME
+sleep \- suspend execution for an interval
+.SH SYNOPSIS
+.B sleep
+.I seconds
+.SH DESCRIPTION
+.I Sleep
+suspends execution for
+.I seconds
+seconds.
+The process is blocked in the kernel until the tick counter reaches
+the target, so a
+sleeping process takes no share of the processor, and a background
+.B sleep
+does not slow the job in front of it.
+A signal ends it at once: ^C, or
+.IR kill (1).
+The operand is a whole decimal number from 0 through 9999.
+For example:
+.PP
+.B sleep 5
+.PP
+waits five seconds before the next command.
+A running interrupt tick source is required, even for a zero-second wait.
+.SH FILES
+/usr/man/SLEEP  this page
+.SH "SEE ALSO"
+time(1), sh(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 when the interval has elapsed, 1 if no usable tick source is available, 2 for usage errors.
+.SH BUGS
+Accurate to within a tick (1/60 second) at each end.
+The wait is kernel-timed only while the interrupt tick runs; with no
+tick source it refuses rather than hang.

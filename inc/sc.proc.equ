@@ -1,0 +1,370 @@
+*---------------------------------------------------------------
+* sc.proc.equ -- maux's own process-call numbers (spawn/
+* exit/wait/pipe/brk/pstat -- concepts the ProDOS MLI has NO
+* equivalent for). Split out of inc/syscall.equ (task #8,
+* docs/SELFHOST-CONVERSION.md phase 1) per docs/SYSCALL.md
+* ruling on ABI FRICTION item 2 -- the call-number table was
+* PUT whole by every compilation unit regardless of which half
+* (process vs. file calls) it actually used, and PUT never
+* reclaims (learning:01M0CC62FZ351EBXCAAKX52KAJ). Grouping
+* DERIVED from a reference-set scan: liba/syscalls.s (the one
+* choke point every userland program links) and the kernel's
+* dispatch/spawn modules need this half; see
+* inc/sc.file.equ for the other.
+*
+* `put`-only file (no code/org/dsk), same precondition
+* discipline as memmap.equ -- the top-level file must `put`
+* this directly.
+*---------------------------------------------------------------
+
+* -- maux PROCESS calls (no MLI equivalent) -- sequential,
+* 1-based --
+SYS_SPAWN   equ   1
+SYS_EXIT    equ   2
+SYS_WAIT    equ   3
+SYS_PIPE    equ   4
+SYS_BRK     equ   5
+* REFACTOR POINT: SYS_PSTAT is the first call whose only job is
+* to show kernel state to userland. If several such consumers
+* ever want the SAME access pattern, build the /DEV namespace
+* and retire this into it -- but not for a second call alone. A
+* 6-byte record in a shared header is a SMALLER contract than a
+* text format the kernel owns. See docs/SYSCALL.md section 10.
+SYS_PSTAT   equ   6     ;read one PCB slot -- what ps is made of
+* SYS_CLOCK -- copy the ProDOS Global Page's raw date/time
+* words ($BF90-$BF93, ProDOS 8 TRM ch.6) to the caller. A maux
+* PROCESS call, not a file call: no MLI opcode reads the clock
+* (the global page is plain memory ANY program may read once
+* it's mapped main -- see src/kernel/procfile.s's PRC_CLOCK
+* header), so inc/sc.file.equ's "file syscall numbers
+* ARE raw MLI opcodes" house rule does not apply here. `date`
+* (docs/FLEET.md's "MISSING KERNEL FEATURE" line) is the first
+* caller; task 2026-08-21.
+SYS_CLOCK   equ   7
+* SYS_FORK -- src/kernel/procfork.s. Takes NO parameter block
+* (the register-carried parms pointer is ignored), returns the
+* child's pid to the parent and 0 to the child, ERR_AGAIN when
+* the bank free list is empty. It is 8 because this file's own
+* grouping rule is "maux process calls keep small sequential
+* numbers below MLI_RANGE_LO" and 1..7 above run sequentially --
+* not because fork has any claim on that particular number.
+* vfork stays DELETED (ARCHITECTURE.md: spawn subsumes it
+* without the borrowed-bank UB rules).
+SYS_FORK    equ   8
+
+* -- SYS_DUP2 -- src/kernel/procfd2.s PRC_DUP2. dup2(oldfd,
+* -- newfd): point one of the CALLER'S OWN fd slots at an
+* -- already-open object. Two parameter bytes, oldfd then
+* -- newfd; returns newfd.
+* --
+* -- Why it is a PROCESS call and not a file call: it rearranges
+* -- PCB_FDTABLE, which is kernel bookkeeping. It never reaches
+* -- ProDOS, so it has no MLI number to borrow and belongs in
+* -- the small sequential range with spawn/fork/pipe.
+* --
+* -- The mechanism already existed: spawn()'s FDACT_DUP has done
+* -- exactly this since fdactions landed, but only against the
+* -- PARENT's table at spawn time, so a running process could
+* -- never repoint its own fd. That gap is what blocked
+* -- subshells (docs/SH-SUBSHELL.md) -- fork() was never the
+* -- blocker. docs/SHELL-GAPS.md sec 1.
+SYS_DUP2    equ   9
+
+* -- SYS_TICK -- elapsed time, NOT wall time. Distinct from
+* -- SYS_CLOCK (7) because a CLOCK and a TICK are different
+* -- hardware and a machine can have either, both or neither
+* -- (docs/SHELL-GAPS.md sec 5): a No-Slot Clock gives a date
+* -- and no interrupt; an AppleMouse gives a 60 Hz interrupt and
+* -- no date. A wall clock is also the wrong primitive for
+* -- elapsed time at any resolution -- one that can be set
+* -- backwards is not a stopwatch.
+* --
+* -- IT REPORTS THE MODE ALONGSIDE THE COUNT, and that is not
+* -- decoration. src/kernel/timer.s's TIMER_MD_COOP arms no
+* -- hardware source, so the counter does not advance SLOWLY in
+* -- that mode, it never advances at all. A bare counter cannot
+* -- tell a caller "no time has passed" from "time does not
+* -- pass here", and a `sleep` that polls a frozen counter
+* -- hangs forever.
+SYS_TICK    equ   10
+
+* -- SYS_FDSTAT -- src/kernel/procfd2.s PRC_FDSTAT. fdstat(fd):
+* -- what KIND of object does one of the CALLER'S OWN fd slots
+* -- hold. One parameter byte (the fd); returns the type in A.
+* --
+* -- This is maux's isatty(3)/gtty(2): V7 sh prompts only when
+* -- its input is a TERMINAL, and no userland heuristic can make
+* -- that call -- a tty and a pipe are both unseekable, and the
+* -- fd table lives in the annex where no process can look
+* -- (docs/SYSCALL.md sec 10's constraint). First caller is sh's
+* -- interactive flag (docs/SHELL-GAPS.md sec 2): a $( ) child
+* -- is a whole sh reading a pipe, and a prompt printed there
+* -- sprays the console mid-substitution.
+* --
+* -- RESULT ENCODING: a DEVICE fd returns its raw table byte
+* -- (>= FD_DEV_BASE, inc/sc.devfd.equ -- test the high
+* -- bit and you have isatty). Anything else returns the FDST_*
+* -- tag below. Closed fd or fd >= 8: carry set, ERR_INVAL.
+SYS_FDSTAT  equ   11
+
+* -- ttygeo(buf,fd): 4 mode bytes for a console fd -- see
+* -- src/kernel/tty7.s PRC_TTYGEO + docs/VIDMODE.md sec 2.
+SYS_TTYGEO  equ   12
+
+* -- kill(pid, signo): terminate a process. THE SIGNO IS
+* -- CARRIED, NOT DELIVERED: maux has no trap/handler machinery
+* -- yet, so every nonzero signo terminates -- but the victim's
+* -- wait status is $80|signo (the STATUS_INTR encoding: ^C is
+* -- signal 2 = $82, kill's default 15 reaps $8F, -9 reaps $89),
+* -- so the INT/TERM/KILL lanes are distinct in the ABI today
+* -- and `trap` can make the default lane catchable later with
+* -- no ABI change. Signo 0 is V7's liveness probe: validate the
+* -- pid, kill nothing, carry says whether it lives. The victim
+* -- becomes a zombie and its parent is woken; fds close at the
+* -- parent's reap, the ^C sweep's own discipline (procspawn2.s
+* -- PRC_INTR_SWP is this call's tick-context twin). kill(self)
+* -- is exit($80|signo). Refused: pid 0, out-of-range, unused
+* -- or zombie slots (ERR_SRCH), and the root tier -- a process
+* -- with parent 0 (ERR_INVAL): killing a boot process orphans
+* -- the console. The CONSOLE SHELL is killable (RULINGS-1,
+* -- 2026-10-18: init respawns it). A killed process's own
+* -- children are ADOPTED BY INIT at its death (ORPHAN-1, V7
+* -- sys1.c / 4.2BSD kern_exit.c): PCB_PARENT := 1, a STOPPED
+* -- one gets SIGHUP then SIGCONT through its own disposition,
+* -- and init is woken for a zombie one.
+SYS_KILL    equ   13
+
+* -- signal(signo, action): set this process's disposition for
+* -- one signal; returns the PREVIOUS action. Actions: SIGA_DFL
+* -- terminate (today's kill), SIGA_IGN discard at the sender,
+* -- SIGA_CATCH hold -- pending bit + ERR_INTR out of a blocked
+* -- syscall; the process fetches with SYS_SIGPEND. NO handler
+* -- addresses in v1 (refused ERR_INVAL, never stored as a
+* -- promise delivery would break) -- the async-dispatch upgrade
+* -- trigger is named in docs/SIGNALS.md sec 1. Dispositions are
+* -- STICKY (A12: POSIX sigaction behaviour, not V7's
+* -- reset-on-catch race -- sh reinstalls anyway, so no V7
+* -- script can tell). Refused: signo 0, 9 (V7: SIGKILL "cannot
+* -- be caught or ignored"), >15; action >2.
+SYS_SIGNAL  equ   14
+* -- sigpend(): pop the LOWEST pending held signo (fetch-and-
+* -- clear), 0 = none. Lowest-first is V7 trap's own "executed
+* -- in order of signal number". A maux-ism in the SYS_PSTAT
+* -- tradition -- the honest surface for what V7 spelled
+* -- as handler dispatch; docs/SIGNALS.md sec 2.
+SYS_SIGPEND equ   15
+
+* -- SYS_SIGNAL action values --
+SIGA_DFL    equ   0
+SIGA_IGN    equ   1
+SIGA_CATCH  equ   2
+
+* -- SIG_TSTP -- the cooperative-suspend signo (docs/JOB-CONTROL
+* -- .md Increment E). A maux number: POSIX's 18 is outside the
+* -- 1-15 signo space. Purely a DISPOSITION -- a process that
+* -- SC_SIGNAL(SIG_TSTP, CATCH)s opts into handling ^Z itself
+* -- (vi: rmcup + SYS_STOP + smcup); the ^Z sweep PRC_STOP_SWP
+* -- delivers it to a catcher (pending + ERR_INTR) and
+* -- direct-stops a non-catcher. It is not a SYS_KILL stop
+* -- action -- `kill -14` still terminates, like every signo;
+* -- the ^Z sweep is the only stop path.
+SIG_TSTP    equ   14
+SIG_HUP     equ   1                 ;V7 SIGHUP (ORPHAN-1)
+
+* -- FDST_* -- SYS_FDSTAT's non-device result values. These MUST
+* -- equal mm.annex.equ's OFT_PIPE_R/OFT_PIPE_W/OFT_FILE
+* -- tags: the kernel returns its OFT_TYPE byte RAW rather than
+* -- spending image bytes translating it, so these names are the
+* -- userland spelling of the same numbers. check-process's
+* -- fdstat cases assert each value through this header -- if
+* -- the annex tags ever move, that gate goes red before any
+* -- caller misreads a pipe as a file.
+FDST_PIPE_R equ   1
+FDST_PIPE_W equ   2
+FDST_FILE   equ   3
+* -- FDST_BLK: a /dev/sNdM block device fdstat tag -- docs/
+* -- KSEG.md "Cells and equates".
+FDST_BLK    equ   4
+
+* -- ttymode(fd, newflags) = SYS_TTYMODE -- src/kernel/tty7.s
+* -- PRC_TTYMODE. SET the target console's mode flags, RETURN
+* -- THE PREVIOUS flags (the signal()/SYS_SIGNAL shape, so a
+* -- caller can save+restore -- docs/VI-DESIGN.md's stty(1)).
+* -- Three orthogonal bits, deliberately not V7's full raw-no-
+* -- signal ladder (that is out of scope for this seed): ICANON
+* -- (line discipline: cook to CR with erase/kill editing), ECHO
+* -- (paint typed bytes), and OPOST (VT102 slice 1,
+* docs/CONSOLE-
+* -- VT102.md sec 3, the GNO/ME CRMOD precedent -- learning:
+* -- 01M287MW1Y9Q719BAYFTN4C5M8): a CR ($8D, maux's own line
+* -- terminator) reaching the TERMINAL layer becomes a full
+* -- newline (column 0 + index) when OPOST is set, and moves the
+* -- column only, strict VT102, when it is clear. cooked default
+* =
+* -- all three set. ^C stays a signal in EVERY mode -- it is
+* -- intercepted upstream of the ring (tty3.s TTY_KEYIN), never
+* -- gated by any of these bits. Same fd rules as SYS_TTYGEO:
+* -- >= FD_DEV_BASE and <= FD_TTY3, else ERR_INVAL.
+TMD_ICANON  equ   1
+TMD_ECHO    equ   2
+TMD_OPOST   equ   4
+SYS_TTYMODE equ   16
+
+* -- tcsetfg(&job) = SYS_TCSETFG -- src/kernel/procspawn2.s
+* -- PRC_TCSETFG (docs/JOB-CONTROL.md, Increment A). The shell
+* -- DECLARES its console's FOREGROUND JOB: the parm block is
+* -- {count, pid0, pid1, pid2} (count 0 = idle prompt, nothing
+* -- is foreground). ^C on that console then kills exactly that
+* -- job -- the set's live pids and their descendants -- instead
+* -- of the old "every process at spawn depth >= 3 on the whole
+* -- machine" sweep. The console is the CALLER's fd 0 (a tty
+* -- device fd, else ERR_INVAL). SET-TIME HARDENING: count <=
+* -- TCSETFG_MAX and every pid a CHILD of the caller or the
+* -- CALLER ITSELF (a raw-mode shell declares itself while it
+* -- reads, so ^C/^Z reach it as signals), else ERR_INVAL --
+* -- the only caller is a shell naming its own children. The
+* -- kernel scrubs a reaped pid out of every set
+* -- (PRC_FG_SCRUB), so a stale entry can never name a reused
+* -- pid. TCSETFG_MAX is sh's MAXCMD (a pipeline is <= 3
+* -- stages); sh asserts the two agree.
+SYS_TCSETFG equ   17
+TCSETFG_MAX equ   3
+
+* -- cont(pid) = SYS_CONT -- src/kernel/procsig.s PRC_CONT
+* -- (docs/JOB-CONTROL.md Increment B): resume a STOPPED child.
+* -- The SIGCONT equivalent, and deliberately NOT a signo of
+* -- SYS_KILL: maux's signal model is "every nonzero signo
+* -- terminates" (docs/SIGNALS.md sec 1) and a continue is not a
+* -- termination. STOPPED -> RUNNABLE + run queue, wait channel
+* -- cleared -- PRC_SIG_SND's blocked-wake, applied to the one
+* -- state it never touches. Refused ERR_INVAL unless the pid is
+* -- a CHILD of the caller (the SYS_TCSETFG hardening) AND is
+* -- PCB_STOPPED right now.
+SYS_CONT    equ   18
+
+* -- waitjob(&status2, flags) = SYS_WAITJOB -- src/kernel/
+* -- process2.s PRC_WAITJOB, sharing PRC_WAIT's reap core. The
+* -- job-control wait: flags WJ_NOHANG (poll: return 0 instead
+* -- of blocking when no child is ready) and WJ_UNTRACED (report
+* -- a STOPPED child too -- reported, never reaped). Writes a
+* -- TWO-BYTE {kind, code} to the buffer: WJ_EXITED + exit
+* -- status, WJ_SIGNALED + signo (the $80|signo status decoded),
+* -- WJ_STOPPED + 0. Why two bytes and not V7's $7F: a one-byte
+* -- status already means exit 127 there. Returns the pid in A;
+* -- 0 = WJ_NOHANG and nothing ready; carry + ERR_CHILD when the
+* -- caller has no children, OR when every child is STOPPED and
+* -- WJ_UNTRACED was not asked for -- nothing could ever wake
+* -- that sleep. The legacy SYS_WAIT (1-byte status, blocks,
+* -- reaps ZOMBIE only) is unchanged and shares the same rule
+* -- for an all-stopped child set. REPORT-ONCE INVARIANT
+* -- (gated): WJ_UNTRACED reports a stop on EVERY call while
+* -- the child stays stopped -- the one sanctioned consumer is
+* -- a blocking `fg` loop that consumes it and returns; a
+* -- prompt-time poll uses WJ_NOHANG WITHOUT WJ_UNTRACED.
+SYS_WAITJOB equ   19
+WJ_NOHANG   equ   $01
+WJ_UNTRACED equ   $02
+WJ_EXITED   equ   0
+WJ_SIGNALED equ   1
+WJ_STOPPED  equ   2
+
+* -- stop() = SYS_STOP -- src/kernel/process2.s PRC_STOP (docs/
+* -- JOB-CONTROL.md Increment E): the caller parks ITSELF
+* -- PCB_STOPPED until a SYS_CONT resumes it, waking its parent
+* -- first (SCH_WAKEUP on PCB_PARENT) so a fg-waiting shell's
+* -- SYS_WAITJOB sees the stop. SCH_SLEEP's shape with STOPPED
+* -- for BLOCKED and no retry-rewind (a continue is not an
+* -- interrupt): it RETURNS 0 when continued. The catcher's half
+* -- of cooperative ^Z -- vi calls it between rmcup and smcup.
+* -- No parameters.
+SYS_STOP    equ   20
+
+* -- SYS_VCSTAT -- which virtual consoles already have a shell.
+* -- src/kernel/procfile3.s PRC_VCSTAT. Two parameter bytes, the
+* -- caller's buffer pointer; VC_COUNT bytes are written there,
+* -- one per console (console 1 is byte 0): the pid attached to
+* -- that console, or 0 for none.
+* --
+* -- It exists for lazy consoles (docs/COVER-OFF.md): `chvt N`
+* -- must not drop a person onto a console nobody reads, and
+* -- must not stack a SECOND shell on one that already has one.
+* -- ATTACHMENT is the property, not blocking. "Is somebody
+* -- asleep on TTY_RD_CHAN+N" is true only while that shell sits
+* -- at its prompt and false for the whole time it is running a
+* -- command -- which is exactly when a person switches away and
+* -- comes back. fd 0's object byte is FD_DEV_BASE+console for a
+* -- console-attached process in BOTH states, and it is how
+* -- PRC_TCSETFG already identifies the caller's console.
+SYS_VCSTAT  equ   21
+
+* -- SYS_HALT -- stop the world. procfile3.s PRC_HALT.
+* -- ONE parameter byte, the mode; HALT_DOWN is the only one
+* -- defined, and the byte exists so `bye`'s suspend mode can
+* -- join it without renumbering.
+* --
+* -- IT DOES NOT RETURN. There is no error path and no result:
+* -- by the time the mode byte has been read, every open file is
+* -- closed, the periodic interrupt source is disarmed and the
+* -- glass belongs to the motherboard again. A caller that wants
+* -- to say something to the person says it BEFORE calling, and
+* -- `shutdown` does.
+* --
+* -- WHAT IT DOES NOT PROMISE, said here because the promise is
+* -- easy to assume: it flushes the KERNEL's files, not each
+* -- process's userland stdio buffer, which lives in that
+* -- process's own bank and can only be flushed by code running
+* -- there. Unix has the same property for a SIGKILLed process.
+* -- Utilities that buffer and are killed mid-write lose the
+* -- tail; utilities that exit normally have already flushed.
+SYS_HALT    equ   22
+HALT_DOWN   equ   0    ;halt: quiesce and stop. Ctrl-Reset
+                       ;reboots from here -- maux never took
+                       ;$03F2 ($0300 is reserved for a reset
+                       ;chain and nothing writes it), so the
+                       ;ROM/ProDOS path is still intact and
+                       ;"safe to reset" is a fact rather than
+                       ;a hope. check-shutdown asserts it.
+
+* -- SYS_BYE -- save+destroy+restore round trip (docs/
+* -- BYE-SLICE1.md), PRC_BYE (src/kernel/procbye.s). No
+* -- parameters in this slice. IT DOES NOT RETURN THE WAY IT
+* -- WAS CALLED: the machine round-trips through a real MLI
+* -- QUIT before the caller sees A again, but the call still
+* -- behaves like an ordinary syscall to the caller -- returns
+* -- with A = 0, no error path (allocating the save bank the
+* -- first time can fail, and THAT failure returns normally,
+* -- via ERR_NOMEM, with the round trip never attempted).
+SYS_BYE     equ   23
+
+* -- SYS_DEVLIST -- src/kernel/procfile4.s PRC_DEVLIST
+* -- (docs/DEVFS.md, 2026-09-30). Copies out DEVCNT+1 bytes, one
+* -- per DEVLST entry, DSSS in the high nibble ($F0-masked,
+* -- learning:01KW1GTYH4NRG0F8M7AAT6EG9Z) with bit 0 SET when
+* -- that unit's DEVADR ($BF10-$BF2F, indexed by the same DSSS
+* -- nibble) falls in main LC bank 1 $D000-$D5FF -- the built-in
+* -- Disk ][ driver (learning:01M0W5ZCYJQH2A19V5XJW2HZR4). NO
+* -- device is touched: this is a pure global-page read, the
+* -- whole point being that `/dev` costs nothing on a machine
+* -- with an empty 5.25" drive (operator ruling, "never poll a
+* -- 5.25-inch drive to list anything"). One parameter: the
+* -- caller's buffer pointer (no leading count byte -- a maux
+* -- call, not an MLI one). Returns the byte count (DEVCNT+1) in
+* -- A on success.
+SYS_DEVLIST equ   24
+
+* -- SYS_VROOT (docs/VROOT.md): parm {op, ptr(2), arg}.
+* -- op 0 = row (arg = index), 1 = mount (arg = unit),
+* -- 2 = umount (arg = unit, ptr = "/NAME"), 3 = phys path
+* -- (comes back at ptr), 4 = LOOPATT (ptr = image path, arg
+* -- = host unit | -r | re-attach bits; play image only),
+* -- 5 = CLASSIFY (ptr = a path; A = 0 an ordinary path,
+* -- $80 "/", $81 "/dev", $82 "/mnt" once the cwd, "." and
+* -- ".." are resolved; play image only, KFIX9).
+SYS_VROOT   equ   25
+
+* -- SYS_SLPUNTIL: parm = 4-byte ABSOLUTE tick count; blocks
+* -- until the tick counter reaches it (procfile3.s, SLEEP-1).
+SYS_SLPUNTIL equ 26
+
+* -- $1B-$64 deliberately unassigned -- room to grow without
+* renegotiating -- MLI_RANGE_LO (src/kernel/entry.s).

@@ -1,0 +1,27 @@
+title: The first minute
+description: Boot is done. A person looks around: ls, how many programs, a pipeline, and ps with its BANK column.
+demo: firstmin
+---
+<div class="band demo">
+<h1>The first minute</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / firstmin</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/firstmin.py -->
+<p class="lead">A Unix on an Apple IIe, in its first minute. The demo lists the disk, counts the programs in <code>/bin</code>, runs a pipeline through three of them, and runs <code>ps</code>. The <code>BANK</code> column of <code>ps</code> is the whole idea: every process is a 64K RamWorks bank, and the bank number is the process number.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/firstmin.py; docs/DEMOS-W1-NOTES.md -->
+<p>This film is made by <code>site/demos/firstmin.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that <code>ls</code> prints the volume root, in order, as the disk image holds it; that <code>wc -l</code> counts exactly the programs the image holds in <code>/bin</code>; that the pipeline prints the last five names, in order; that <code>ps</code> prints distinct PIDs and distinct banks; and that every process sits in the bank that is its PID. Every expected value is read from the disk image by a2til on the host, never typed into the demo. The checks themselves were tested: with one program removed from <code>/bin</code> the count is off by one and the demo fails at "wc counts exactly the files on the disk"; with <code>sort</code> replaced by a copy of <code>cat</code> it fails at the pipeline; with <code>ps</code> replaced by a copy of <code>echo</code> it fails at "ps prints its header".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

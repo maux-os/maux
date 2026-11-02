@@ -1,0 +1,39 @@
+.\" Derived from Research UNIX V7 touch(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/man/man1/touch.1
+.\" Retrieved 2026-09-19; archived response SHA256: 2118c7d26ee8429cc518a5b8cc8db36ab0e9b39000241042bb5b435e0d3019d9
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH TOUCH 1 "September 19, 2026" maux
+.SH NAME
+touch \- update date last modified of files
+.SH SYNOPSIS
+.B touch
+.RB [ \-t " stamp" | \-r " reference" ]
+.I file ...
+.SH DESCRIPTION
+.I Touch
+attempts to set the modified date of each file.
+If a file does not exist, an attempt will be made to create it.
+New files have ProDOS TXT type; existing contents and other attributes
+are left alone.
+.TP
+.B \-t stamp
+Use [[CC]YY]MMDDhhmm[.SS]. The century is consumed but not stored;
+seconds are parsed but discarded. Without a year, use the clock's year.
+.TP
+.B \-r reference
+Copy the reference file's modification date and time.
+.PP
+Without either option, use the current ProDOS clock words.
+If no clock is present this stores the honest ProDOS 'no date' value;
+it is not an error.
+.SH FILES
+/usr/man/TOUCH  this page
+.SH "SEE ALSO"
+date(1), make(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if every file succeeds, 1 for file failures, 2 for usage or invalid stamp errors.
+.SH BUGS
+No -c, -a or -m options are implemented. Time has minute resolution; a century cannot be represented in the legacy date word.

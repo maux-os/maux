@@ -1,0 +1,73 @@
+.\" tsort.1 -- maux's tsort(1), in the V7 man(1) shape. An
+.\" original page (this project's own text), so it carries no
+.\" third-party notice -- MIT like the code, same posture as
+.\" env.1/man.1.
+.TH TSORT 1 "September 15, 2026" maux
+.SH NAME
+tsort \- topological sort
+.SH SYNOPSIS
+.B tsort
+[
+.I file
+]
+.SH DESCRIPTION
+.I Tsort
+reads pairs of whitespace/newline\-separated tokens from
+.I file
+(standard input if none is given): a pair
+.RI "\(lq a b \(rq"
+means
+.I a
+must precede
+.I b
+in the output.  A pair whose two tokens are IDENTICAL
+.RI "(\(lq a a \(rq)"
+declares the node
+.I a
+without any ordering edge \(em the same idiom
+.BR tsort (1)
+implementations have always used for an isolated node.
+.PP
+.I Tsort
+writes one node per line, in an order consistent with every
+edge given.  Among nodes with no remaining predecessor at a
+given step, this implementation always picks the one that
+appeared FIRST in the input (GNU's own tie\-break; BSD's is a
+different, unspecified order \(em there is no common oracle for
+this choice, so any row that depends on it is fixed by this
+tree's own behaviour, not a captured host run).
+.PP
+An
+.B odd
+number of tokens is an error: no ordering can be formed from an
+unpaired trailing token, so nothing is sorted and
+.I tsort
+exits 1 without printing an order at all.
+.PP
+A
+.B cycle
+(no node ever becomes free) is reported to standard error as
+.RI "\(lq tsort: cycle in data \(rq"
+plus the still\-unresolved node names, and the sort continues
+anyway by forcing the output of the first such node in table
+order \(em breaking whichever edge pointed into it, the same
+"one edge of the cycle broken" contract
+.BR tsort (1)
+has always had.  The exit status is 1 if this ever happened.
+.SH FILES
+.br
+/usr/man/TSORT  this page
+.SH "SEE ALSO"
+make(1)
+.SH DIAGNOSTICS
+Exit status is 0 if every token paired off and no cycle was
+found; 1 if the input held an odd number of tokens, or a cycle
+was found (an order is still printed); 2 for a usage error (more
+than one file operand).
+.SH BUGS
+Capacity is fixed at build time (32 distinct tokens, 64 edges,
+15 characters per token) \(em a graph past that silently reuses
+the last slot rather than growing. A detected cycle's own
+reported member list is whatever remains UNRESOLVED at the
+moment of detection, which is not necessarily the minimal cycle
+in a larger tangled graph.

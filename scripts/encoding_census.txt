@@ -1,0 +1,122 @@
+# scripts/encoding_census.txt -- every program in src/bin classified
+# against FOREIGN text (low ASCII, $0D line ends: what NuFX, a2til, tip
+# and ProDOS software deliver); checked by scripts/check_encoding_census.py
+# (make check-encoding-census; docs/ENCODING-CENSUS-NOTES.md).
+#
+# Candidates are DERIVED, not listed here: the Makefile's UTILS plus every
+# top-level src/bin manifest (not `put` by another bin file).  A program
+# with no line below fails the gate; so does a line naming no program.
+#
+# Format (fields split on `|`):
+#   NAME covered | ROW COMMAND | reason
+#       ROW COMMAND is the exact FOREIGN_OK command in check_encoding.py
+#   NAME exempt  | reason       (does not read text line-wise)
+#   NAME broken KIND | statement  defect KNOWN and REPRODUCIBLE: check_encoding.py
+#       KNOWN_BROKEN pins the exact broken output, so a FIX turns that gate red
+#       and forces this line out (then: FOREIGN_OK row, flip to covered)
+#   NAME gap KIND | statement   (nothing to assert yet)  KIND = terminator|polarity|both|unverified
+#       terminator = line-end predicate; polarity = separator/content
+#       twin (argv high-bit vs file low); a static audit hit is a
+#       SUSPECT, not a proven defect.  A gap closes by gaining a
+#       FOREIGN_OK row and becoming `covered`.  MAX_GAPS in the gate is a
+#       ratchet on the count.
+
+# ---- covered: a check_encoding.py row runs it on foreign text --------
+cat covered | cat /mnt/MAUX/LOW | byte pump; also the control that looks fine when others are not
+grep covered | grep b /mnt/MAUX/LOW | 14-tool sweep 2026-09-21
+tr covered | tr a-z A-Z < /mnt/MAUX/LOW | table twins marked at setup; also the round-trip row
+wc covered | wc -l < /mnt/MAUX/LOWM | line count pinned at 3
+head covered | head -1 /mnt/MAUX/LOWM | first line only
+tail covered | tail -1 /mnt/MAUX/LOWM | exact rows pinned (membership alone passed a broken tail)
+sort covered | sort -r /mnt/MAUX/LOWM | reversed order pinned
+uniq covered | uniq /mnt/MAUX/LOWM | exact rows
+nl covered | nl /mnt/MAUX/LOWM | numbered fields
+sed covered | sed -n 2p /mnt/MAUX/LOWM | address by line number; the 's' polarity is not exercised
+expand covered | expand /mnt/MAUX/LOWM | exact rows
+fold covered | fold -w 4 /mnt/MAUX/LOWM | exact rows
+cut covered | cut -d: -f1 /mnt/MAUX/LOWM | the polarity case: argv $BA vs file $3A
+paste covered | paste -s /mnt/MAUX/LOWM | serial join
+tsort covered | tsort /mnt/MAUX/LOWT | the LOW space $20 in tokens
+comm covered | comm -12 /mnt/MAUX/LOWM /mnt/MAUX/LOWN | two-file merge
+join covered | join -t: /mnt/MAUX/LOWM /mnt/MAUX/LOWN | -t polarity plus join output follows the file
+more covered | more /mnt/MAUX/LOWM | the extra blank row is GONE as of the 2026-11-01 integration: it was the SHELL's buffer, not more's counting -- MAKE-FLUSH put jsr SIO_FLUSHALL before the spawn (shblt2.s RUN_PIPELINE :rslvok), so sh no longer interleaves a buffered row after the child. Still unproven and NOT claimed here: more tests only $8D, so a LONG low-ASCII file is one line and does not page, and its literal search cannot match low-ASCII content
+
+# ---- broken lines are first below; gap: unverified or known broken on foreign text ------------------
+sh broken both | REPRODUCED by check_encoding.py KNOWN_BROKEN (for w in $(cat LOWT) yields one word '<a b', 'b c', '>'): IFS_DEF is $A0,$89,$8D (high form only) so a low-ASCII script is not split into words; line-end handling of foreign scripts unverified
+unexpand gap unverified | SUSPECT (static audit): $8D tested, no $0D; sibling expand was fixed in the 14-tool sweep and this one was not (the pair was split)
+diff gap unverified | SUSPECT (static audit): many $8D tests, no $0D; line-oriented, so a low-ASCII file may be one line
+patch gap unverified | SUSPECT (static audit): reads diff text line-wise, $8D only; no row
+pr gap unverified | SUSPECT (static audit): paginates by line, $8D only; no row
+ed gap unverified | SUSPECT (static audit): file reads split on $8D, no $0D; no row
+ex gap unverified | SUSPECT (static audit): shares ed's file reader, $8D only; no row
+vi gap unverified | SUSPECT (static audit): file load splits on $8D, no $0D; screen-scraping is the trap here, see check_vi
+split gap unverified | line-wise (-l); no $0D in the audit; no row
+csplit gap unverified | splits at context lines; $8D only in the audit; no row
+xargs gap unverified | tokenises stdin on whitespace and newline; high-form separator set suspected; no row
+make gap unverified | check-cmdword item 5 says a Makefile is read in either convention (line end only); not an encoding row, polarity of macro/rule separators unverified
+as gap unverified | reads assembler source line-wise; one $0D seen in audit, no row
+man gap unverified | reads page text and hands to the pager path; no row
+uudecode gap unverified | reads uuencoded text line-wise; a foreign .uu file is exactly the input; one $0D in audit, no row
+bpatch gap unverified | reads a text SPEC line-wise; one $0D in audit, no row
+cmp gap unverified | -l reports a LINE number, which counts line ends; $8D only in the audit; no row
+ld gap unverified | `ld @FILE` argument file is split into words (ldargf.s); no row
+
+# ---- exempt: does not read text line-wise -----------------------------
+asrom exempt | standalone ROM-compat stubs assembled at their target address; not a user program
+proshimcr exempt | standalone MLI core blob embedded in proshim; not a user program
+proshimpg exempt | the $BF00 shim page blob; not a user program
+proshim exempt | loads an EDASM binary under an MLI shim; no text parsing
+basename exempt | argv operand only
+dirname exempt | argv operand only
+pathchk exempt | argv operand only
+realpath exempt | argv operand only
+echo exempt | writes argv; reads no file
+printf exempt | formats argv; reads no file
+expr exempt | evaluates argv
+env exempt | environment and argv
+date exempt | clock and argv
+cal exempt | clock and argv
+uname exempt | constant strings
+tty exempt | reports the controlling terminal
+true exempt | does nothing
+false exempt | does nothing
+sleep exempt | argv and a kernel wait
+kill exempt | argv and a signal
+time exempt | execs a command and reports times
+timeout exempt | execs a command under a deadline
+nohup exempt | execs a command; no text parsing
+reset exempt | writes terminal control sequences
+stty exempt | terminal modes from argv
+vidmode exempt | video card control from argv
+chvt exempt | console switch from argv
+shutdown exempt | system call
+bye exempt | QUIT to a ProDOS program
+mount exempt | block device and path operands
+umount exempt | path operand
+chmod exempt | path operands
+chtyp exempt | path operands and a ProDOS type
+mkdir exempt | path operands
+rmdir exempt | path operands
+rm exempt | path operands
+touch exempt | path operands
+ls exempt | directory entries, not file text
+df exempt | volume bitmap
+du exempt | directory walk
+pwd exempt | cwd string
+ps exempt | process table
+find exempt | walks paths and evaluates an argv expression; reads no file text
+file exempt | prints the ProDOS type of named files; reads the catalog entry only
+cp exempt | byte copy, never interprets content
+mv exempt | rename or byte copy
+tee exempt | byte pump from fd 0
+od exempt | byte dump; no line structure
+cksum exempt | byte checksum
+sum exempt | byte checksum
+dd exempt | block byte copy
+strings exempt | runs of printable bytes; no line structure (the terminator is just a non-printable break)
+uuencode exempt | binary in; the text it writes is tool-made
+nm exempt | reads REL object files, binary
+mld exempt | old Merlin-window linker front end; REL binary
+plasma exempt | runs PLASMA bytecode, binary
+nulib2 exempt | NuFX archives, binary; stores bytes as given
+tip exempt | keyboard and serial streams; the ~ escape sees typed keys, not file text

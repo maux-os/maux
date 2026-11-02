@@ -1,0 +1,68 @@
+*---------------------------------------------------------------
+* proshim.equ -- addresses shared by the proshim pieces (docs/
+* EDASM-SHIM.md, TASKS.md #19): the $BF00 shim page
+* (proshimpg.s), the language-card core (proshimcr.s), the
+* ROM-entry stubs (proshimrm.s) and the loader (proshim.s).
+* Each piece is assembled STANDALONE at its real address and
+* embedded in proshim.bin via putbin (the asrom.s mechanism),
+* so every cross-piece reference is a fixed address here.
+*
+* `put`-only file (no code/org/dsk).
+*---------------------------------------------------------------
+
+* -- the three blobs' load addresses --
+PS_PAGE      equ   $BF00       ;shim page = fake global page
+PS_CORE      equ   $E000       ;core entry, LC common region
+PS_CORE_FDOUT equ  $E003       ;fd-1 writer (COUT1 -> here)
+PS_CORE_FDIN equ   $E006       ;fd-0 reader (KEYIN -> here)
+PS_CORE_GETLN equ  $E009       ;GETLN (GETLN -> here)
+
+* -- soft switches the page reads (bit 7 = state): RDLCBNK2 and
+* -- RDLCRAM moved to inc/mm.hw.equ 2026-09-20, which every
+* -- consumer of this file already puts. They were a second
+* -- spelling of two addresses that file already owned -- the
+* -- same duplicate-name hazard check_modules.py's softswitch
+* -- baseline exists to catch, and the kernel now reads $C011
+* -- too (docs/LANGUAGE-CARD.md).
+
+* -- fixed cells inside the page: the $BF40-$BF57 hole between
+* -- DEVLST and BITMAP, which no ProDOS program reads --
+PS_LCRAM     equ   $BF40       ;caller's RDLCRAM sample
+PS_LCBNK     equ   $BF41       ;caller's RDLCBNK2 sample
+PS_RESULT    equ   $BF42       ;A across the LC restore
+PS_CMD       equ   $BF43       ;inline command byte
+PS_PARM      equ   $BF44       ;inline parmlist pointer (2)
+PS_RET       equ   $BF46       ;caller's return address (2)
+PS_PROCP     equ   $BF48       ;2-byte process-call parmlist
+* -- $BF33-$BF37: GET_MARK/SET_MARK parmlist. MUST live in the
+* -- PAGE, not the LC core: the kernel's copyin reads a parmlist
+* -- from the process bank's MAIN RAM, and a pointer into the
+* -- language card ($E0xx, where the core lives) reads back as
+* -- ROM/garbage -> ERR_INVAL. GET_TIME works from PS_PROCP for
+* -- the same reason: it too is a page cell (2026-09-07).
+PS_MKPARM    equ   $BF33       ;count byte (=2)
+PS_MKREF     equ   $BF34       ;maux fd
+PS_MKPOS     equ   $BF35       ;3-byte mark, kernel copyback
+
+* -- real global-page fields the tenant reads (TRM ch. 5) --
+PS_DATE      equ   $BF90       ;DATELO/DATEHI, TIMELO/TIMEHI
+PS_MACHID    equ   $BF98
+PS_SAVEX     equ   $BF9E       ;X/Y across the call, as the
+PS_SAVEY     equ   $BF9F       ;real MLI keeps them
+
+* -- $BFA0-$BFAF: NEWLINE table, (mask,char) per fd&7 --
+PS_NLTAB     equ   $BFA0
+* -- $BFB0: the exit tail (LC restore, X/Y, Z from A, RTS) --
+PS_EXITA     equ   $BFB0
+
+* -- ROM-stub-visible core cells are NOT shared: the stubs carry
+* -- their own parmlists and call the shim page like a tenant.
+
+* -- cells the ROM-entry stubs write. They live in the PAGE,
+* -- not the LC: a tenant may write-protect the LC (EDASM's
+* -- single `LDA $C080`), and a store into protected LC RAM
+* -- fails silently. $BF4A-$BF53 and $BFD6-$BFDD are holes.
+PS_WBUF      equ   $BF4A       ;COUT1's one-byte buffer
+PS_RBUF      equ   $BF4B       ;KEYIN's one-byte buffer
+PS_WPARM     equ   $BF4C       ;WRITE parmlist, fd 1 (8 bytes)
+PS_RPARM     equ   $BFD6       ;READ parmlist, fd 0 (8 bytes)

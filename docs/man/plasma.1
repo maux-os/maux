@@ -1,0 +1,29 @@
+.\" Original maux page, MIT, 2026-09-19.
+.\" Historical-source decision: maux-specific PLASMA runtime seed; no historical UNIX namesake.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH PLASMA 1 "September 19, 2026" maux
+.SH NAME
+plasma \- run a PLASMA module
+.SH SYNOPSIS
+.B plasma
+.I module
+.RI [ arg ...]
+.SH DESCRIPTION
+Load the maux PLASMA runtime and execute a module with its arguments.
+The runtime is /mnt/MAUX/PLRT (the seed opens that exact name); support modules
+are installed under /mnt/MAUX/PLLIB.
+The module and its dependencies must have been built for this port.
+.PP
+The seed provides the PLASMA virtual machine and the maux system-call
+bridge. It does not by itself compile source.
+Cooked programs, including the production NAS, bind their runtime and
+module closure into an executable and are invoked by their own name.
+They do not require an explicit plasma prefix.
+.SH FILES
+/usr/man/PLASMA  this page
+.SH "SEE ALSO"
+nas(1), plasm(1), proshim(1)
+.SH DIAGNOSTICS
+The module supplies its normal exit status. Seed usage errors return 2; runtime loading failures return 1.
+.SH BUGS
+Only the maux runtime ABI and installed modules are supported, not arbitrary Apple II PLASMA applications. The interpreter/compiler development images supply this command; it is not on the ordinary play roster.

@@ -1,0 +1,73 @@
+// Private NAS native state: $10..$65, call gates $70..$8D.
+// The maux VM/runtime use $06..$09 and $9E upward, not this window.
+// initloop rebuilds it on every invocation, including warm reuse.
+// These macros replace the descriptor interface in the opt-in build.
+!macro NLCTX .slot {
+        ORA #0                  ; match the old PLA's N/Z result
+}
+!macro NLARG .off {
+        LDA $10+.off
+        DEX
+        STA ESTKL,X
+        LDA $11+.off
+        STA ESTKH,X
+}
+!macro NLIND .off, .field {
+        LDY #.field
+        LDA ($10+.off),Y
+        DEX
+        STA ESTKL,X
+        INY
+        LDA ($10+.off),Y
+        STA ESTKH,X
+}
+!macro NLADR .off {
+        DEX
+        LDA #$10+.off
+        STA ESTKL,X
+        LDA #0
+        STA ESTKH,X
+}
+!macro NLCALL .off {
+        !if .off = 74 {
+            JSR $8B
+        } else {
+            JSR $70+(.off-32)/2*3
+        }
+}
+!macro NLSET .off {
+        STA $10+.off
+        LDA #0
+        STA $11+.off
+        LDY #.off+1
+}
+!macro NLPTR .off {
+        LDA $10+.off
+        STA SRCL
+        LDA $11+.off
+        STA SRCH
+        LDY #.off+1
+}
+!macro NLNEXT {
+        JMP $88
+}
+!macro NLGOTO .target {
+        LDA $40
+        CLC
+        ADC #<(.target-NLENTRY)
+        STA TMPL
+        LDA $41
+        ADC #>(.target-NLENTRY)
+        STA TMPH
+        JMP JMPTMP
+}
+!macro NVGOTO .target {
+        LDA $5A
+        CLC
+        ADC #<(.target-NVENTRY)
+        STA TMPL
+        LDA $5B
+        ADC #>(.target-NVENTRY)
+        STA TMPH
+        JMP JMPTMP
+}

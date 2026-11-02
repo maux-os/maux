@@ -1,0 +1,19 @@
+*---------------------------------------------------------------
+* kdisp.equ -- the kernel dispatch-table length.
+*
+* HOISTED OUT OF kdisp.s (S9 L4, 2026-08-30). Merlin-8's `ENT`
+* exports code labels only -- an EQUATE cannot cross the linker
+* -- so a constant two REL modules both name has to be shared at
+* ASSEMBLY time, through a put file. Equates emit nothing, so
+* the move is byte-neutral; check-bytes is the proof.
+*---------------------------------------------------------------
+*
+* IT IS A BOUND, NOT A COMMENT. entry.s refuses any call number
+* above it, so a handler wired into kdisp.s's table without
+* raising this number is unreachable -- and the refusal is
+* silent and indistinguishable from a handler that ran and
+* declined (2026-09-21: SYS_HALT's first run printed its own
+* "kernel refused" line and returned to the prompt).
+K_DISP_COUNT equ 26     ;26: SYS_SLPUNTIL (docs/SLEEP-1.md);
+                        ;25 was SYS_VROOT (docs/VROOT.md),
+                        ;appended after SYS_DEVLIST

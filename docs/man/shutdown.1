@@ -1,0 +1,66 @@
+.\" Original maux page, MIT, 2026-09-21.
+.\" Historical-source decision: no Research UNIX or early BSD counterpart
+.\" close enough to derive from -- V7 shutdown(8) warns logged-in users on
+.\" a timer, which means nothing on a single-user machine.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH SHUTDOWN 1 "September 21, 2026" maux
+.SH NAME
+shutdown \- stop maux cleanly
+.SH SYNOPSIS
+.B shutdown
+.SH DESCRIPTION
+Bring the machine to a stop that is safe to walk away from.
+.PP
+Every open file is closed first.
+This is the reason the command exists.
+ProDOS writes a file's directory entry back when the file is closed, so a
+file that some program still had open when the power went off exists on
+the volume with a length of zero, whatever was written into it.
+Resetting or switching off loses that;
+.B shutdown
+does not.
+.PP
+The periodic interrupt source is then disarmed, a message is printed, and
+the processor stops.
+Nothing runs afterwards: the shell is gone, the keyboard does nothing, and
+the screen keeps whatever was on it.
+.PP
+Press Ctrl\-Reset to restart.
+.B shutdown
+arranges for that reset to be a cold start, so the machine reboots from the
+disk rather than dropping into the monitor.
+.PP
+There are no options and no operands.
+An operand is refused, and refusing does not stop the machine.
+.SH FILES
+/usr/man/SHUTDOWN  this page
+.SH "SEE ALSO"
+init in
+.IR sh (1),
+.IR kill (1)
+.SH DIAGNOSTICS
+There is no exit status on the normal path, because nothing is left to
+return to.
+Exit status is 2 for an operand.
+.SH BUGS
+Buffered output belonging to a program that is still running is lost.
+.B shutdown
+closes the files the system has open; it cannot reach a buffer inside
+another program's own memory, any more than a killed program can flush
+one.
+A program that exits normally has already flushed.
+.PP
+There is no
+.B \-r
+option to reboot without a keystroke.
+Rebooting from software needs the machine's ROM readable at the reset
+vector, which the language-card rule this system enforces does not allow
+from ordinary kernel code; the window belongs to a future
+.B bye
+command, and the reboot option should arrive with it.
+.PP
+On a machine with an UltraTerm the card keeps driving the monitor across
+the reset, so the rebooting system paints a screen that is not the one
+being displayed.
+That is true of resetting this system at any moment, not only after
+.BR shutdown .

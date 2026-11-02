@@ -1,0 +1,142 @@
+.\" patch.1 -- maux's patch(1), in the V7 man(1) shape. An original
+.\" page (this project's own text, written against src/bin/patch.s
+.\" and its six body modules), so it carries no third-party notice
+.\" -- MIT like the code, same posture as env.1/man.1/tsort.1.
+.TH PATCH 1 "September 17, 2026" maux
+.SH NAME
+patch \- apply a diff to a file
+.SH SYNOPSIS
+.B patch
+[
+.B \-b
+] [
+.B \-R
+] [
+.BI \-p " num"
+] [
+.BI \-i " patchfile"
+] [
+.BI \-o " outfile"
+] [
+.I file
+]
+.SH DESCRIPTION
+.I Patch
+reads a difference listing \(em what
+.BR diff (1)
+writes \(em and applies it to a file, which is how a change made
+somewhere else arrives here.
+.PP
+The listing is read from
+.I patchfile
+if
+.B \-i
+is given and from the standard input otherwise.  Its FORM is
+detected, never declared: all three of
+.BR diff 's
+output forms are understood, the unified one
+.RB ( "@@ \-l,s +l,s @@" ),
+the context one
+.RB ( "*** l,l ****" " /" " \-\-\- l,l \-\-\-\-" )
+and the normal one
+.RB ( 3c3 ", " 3a4 ", " "3,5d2" ).
+Text before the first hunk is skipped, so a patch that arrived
+inside a mail message still applies.
+.PP
+The file to patch is the
+.I file
+operand if one is given.  Otherwise it is taken from the listing's
+own header lines \(em the old name first, then the new one, the
+first of the two that can be opened.
+.PP
+Each hunk is matched EXACTLY: every one of its context and
+deleted lines must equal, whole line for whole line, a run of
+lines in the file.  Where that run sits is guessed from the line
+number the hunk states, corrected by the lines earlier hunks have
+already added or removed; if the guess misses, the run is searched
+for outward from it.  A hunk that matches nowhere is REJECTED: the
+file keeps its original text there, and the hunk is written,
+verbatim and in the form it arrived in, to
+.IR file .rej.
+.SH OPTIONS
+.TP
+.B \-b
+Save the original, unpatched contents as
+.IR file .orig
+before writing anything.  Without it nothing is saved.
+.TP
+.B \-R
+Apply the listing BACKWARDS, as though its two files had been
+given to
+.I diff
+in the other order \(em which is how a change is undone.
+.TP
+.BI \-p " num"
+Delete
+.I num
+leading pathname components from every pathname the listing's
+header names, so that a patch made in another directory still
+names a file here.
+.TP
+.BI \-i " patchfile"
+Read the listing from
+.I patchfile
+instead of the standard input.
+.TP
+.BI \-o " outfile"
+Write the patched result to
+.I outfile
+and leave the original file untouched.
+.SH FILES
+/usr/man/PATCH  this page
+.PP
+.PD 0
+.TP 16
+.IR file .orig
+the original contents, with
+.B \-b
+.TP 16
+.IR file .rej
+the hunks that could not be applied
+.PD
+.SH "SEE ALSO"
+diff(1), ed(1)
+.SH DIAGNOSTICS
+Exit status is 0 if every hunk applied, 1 if one or more hunks
+were rejected, and 2 for an error \(em a usage error, a patch or
+target that cannot be read, a listing with no hunk in it, a
+malformed hunk, or an input past the limits in BUGS.  Progress and
+failure messages go to standard error, not standard output: the
+two reference implementations word them differently, so nothing
+here should be parsed for them.
+.SH BUGS
+Capacity is fixed at build time and an input past it is REFUSED,
+never silently truncated: 250 lines and 12000 bytes of text in the
+file being patched, 120 lines and 2400 bytes in any ONE hunk.
+.PP
+A derived name must still be a legal ProDOS name \(em 15
+characters including the extension, enforced by the pathname
+parser rather than at creation \(em so a base name longer than 11
+characters is TRUNCATED to 11 before
+.B .orig
+or
+.B .rej
+is appended.
+.PP
+One file per invocation.  A listing that names several files
+(what
+.B "diff \-r"
+would produce, which this
+.I diff
+cannot) applies only its first.
+.PP
+There is no FUZZ factor and no
+.B \-l
+(match ignoring white space): a context line that differs by so
+much as a blank makes its hunk fail.  There is no
+.B \-N
+either, so a patch that has already been applied is not
+recognised as such \(em its hunks simply fail and are rejected.
+.PP
+Every line written ends in a newline, including the last, so
+patching a file whose final line had none adds one.

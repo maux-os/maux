@@ -1,0 +1,65 @@
+.\" Derived from Research UNIX V6 ps(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/ps.1
+.\" Retrieved 2026-09-19; archived response SHA256: 923049bfc06050766e82af570923cf69ac8a293d491428e98f6da212626f9f95
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH PS 1 "September 19, 2026" maux
+.SH NAME
+ps \- process status
+.SH SYNOPSIS
+.B ps
+.SH DESCRIPTION
+.I Ps
+prints certain indicia about active processes.
+The listing is columnar and contains:
+.TP
+.B PID
+The process ID; use this number with kill(1).
+.TP
+.B S
+State: R running or runnable, S blocked, Z exited but not yet reaped,
+T stopped.
+.TP
+.B BANK
+The physical auxiliary-memory bank occupied by the process, in hexadecimal.
+.TP
+.B PPID
+The parent process ID.
+A process whose parent has exited is adopted by init, so its PPID is 1.
+.TP
+.B COMMAND
+The process's arguments, joined by single spaces and cut to the width of the
+console (one column is left free; output that is not a console is cut at 63
+characters).
+Three markers stand in for arguments:
+.TP
+.B <defunct>
+the process has exited and not yet been reaped (a zombie);
+.TP
+.B (name)
+the program reused the low memory its arguments were staged in, so what is
+there no longer reads as an argument list; ps shows the program's name in
+parentheses, as BSD does, taken from the kernel's record of what was spawned
+into that process's bank, or
+.B ?
+if the kernel has none;
+.TP
+.B [name]
+the process was made by the kernel, not spawned, so it never had arguments:
+.B [init]
+for process 1 and
+.B [idle]
+for the others whose parent is 0.
+.PP
+Every occupied process slot is shown; unused slots are omitted.
+.SH FILES
+/usr/man/PS  this page
+.SH "SEE ALSO"
+kill(1), sh(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0.
+.SH BUGS
+There are no selection options, CPU times or Unix ownership fields.
+Only the first 64 bytes of the argument strings are read, so a long command line is cut there even on a wide console.

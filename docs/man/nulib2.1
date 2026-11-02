@@ -1,0 +1,363 @@
+.\" Original maux page, MIT, 2026-09-21. Checked 2026-09-22 against
+.\" NuLib2's own nulib2.1 (BSD, Andy McFadden): no line and no
+.\" six-word phrase is shared with it, out of 1385. That page is
+.\" `.TH NULIB2 1L` and borrows its structure from zip.1; this one
+.\" follows the house style, so an original page needs no notice --
+.\" docs/man/CALDERA-LICENSE covers the pages that ARE derived.
+.\" Historical-source decision: named for Andy McFadden's NuLib and
+.\" NuLib2 (the reference NuFX implementations, BSD 3-clause), and
+.\" following NuLib2's option letters -- mechanism not spelling. No
+.\" Research UNIX or early BSD counterpart exists; NuFX postdates them.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH NULIB2 1 "September 21, 2026" maux
+.SH NAME
+nulib2 \- read a NuFX (ShrinkIt) archive
+.SH SYNOPSIS
+.B nulib2
+.BR \-t | \-v
+.I archive
+.br
+.B nulib2
+.BR \-x | \-p | \-i
+.I archive
+.RI [ name ]
+.br
+.B nulib2
+.B \-a
+.I archive file ...
+.SH DESCRIPTION
+.B \-t
+lists the names in
+.IR archive ,
+one per line and nothing else, so the output can be fed to another
+program.
+.PP
+.B \-v
+lists them with their attributes, one line per record:
+.PP
+.RS
+.nf
+TTT SSSSSSSS $AAAA NAME
+.fi
+.RE
+.PP
+.I TTT
+is the ProDOS file type, using
+.BR ls (1)'s
+own three-character rule \- TXT, BIN, DIR, SYS, BAS, or "$xx" for a
+type with no mnemonic.
+.I SSSSSSSS
+is the size of the record's data fork in bytes, right-aligned in eight
+columns, or "\-" for a record that carries no data fork.
+.I $AAAA
+is the auxiliary type.
+Each row begins with one space; a record whose header CRC did not verify
+begins with
+.B !
+instead.
+.PP
+.PP
+.B \-x
+writes each record's data fork into the current directory as a real
+ProDOS file, with the record's own file type and auxiliary type \- not
+the TXT a plain create would leave, because on ProDOS the type is where
+"can this be run?" lives and maux loads a binary at its auxiliary type.
+.PP
+A record's pathname may name directories.
+.B nulib2
+does not create them: it writes the last component into the current
+directory, splitting on the separator the record itself declares.
+.PP
+.B \-p
+writes every fork to standard output instead, concatenated and
+unadorned, so a single-file archive can be piped straight into
+something else.
+.PP
+.B \-i
+expands the whole archive and checks its checksums without writing
+anything.
+.PP
+Any of
+.BR \-x ", " \-p ", or " \-i
+may take a
+.I name
+after
+.IR archive :
+only the record whose own name matches it is extracted, listed
+against, or checked, instead of every record in the archive.
+The name is compared as the record itself stores it \- with any
+high\-bit "display" convention already stripped \- and is most useful
+on
+.B \-p
+against a
+.I .SDK
+holding exactly one disk record, so the record's own bytes reach
+standard output on their own rather than concatenated with anything
+else the archive might also hold.
+A
+.I name
+that matches nothing produces no output and no diagnostic;
+.B \-t
+and
+.B \-v
+do not take one.
+.PP
+An archive wrapped in a 128-byte Binary II header \- a
+.I .BXY
+\- is recognised and stepped over without being asked.
+.PP
+.B \-a
+writes an archive holding the named files, each carrying its own
+ProDOS type, auxiliary type and access byte.
+Only the leaf of each name is stored; this does not create directory
+records.
+.PP
+It CREATES, and does not add to an existing archive \- the name is
+overwritten.
+Adding means rebuilding: threads are compressed and variable-length,
+so there is no unit to write through and every untouched record would
+have to be re-emitted from its own bytes.
+.PP
+An operand of
+.B \-
+means standard input: no length is known ahead of time, so nothing
+is read twice \-
+.B \-0
+is refused on it, and a record made from it that also ends up in a
+.I .SDK
+archive whose true length was not a multiple of 512 is written
+anyway, the block count silently floored, rather than skipped.
+Its record is named for
+.IR archive 's
+own leaf with any extension removed
+.RI ( FLOP.SDK
+becomes
+.IR FLOP ),
+since a pipe carries no name of its own; its type and access are the
+same defaults an unreadable path already gets, and it carries no
+useful date, since there is no clock call cheap enough to spend on
+one bare timestamp.
+.PP
+When
+.I archive
+ends in
+.RI . SDK
+(case-insensitively), every operand is archived as a disk image
+instead of a file: a record with a disk-image thread, sized in
+512-byte blocks, holding the whole input.
+An operand whose length is zero or not a multiple of 512 is skipped
+with a warning, exactly as one that cannot be read is \- except a
+.B \-
+operand, per above.
+.B \-v
+shows such a record with
+.I Disk
+in place of its file type and the block count in place of its
+auxiliary type.
+This is how ShrinkIt and CiderPress already tell the two kinds of
+archive apart; there is no flag for it; a real ShrinkIt-family tool
+has none either, because NufxLib's own command line cannot add a
+disk image at all.
+.PP
+Each fork is compressed in the
+.I LZW/2
+format, which is what GS/ShrinkIt writes and every ShrinkIt reads:
+a run-length pass over each 4096-byte chunk, then LZW over the
+result.
+.PP
+Every chunk is priced in all three of its legal shapes and written in
+the cheapest \- LZW, run-length coded, or stored \- so a fork of
+mixed content does not lose to its least compressible region, and
+nothing ever comes out larger than it went in.
+A chunk that is not LZW coded empties the string table, on this side
+exactly as on the reader's.
+.PP
+The table is 4096 entries and its codes grow from nine bits to
+twelve; neither side transmits the width, and when the table fills,
+a clear code starts it again.
+.SH OPTIONS
+.TP
+.B \-t
+List the names, one per line.
+.TP
+.B \-v
+List the records with their attributes.
+.TP
+.B \-x
+Extract into the current directory.
+.TP
+.B \-p
+Extract to standard output.
+.TP
+.B \-i
+Test integrity; write nothing.
+.TP
+.B \-a
+Create
+.I archive
+holding the named files.
+.PP
+Exactly one is required.
+A bare
+.I archive
+operand is a usage error rather than a guess, and so is naming two:
+listing and extracting are two passes over a file this reader walks
+once.
+.SH "COMPRESSION AND WHAT IS NOT READ"
+A NuFX archive compresses each
+.I thread
+separately, so one archive may mix formats.
+This version parses every record and thread header whatever the format,
+and reports sizes from the headers.
+It can EXTRACT a
+.I stored
+thread, an
+.I LZW/1
+one (what ProDOS 8 ShrinkIt writes) and an
+.I LZW/2
+one (what GS/ShrinkIt writes) \- between them, every archive either
+version of ShrinkIt produced.
+Stored is less rare than it sounds: the reference implementation falls
+back to storing whenever compressing a thread would make it bigger.
+.PP
+Squeeze, LZC, deflate and bzip2 are not expanded, and are out of scope
+rather than missing: no version of ShrinkIt ever wrote any of them.
+LZC is UNIX
+.BR compress (1)
+put into a NuFX archive by
+.BR nulib (1)
+on a Unix host, which no Apple II program could ever read back;
+deflate and bzip2 are NufxLib extensions its own help describes as
+unpackable on an Apple II.
+A thread in any of those is named on standard error and skipped, and
+the run exits 1.
+.PP
+Binary II wrappers
+.RB ( .BXY )
+are stepped over without being asked; see the description above.
+.SH DIAGNOSTICS
+Exit status is 0 if the archive was listed and every CRC verified, 1 if
+it could not be opened, ended early, or a CRC did not match, and 2 for
+a usage error.
+A CRC failure does not stop the listing \- a damaged record is exactly
+when the rest of the file is worth seeing \- so a run can print every
+row and still exit 1.
+.PP
+An LZW/1 thread carries a second checksum inside its own stream header,
+over every chunk including the zero padding of the last one.
+.B nulib2
+verifies that as well, and reports a stream that fails it as damaged
+rather than reporting its thread CRC \- which would only say the same
+thing twice.
+An LZW/2 thread has no such checksum; instead every compressed chunk
+declares how many bytes its codes occupy, and
+.B nulib2
+refuses a chunk whose codes did not consume exactly that.
+.PP
+A fork whose CRC does not match is reported but KEPT: the bytes on disk
+are the only copy anyone has, and a CRC mismatch says the archive
+disagrees with itself, not that the data is worthless.
+A thread CRC is only meaningful on a version 3 record; a version 1
+record (what ProDOS 8 ShrinkIt writes) keeps its checksum inside the
+compressed stream, so there is nothing at thread level to test and
+.B nulib2
+does not pretend otherwise.
+.SH EXAMPLES
+.PP
+.RS
+.nf
+nulib2 \-t /mnt/MAUX/GAME.SHK
+cd /mnt/MAUX/WORK; nulib2 \-x /mnt/MAUX/GAME.SHK
+.fi
+.RE
+.SH FILES
+/usr/man/NULIB2  this page
+.SH CAVEATS
+A verified CRC is not proof the data is correct.
+A thread's CRC covers what the decoder produces from the stream the
+encoder wrote, so an archive whose encoder was wrong is
+self-consistently wrong and verifies clean.
+This is not hypothetical: the reference implementation's own RLE
+encoder corrupts runs of its escape byte, and the resulting archives
+pass their own integrity check.
+Verify against the original file, never against the archive alone.
+.SH "SEE ALSO"
+.BR chtyp (1),
+.BR ls (1)
+.SH HISTORY
+NuFX is the archive format of Andy Nicholas's ShrinkIt (1989), and
+this program was checked against ShrinkIt 3.4 itself: it unpacks what
+ShrinkIt packs, and ShrinkIt unpacks what it writes.
+.PP
+It takes its name and its option letters from Andy McFadden's
+.B nulib2
+and
+.BR nulib ,
+the reference NuFX implementations, which with
+.I NufxLib
+are distributed under the BSD license and were the second reader every
+archive here was checked against.
+What the format does and why is largely his documentation's account of
+it \- the design of ShrinkIt's LZW, and the reason its chunk is 4096
+bytes, come from lesson 9 of his
+.IR "Hacking Data Compression" .
+.PP
+This is an independent implementation and shares no code or text with
+any of them.
+It means the same things by the option letters:
+.B \-t
+is that program's "quick dump of table of contents", not its
+.B \-v
+listing.
+The columns
+.B \-v
+prints are maux's own \- they follow
+.BR ls (1)'s
+discipline rather than ShrinkIt's wider one \- but the letter carries
+nulib2's meaning.
+.TP
+.B \-0
+Store the files without compressing them.
+The flag is about the WORK and not the bytes: coding 28 KB costs
+about twenty seconds on a 1 MHz machine and storing it costs two.
+.PP
+Not implemented from the original:
+.BR \-d ,
+adding to an existing archive, reading an archive from standard
+input, and every other modifier letter \-
+.BR \-r ", " \-u ", " \-f ", " \-j ", " \-c ", " \-l ", " \-ll ", " \-s ", " \-e ", " \-ee ", " \-b .
+.PP
+.BR \-z " and " \-zz
+are absent by design rather than unimplemented.
+They select "deflate" and "bzip2", and the original's own help says
+what that costs:
+"these work much better than ShrinkIt's LZW, but the files can't be
+unpacked on an Apple II".
+An archive this machine cannot read is not one it should write.
+.PP
+.B \-b
+is absent rather than unimplemented: it exists in the original to force
+Binary II handling when an archive arrives on standard input and cannot
+be seeked back over.
+This program always has a file, so it simply looks, and a flag to make
+it look would switch nothing.
+.PP
+Nothing WRITES a Binary II wrapper.
+The original does not either \- its
+.B \-b
+is a reading modifier and is not valid on
+.BR \-a .
+ShrinkIt does, and says what for: a
+.I .BXY
+carries a ProDOS file type across a link that would lose it, for
+uploading to a service whose own software cannot attach the header.
+Archives leave this machine as disk images, which keep the type
+already, so there is nothing here for such a wrapper to carry yet.
+.PP
+Two deliberate differences in
+.BR \-i .
+The original prints per-record progress and, on damage, ASKS
+.RB \(lq "Archive may be damaged, continue anyway?" \(rq
+\- a tool that blocks on input cannot be used in a pipeline.
+This one is silent on success, names the record on failure, and never
+prompts.

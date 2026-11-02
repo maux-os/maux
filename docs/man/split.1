@@ -1,0 +1,78 @@
+.\" split.1 -- maux's split(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as cksum.1/paste.1.
+.\" Rendered at build time to build/man/SPLIT.TXT and staged on the
+.\" play image as /usr/man/SPLIT: `more /usr/man/SPLIT`.
+.TH SPLIT 1 "September 15, 2026" maux
+.SH NAME
+split \- split a file into pieces
+.SH SYNOPSIS
+.B split
+[
+.B \-l
+.I n
+|
+.B \-b
+.I n[k|m]
+] [
+.B \-a
+.I suffix_length
+] [
+.I file
+[
+.I name
+]]
+.SH DESCRIPTION
+.I Split
+reads
+.I file
+(standard input if it is absent or
+.RB " " \- )
+and writes it out in pieces, each a separate file named
+.I name
+(default
+.BR x )
+followed by a generated suffix of
+.I suffix_length
+letters
+.RB ( \-a ,
+default 2):
+.BR aa ,
+.BR ab ,
+and so on. The default is
+.B \-l
+.B 1000
+(1000 lines per piece).
+.B \-b
+.I n
+splits by raw byte count instead; a piece boundary may fall in the
+middle of a line, and the bytes on either side of it are copied
+verbatim.
+.I n
+may be suffixed
+.B k
+(1024) or
+.B m
+(1,048,576, KNOWN LIMITATION: the result silently wraps modulo
+65536 on this 16-bit machine).
+.PP
+A source whose length divides evenly by the split unit never
+leaves a trailing empty piece; an empty source still gets exactly
+one empty piece. If
+.I name
+plus
+.I suffix_length
+would exceed ProDOS's own 15-character filename limit, or more
+pieces are needed than
+.I suffix_length
+letters can name, the run stops with a diagnostic and exit 1 --
+every piece already written stays.
+.SH FILES
+/usr/man/SPLIT  this page
+.SH DIAGNOSTICS
+Exit status is 0 on success; 1 if the input file could not be
+opened, the name/suffix length exceeds 15 characters, an output
+piece could not be created or written, or the suffix letters are
+exhausted; 2 on a usage error.
+.SH BUGS
+None known.

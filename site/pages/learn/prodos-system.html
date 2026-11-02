@@ -1,0 +1,165 @@
+title: A ProDOS program, tested with bye
+description: Build an ordinary ProDOS 8 SYSTEM program on maux, run it on a freshly booted ProDOS with bye, come back, and let cmp check the result.
+lesson: l7
+---
+<h1>L7. A ProDOS 8 program, built on maux, tested with <code>bye</code></h1>
+<p class="crumb"><a href="/learn/">Learn</a> / L7</p>
+
+<!-- src: docs/SITE.md sec 5; docs/BYE.md -->
+<p class="lead">Goal: edit in <code>vi</code>, assemble with <code>nas</code>, link with
+<code>ld</code>, drive it with <code>make</code> &mdash; all under maux &mdash; then run the
+result on a real ProDOS 8 and come back to the editor and the shell exactly where they
+were.</p>
+
+<h2>What you need</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p><a href="/learn/asm-hello/">L2</a> (<code>nas</code> and <code>ld</code>) and
+<a href="/learn/make/">L5</a> (a Makefile). You should also be comfortable with a
+hex number.</p>
+
+<h2>What <code>bye</code> does</h2>
+<!-- src: docs/man/bye.1; docs/BYE.md -->
+<p><code>bye</code> suspends maux, gives the whole machine to a real ProDOS 8, and takes
+it back when the program that ran there quits. Main memory and the auxiliary bank are
+saved into RamWorks banks that ProDOS cannot see and restored afterwards; every
+other process stays in its own bank, untouched. The shell, the editor and everything
+else resume where they were.</p>
+
+<!-- src: docs/man/bye.1; learning:01M34A439TDASMVQNDCX41QGMN -->
+<p>The program you name is launched the way a program selector launches one. ProDOS's
+own QUIT call takes no pathname, so the selector's job, and <code>bye</code>'s, is to
+store the system program's name at <code>$280</code>, close the open files, clear the
+bit map, protect the zero page, stack, text page and ProDOS global page, read the
+file into <code>$2000</code> and jump to it. What your program finds is an ordinary
+freshly booted ProDOS 8: main memory, the language card and <code>/RAM</code> (present
+and empty) all its own, every open file closed, and the prefix set to the directory
+the file was launched from.</p>
+
+<h2>The limits, before you build anything</h2>
+<!-- src: docs/man/bye.1 -->
+<ul>
+<li>The file must be type <code>SYS</code> ($FF) and no larger than 30,720 bytes. It is
+loaded at <code>$2000</code> and entered there.</li>
+</ul>
+<!-- src: learning:01M197TY462D8ZRJHSQ77FGWK9; examples/lssys/ls.s -->
+<ul>
+<li>A SYSTEM file loads flat from <code>$2000</code>, so its real size ceiling is
+the first thing it allocates above itself, not a number anyone chose. Put the MLI's
+1 KB buffers at the bottom of free memory and every build is capped at that address.
+<code>LS.SYSTEM</code> puts them at <code>$9800</code> and its other buffers above
+them, so it may grow to 30,720 bytes, the limit <code>bye</code> enforces anyway; a
+program is also free to put them higher still.</li>
+</ul>
+<!-- src: docs/man/bye.1; learning:01M3ETS2S8A1QKZMTD981GWE4H -->
+<ul>
+<li><strong>The program must QUIT.</strong> One that never quits, or reboots the machine
+to leave, ends the session: the saved banks survive a reset, but nothing yet
+restores from them, so a program that never quits costs a reboot. <strong>Save in
+<code>vi</code> before you run <code>make test</code>.</strong> This page describes that
+failure and does not stage it; the gate that produced the sessions below does not run
+a program that never quits.</li>
+</ul>
+<!-- src: docs/man/bye.1 -->
+<ul>
+<li>QUIT carries no exit status. A ProDOS program cannot say whether it worked, so it
+leaves the answer in a file, and maux checks the file with ordinary tools when it is
+back. That is the whole idea of the lesson.</li>
+</ul>
+
+<h2>Step one: a program that says hello to ProDOS</h2>
+<!-- src: examples/hellosys/hello.s; src/test/byetenant.s -->
+<p>The smallest tenant (the name for a program that runs under <code>bye</code>). It prints a line with the monitor ROM's character routine,
+writes a six-byte file named <code>RESULT</code> through the real MLI at
+<code>$BF00</code>, and QUITs. It is the shape of <code>src/test/byetenant.s</code>,
+which the gate for <code>bye</code> itself uses and whose header calls itself the
+worked example of what a tenant is owed.</p>
+{{file:examples/hellosys/hello.s}}
+{{file:examples/hellosys/Makefile}}
+
+<h2>Step two: LS.SYSTEM</h2>
+<!-- src: examples/lssys/ls.s -->
+<p>A real program: it lists the directory it was launched from, by opening the
+directory as a file and reading its blocks, writes the same names to a file
+<code>GOT</code>, shows them on the screen, waits for a key and QUITs.</p>
+{{file:examples/lssys/ls.s}}
+
+<h3>The Makefile is the test harness</h3>
+<!-- src: examples/lssys/Makefile; docs/man/make.1 -->
+<p>The <code>test</code> rule is the harness. A recipe has no shell, so the two
+steps that need a redirection or a pipe are scripts, run with <code>sh</code>.</p>
+{{file:examples/lssys/Makefile}}
+{{file:examples/lssys/mkwant}}
+{{file:examples/lssys/check}}
+
+<h2>The session</h2>
+<!-- src: scripts/check_examples.py (row_l7); docs/man/bye.1 -->
+<p>The indented lines under <em>ProDOS is running the program</em> are the screen
+ProDOS drew, read by the gate <em>while</em> the program ran: once maux is back the console repaints and the
+program's screen is gone. The gate presses a key to let <code>LS.SYSTEM</code> quit,
+and then <code>make</code> goes on to the last recipe line, <code>sh check</code>,
+which prints nothing because <code>cmp</code> found no difference. Then the
+session breaks the test on purpose: one more line in <code>mkwant</code> makes
+<code>WANT</code> name a file ProDOS never listed, and <code>make test</code> must
+fail, with <code>make: command failed</code> and a non-zero status. A test that cannot
+fail is not a test; <code>check</code> ends with <code>exit $st</code> so that
+<code>cmp</code>'s verdict is the script's, not <code>rm</code>'s.</p>
+{{gen:session}}
+
+<h2>What just happened</h2>
+<!-- src: examples/lssys/ls.s; docs/EXAMPLES-NOTES.md sec 2 -->
+<p>Three things had to line up for <code>cmp</code> to say nothing, and each is a
+fact about the machine rather than about this program.</p>
+<ul>
+<li><strong>Names are upper case in ProDOS.</strong> The program lists what ProDOS
+stores, <code>MAKEFILE</code>; <code>ls</code> prints the case maux recorded,
+<code>Makefile</code>. So <code>mkwant</code> pipes <code>ls</code> through
+<code>tr a-z A-Z</code>.</li>
+<li><strong>The directory is in the order ProDOS keeps it and <code>ls</code> sorts.</strong> So
+<code>check</code> sorts both files before it compares them. The program has no
+need to sort.</li>
+<li><strong>The program writes maux's text encoding.</strong> maux writes high-bit
+text ending each line with <code>$8D</code>; a ProDOS program would normally write low
+ASCII and <code>$0D</code>. Tools such as <code>sort</code> hand back the encoding they
+were given, so a low-ASCII <code>GOT</code> would still differ from <code>WANT</code>
+after sorting. <code>LS.SYSTEM</code> writes the names with the high bit set and ends
+each with <code>$8D</code>, so the two files are the same bytes. Its screen output is
+the opposite case: the ROM's <code>COUT</code> wants the high bit set, and the
+program ORs it in.</li>
+</ul>
+
+<!-- src: examples/hellosys/hello.s; src/test/byetenant.s; learning:01M3PAMJT6JKC4G3FEP8FJ33VT -->
+<p>That is also why the pathname in a raw MLI call is plain 7-bit ASCII in single
+quotes: a byte with the high bit set is not a legal pathname character to ProDOS.
+maux's own file names, and the text it writes, have the bit set; the MLI wants it
+clear. A first-time reader meets this once and should expect it.</p>
+
+<!-- src: examples/lssys/ls.s -->
+<p><code>GOT</code> is created after the directory has been read, so it does not list
+itself; <code>WANT</code> is created by <code>touch</code> before <code>ls</code> runs,
+so it is in both lists. Without those two details the files would differ by one
+name, and the harness would be red for a reason that has nothing to do with the
+program.</p>
+
+<h2>Shipping it</h2>
+<!-- src: scripts/check_examples.py (stock_row); examples/lssys/ls.s; docs/man/nulib2.1 -->
+<p>The finished <code>LS.SYSTEM</code> is an ordinary ProDOS file. It calls only the
+MLI and the monitor ROM, so it needs nothing from maux, and <code>nulib2 -a</code> can
+archive it for transfer to another machine. The gate checks that claim rather than
+asserting it: after the lesson it copies the <code>LS.SYSTEM</code> that was built on
+maux onto a stock ProDOS 2.4 disk, with no maux on it, boots that disk on the emulator,
+and requires the program to list the disk's files, write its <code>GOT</code> and
+QUIT. The last lines of the session above are that run.</p>
+
+<h2>Watch it</h2>
+<!-- src: site/demos/lssys.py -->
+<p><a href="/watch/lssys/">Watch</a> the whole thing happen: the build, the
+farewell, the 40-column screen the tenant actually gets, and the shell coming
+back where it was left.</p>
+
+<h2>Try next</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p>Make <code>LS.SYSTEM</code> list only the files whose names end in
+<code>.S</code>, and change <code>mkwant</code> to match. Which side of the test do you
+change first?</p>
+
+{{gen:lessonnav}}

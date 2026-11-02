@@ -1,0 +1,12 @@
+[check-plascut] shell prompt reached
+[check-plascut] PC1 cookt #1: RUNS=0 seen 1x, NC=0 seen 1x, 1050000 cycles
+[check-plascut] PC1 cookt #2: RUNS=0 seen 2x, NC=0 seen 2x, 250000 cycles
+[check-plascut] PC1 cookt #3: RUNS=0 seen 3x, NC=0 seen 3x, 250000 cycles
+[check-plascut] PC1 teeth: omitted native restore must expose NATIVE=1 on warm launch
+[check-plascut] PC2 nas FIXTURE.S (cold spawn): 3450000 cycles
+[check-plascut] PC3 nas NOSUCH.S: exit 1
+[check-plascut] PC4 FIXTURE.S warm: cooked 1650000 cycles vs modular 5950000 cycles (+-50k; delta 4300000 = the per-spawn load plascut removes)
+[check-plascut] PC2 T.OBJ (fixture): byte-identical to merlin32 (34 bytes)
+[check-plascut] PC2 T2.OBJ (fixture (warm cooked)): byte-identical to merlin32 (34 bytes)
+[check-plascut] PC2 T3.OBJ (fixture (modular)): byte-identical to merlin32 (34 bytes)
+[check-plascut] PASS

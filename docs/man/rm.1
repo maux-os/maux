@@ -1,0 +1,42 @@
+.\" Derived from Research UNIX V1 rm(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/rm
+.\" Retrieved 2026-09-19; archived response SHA256: 248f77cc890591d14e93a82d1e3958813f7e4eb68c43d3560da2936cc7354ccb
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH RM 1 "September 19, 2026" maux
+.SH NAME
+rm \- remove files and directory trees
+.SH SYNOPSIS
+.B rm
+.RB [ \-irf ]
+.I file ...
+.SH DESCRIPTION
+.I Rm
+removes the entries for one or more files from a directory.
+ProDOS has no hard links: removal destroys the file.
+Its access byte must permit destruction; there is no Unix directory
+ownership/permission model.
+.TP
+.B \-i
+Prompt before each removal; only y or Y proceeds.
+.TP
+.B \-f
+Ignore nonexistent operands. Other failures are still errors.
+.TP
+.B \-r
+Remove directory trees recursively.
+.PP
+Without -r, an empty directory can also be removed, following ProDOS
+DESTROY semantics; a nonempty one is refused.
+A failed operand is reported and the others are attempted.
+A declined removal is not an error.
+.SH FILES
+/usr/man/RM  this page
+.SH "SEE ALSO"
+rmdir(1), chmod(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if removals succeed or are declined, 1 for reported failures, 2 for usage errors, including no file operands.
+.SH BUGS
+There is no trash or undelete facility. Recursive removal can stop partway after an error.

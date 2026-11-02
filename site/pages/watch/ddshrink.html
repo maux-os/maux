@@ -1,0 +1,27 @@
+title: A floppy, through dd, into a ShrinkIt archive
+description: dd reads a real 5.25-inch ProDOS floppy and pipes it into nulib2, which writes a ShrinkIt disk archive; the archive is listed, mounted and compared with the 1990 original.
+demo: ddshrink
+---
+<div class="band demo">
+<h1>A floppy, through dd, into a ShrinkIt archive</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / ddshrink</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/ddshrink.py; docs/DEMO-DDSHRINK.md; docs/NUFX-PIPE-NOTES.md -->
+<p class="lead">A 5.25-inch ProDOS floppy sits in drive 1, an image of a disk that shipped on the GEM CD in 1990. <code>dd</code> reads it as 280 blocks and pipes the bytes straight into <code>nulib2</code>, which writes them as a ShrinkIt disk archive, a <code>.SDK</code>. The demo lists the archive, writes the disk back out of it, mounts that file and lists the volume, then compares it with the disk inside the 1990 archive it came from. <code>cmp</code> prints nothing.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/ddshrink.py; docs/DEMO-DDSHRINK-NOTES.md -->
+<p>This film is made by <code>site/demos/ddshrink.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. The floppy is the disk inside <code>DEMOPROG.SDK</code>, a 1990 ShrinkIt archive from the GEM CD, extracted on the host by an independent NuFX reader. The gate requires that dd reports 280 blocks in and 280 out; that <code>nulib2 -v</code> shows exactly one Disk record of 143,360 bytes; that the mounted image appears under its volume name and <code>ls</code> shows exactly the 14 files the host finds on the disk; that the 1990 archive lists as one Disk record of the same size; that the volume is unmounted again afterwards; that <code>cmp</code> of the two extracted disks is silent; and that <code>cksum</code> of both equals the host&rsquo;s checksum of the disk. Everything is made in <code>/tmp</code>. The checks themselves were tested: with <code>nulib2</code> replaced by a copy of <code>cat</code>, or <code>dd</code> replaced by <code>true</code>, the dd rows fail; with <code>mount</code> replaced by <code>true</code> the first mount listing fails; with <code>umount</code> replaced by <code>true</code> the listing after it fails; with one byte of the floppy flipped the gate fails before anything runs, because the file in the drive is not the archive&rsquo;s disk; with a <code>cmp</code> that prints a difference, the silence row fails; with <code>cksum</code> replaced by <code>true</code>, the checksum row fails.</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

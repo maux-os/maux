@@ -1,0 +1,171 @@
+title: Dev
+description: The developer kit: liba and the libc names it answers to, the nas dialect and its limits, REL and ld, make, PLASMA, and the text-encoding ruling.
+---
+<h1>Dev</h1>
+
+<!-- src: docs/SITE.md sec 2.5; src/liba/string.s; src/liba/stdiofl.s -->
+<p class="lead">For a programmer who already knows 6502 assembly. There is no C
+compiler, so the library is the thing you program against: <strong>liba</strong>,
+whose routines are named and shaped after the libc functions they stand in for.
+Learn the handful below and most of a Unix program writes itself.</p>
+
+<h2>liba</h2>
+<!-- src: examples/hello/hello.s; docs/REL-LIBA-SPIKE.md; docs/FULLDISK.md -->
+<p>liba is a directory of REL modules at <code>/usr/lib/LIBA</code> that
+<code>ld -l a</code> searches. A program names what it wants with
+<code>ext</code> and the linker pulls in the modules that define those names;
+the equates it includes live in <code>/usr/inc</code>. liba is built by
+<code>nas</code>, and a gate checks that a fresh build reproduces the tracked
+objects byte for byte (<code>check-liba-pins</code>).</p>
+<pre>        ext   PUTS,EXIT
+        lda   #&lt;msg
+        ldx   #&gt;msg
+        sta   PTR0
+        stx   PTR0+1
+        ldx   #1              ;stdout
+        jsr   PUTS</pre>
+<p>The file is the inclusion boundary, so a program pays for every routine in a
+module it touches, whether it calls it or not. <code>make report-liba</code>
+prints that bill per program and names the routines nobody reached.</p>
+
+<h2>The libc names it answers to</h2>
+<!-- src: src/liba/string.s; src/liba/print.s; src/liba/stdio.s; src/liba/stdiofl.s; src/liba/seek.s; src/liba/brk.s; src/liba/env.s; src/liba/getopt.s; src/liba/readdir.s; src/liba/syscallp.s; src/liba/syscalls.s; src/liba/num.s; src/liba/hex.s; src/liba/regex.s; src/liba/glob.s -->
+<p>Same job, same name where the name survives six characters of Merlin label.
+Arguments arrive in registers and zero-page pointers rather than on a C stack,
+and each routine's own header comment is the contract.</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th scope="col">liba</th><th scope="col">libc</th><th scope="col">What differs</th></tr></thead>
+<tbody>
+<tr><th scope="row"><code>STRLEN</code></th><td><code>strlen</code></td><td>16-bit, so a string over 255 bytes measures correctly</td></tr>
+<tr><th scope="row"><code>STRCMP</code></th><td><code>strcmp</code></td><td>byte for byte, 16-bit</td></tr>
+<tr><th scope="row"><code>STRCMPI</code></th><td><code>strcasecmp</code></td><td>folds a-z only; digits and punctuation untouched</td></tr>
+<tr><th scope="row"><code>STRCPY</code></th><td><code>strcpy</code></td><td>terminator included</td></tr>
+<tr><th scope="row"><code>PUTS</code></th><td><code>write</code></td><td>takes an fd, not a stream; the NUL is not written</td></tr>
+<tr><th scope="row"><code>PUTC</code></th><td><code>fputc</code></td><td>buffered per fd, line or full (<code>SIOM_LINE</code>, <code>SIOM_FULL</code>)</td></tr>
+<tr><th scope="row"><code>GETC</code></th><td><code>getc</code></td><td>one raw byte; flushes every stream first</td></tr>
+<tr><th scope="row"><code>SIO_FLUSH</code></th><td><code>fflush</code></td><td>one fd; <code>SIO_FLUSHALL</code> for all of them</td></tr>
+<tr><th scope="row"><code>FCLOSE</code></th><td><code>fclose</code></td><td>flushes, then closes</td></tr>
+<tr><th scope="row"><code>EXIT</code></th><td><code>exit</code></td><td>flushes every stream; <code>SC_EXIT</code> is <code>_exit</code></td></tr>
+<tr><th scope="row"><code>LSEEK</code></th><td><code>lseek</code></td><td>the offset is 3 bytes, so a file reaches 16&nbsp;MB</td></tr>
+<tr><th scope="row"><code>SC_PIPE</code></th><td><code>pipe</code></td><td>writes the two fds into your buffer</td></tr>
+<tr><th scope="row"><code>SC_DUP2</code></th><td><code>dup2</code></td><td>as in V6</td></tr>
+<tr><th scope="row"><code>SC_FDSTAT</code></th><td><code>isatty</code></td><td>answers what kind of object an fd holds</td></tr>
+<tr><th scope="row"><code>SC_BRK</code>, <code>SC_SBRK</code></th><td><code>brk</code>, <code>sbrk</code></td><td>page-granular; see below</td></tr>
+<tr><th scope="row"><code>GETENV</code></th><td><code>getenv</code></td><td><code>ENVNTH</code> walks it the way <code>environ</code> does</td></tr>
+<tr><th scope="row"><code>OPTINIT</code>, <code>GETOPT</code></th><td><code>getopt</code></td><td><code>OPTINIT</code> takes the permitted letters first; <code>OPTIND</code> as usual</td></tr>
+<tr><th scope="row"><code>OPENDIR</code>, <code>RD_ADVANCE</code>, <code>CLOSEDIR</code></th><td><code>opendir</code>, <code>readdir</code>, <code>closedir</code></td><td>also serves the synthetic directories</td></tr>
+<tr><th scope="row"><code>RE_MATCH</code></th><td><code>regexec</code></td><td>basic expressions only, no ERE; no separate compile step</td></tr>
+<tr><th scope="row"><code>HASMETA</code>, <code>GFOLD</code></th><td><code>fnmatch</code></td><td>the shell's globbing primitives</td></tr>
+<tr><th scope="row"><code>PRNUM</code>, <code>PRHEX8</code>, <code>PRHEX16</code></th><td><code>printf</code></td><td>no format strings and no varargs: one routine per conversion</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Where it is not libc</h2>
+<!-- src: src/liba/string.s; src/liba/brk.s; src/liba/seek.s; inc/mm.mlibuf.equ; inc/stdio.equ; docs/PROCIO.md -->
+<ul>
+<li><strong>Strings carry the high bit.</strong> A liba string is NUL-terminated like C's, but its characters have bit 7 set, which is what the screen and ProDOS want. <code>MAKEHI</code> and <code>STRIPHI</code> convert a byte at the boundary; nothing converts silently.</li>
+<li><strong>There is no <code>malloc</code>.</strong> A program sets its break with <code>SC_BRK</code> and grows it with <code>SC_SBRK</code>, both rounded up to a page. Above that you manage your own storage.</li>
+<li><strong>Eight open files</strong> per process, which is ProDOS's limit, not a choice.</li>
+<li><strong>No varargs.</strong> <code>printf</code> cannot exist without a C stack to walk, so formatting is one call per conversion and the caller does the joining.</li>
+<li><strong>Return values are registers and carry.</strong> A result comes back in A, or in A and X for sixteen bits, with carry set on failure. Each header says what it clobbers and what it preserves, and those promises are relied on.</li>
+</ul>
+
+<h2>The nas dialect</h2>
+<!-- src: docs/NAS.md sec Use; scripts/check_modules.py; scripts/check_dialect.py; src/asm/nas.pla; HACKING.md -->
+<p><code>nas</code> is the native assembler. It accepts the Merlin-derived dialect
+this repository checks, and nothing is promised beyond that: it is not a claim to
+accept every Merlin macro or historical option. The limits below are <strong>house
+limits</strong>, inherited from Merlin-8 and held by the <code>check-modules</code> and
+<code>check-dialect</code> gates over every source in the tree. They are not errors that
+<code>nas</code> itself raises:</p>
+<ul>
+<li><strong>64-character lines.</strong> Real Merlin-8 rejects a longer line, and the gate refuses one in the tree. <code>nas</code> does not enforce it.</li>
+<li><strong>13-character labels,</strong> 12 for a <code>:local</code> label (the colon counts), the length at which Merlin-8 assembles and one more does not. <code>nas</code> keeps 13 significant characters of a name and does not reject a longer one.</li>
+<li><strong>No macros.</strong> The tree has none, by ruling; you write the lines out.</li>
+<li><strong>Expressions: write them so that precedence cannot matter.</strong> Merlin-8 evaluates strictly left to right and rejects parentheses; merlin32 evaluates inline operands the same way but gives an <code>equ</code> right-hand side C-style precedence. The dialect gate flags the shapes where the two disagree (<code>scripts/check_dialect.py</code>, hazard 1), so keep expressions to one operator kind, or split them over several <code>equ</code> lines.</li>
+<li><strong>Undefined symbols are refused.</strong> <code>nas</code> reports <code>unknown label</code> and exits 1; it no longer assembles one as zero.</li>
+</ul>
+<p>Usage: <code>nas -o OUTPUT INPUT.S</code>. The <code>-o</code> comes first;
+without it the output name is <code>A.OUT</code>. Success returns 0, a reported
+failure 1.</p>
+
+<h2>REL and ld</h2>
+<!-- src: docs/REL-FORMAT.md; docs/man/ld.1; docs/man/ar.1 -->
+<p>Objects are Merlin REL files, ProDOS file type <code>$F8</code>. An object is
+its code, then 4-byte fixup records, then a symbol list; <strong>the file's ProDOS
+aux type is its code length</strong>, so a REL moved without its metadata links to
+nothing. <code>ld</code> links modules and library directories (not archives; there is no
+<code>ar</code>), origin <code>$0800</code> by default:</p>
+<pre>nas -o hello.o hello.s
+ld -o hello hello.o -L /usr/lib -l a</pre>
+
+<h2>PLASMA and the plasma cutter</h2>
+<!-- src: docs/PLASCUT.md; docs/PLASMA-PORT.md; docs/man/plasm.1; examples/hellopla/Makefile -->
+<p>maux runs David Schmenk's PLASMA: a word-oriented language compiled to
+bytecode for a small virtual machine. <code>plasm</code> is his compiler, running on
+the machine; <code>plasma hello.mod</code> runs a module it wrote. The
+L6 lesson on the <a href="/learn/">Learn</a> page compiles his own
+<code>hello.pla</code> that way. A PLASMA program has to be linked at launch:
+<code>plasma</code> reads the runtime, reads the module, relocates it and binds each
+name it imports, every time.</p>
+<p>The <strong>plasma cutter</strong>, <code>scripts/plascut.py</code>, does that
+work once, on the host, and writes the result as a single flat <code>BIN</code> file
+that the kernel spawns like <code>ls</code>: the runtime and every module already
+relocated and bound, with a small table that puts the program's data back to its
+pristine state on a warm respawn. A cut program is the same module as the loaded one
+with its loading done in advance, not a different language or compiler.
+<code>nas</code> and <code>plasm</code> are shipped this way, and so is the
+<code>HELLO</code> of the L6 lesson, which is why <code>make</code> can start them
+once per file without paying for the link each time.</p>
+<!-- src: evidence/plascut-485672f5-2026-10-23/README.md; evidence/plascut-485672f5-2026-10-23/check-plascut.log -->
+<p>Measured on the emulator by the gate that checks the cutter, at revision
+{{fact:plascut_rev}}: one warm <code>nas</code> run over a small fixture (it assembles
+to {{fact:plascut_fixture_bytes}} bytes, so this is the cost of loading, not of
+assembling) takes {{fact:plascut_cooked_mcycles}} million cycles cut against
+{{fact:plascut_modular_mcycles}} million loaded through <code>plasma NAS</code>:
+{{fact:plascut_saved_mcycles}} million cycles, {{fact:plascut_saved_percent}} percent,
+saved on every launch. The cutting itself happens on the host, not on the machine.</p>
+
+<h2>make</h2>
+<!-- src: docs/MAKE-POSIX.md sec 1; docs/man/make.1 -->
+<p><code>make</code> is a POSIX subset with no shell between it and the commands:
+macros (<code>$(NAME)</code>, <code>${NAME}</code>, <code>$@ $&lt; $* $?</code>),
+double-suffix inference rules, <code>.SUFFIXES</code>, <code>.SILENT</code>,
+<code>.IGNORE</code>, <code>.PRECIOUS</code>, <code>.DEFAULT</code>, <code>.POSIX</code>, the
+<code>@ - +</code> recipe prefixes, and <code>-e -i -k -n -p -q -r -S -s -t</code>.
+It has no built-in rules, no single-suffix rules, no <code>include</code>, no
+<code>::</code> rules, no parallelism. It reads either text convention.</p>
+
+<h2>Text</h2>
+<!-- src: README.md "Important limits" (Text) -->
+<p>maux writes high-bit-set 7-bit ASCII ending in <code>$8D</code> and types
+such files <code>$04</code>. That is a maux ruling, not a property of the
+machine: standard ProDOS text is low ASCII ending in <code>$0D</code>, with the
+same type byte. The line-oriented tools read either convention, and a filter emits
+the convention its input arrived in, so running one over a file from
+<code>a2til</code>, <code>tip</code> or a NuFX archive does not leave a mixed file.
+<code>nas</code> and <code>make</code> read either too.</p>
+
+<h2>Underneath: calling the kernel</h2>
+<!-- src: docs/FORK.md sec "The call"; docs/SYSCALL.md sec 1; docs/ARCHITECTURE.md sec Process model -->
+<p>liba's <code>SC_</code> routines are thin wrappers over this, and you rarely
+need it directly. The native door is <code>JSR $FF00</code>: the call number in Y,
+a pointer to the parameter block in A (low) and X (high), the result in A with
+carry set on failure. A call that takes no parameters, such as <code>fork</code>,
+ignores the pointer.</p>
+<pre>        lda   #&lt;parms
+        ldx   #&gt;parms
+        ldy   #SYS_FORK
+        jsr   $FF00</pre>
+<p>The kernel is entered by that call or by an interrupt; both build the same
+six-byte frame on the process's own stack. A <code>BRK</code> in a user process is
+a SIGTRAP: the process is killed and the machine goes on. A <code>BRK</code> in
+the kernel halts it. The full contract is <a href="repo:docs/SYSCALL.md">docs/SYSCALL.md</a>.</p>
+<!-- src: inc/sc.proc.equ; inc/sc.file.equ; inc/sc.fd.equ -->
+<p>{{fact:syscall_count}} calls are defined in the <code>inc/sc.*.equ</code> files,
+which the build reads. The low numbers are the kernel's process, descriptor, signal and terminal
+calls. The file calls start at <code>$C0</code> and each is named for the ProDOS
+MLI call it carries. The comments in each file describe the call.</p>
+{{gen:syscalls}}

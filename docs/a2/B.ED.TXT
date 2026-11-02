@@ -1,0 +1,216 @@
+ed.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+NO TTY ASSUMPTIONS: reads commands/text from fd 0, writes
+prompts/prints from fd 1, exactly like every other redirectable
+filter in this tree. EOF on fd 0 (in command mode OR mid text-
+entry) is treated as an implicit `q` -- a script that forgets a
+trailing q still exits cleanly (status 0) instead of hanging.
+
+FILE-CONTENT ENCODING (ed's own policy call -- docs/USERLAND.md
+rules file CONTENT is NOT bound to liba's high-bit/CR-$8D
+convention, only liba/tty OUTPUT is): ed treats file content
+read via `r` and written via `w` EXACTLY like its own
+stdin/stdout stream -- high-bit-set liba string bytes, CR ($8D)
+as the line separator, no embedded NUL. This means ed's internal
+line buffer, its fd 0 command/text-entry stream, and its `r`/`w`
+file content are all ONE encoding end to end -- no boundary
+conversion anywhere in this file. The tradeoff, stated honestly:
+a genuine low-bit-ASCII/CR-$0D ProDOS text file (e.g. typed by a
+different program) read via `r` will not split into lines
+correctly (no $8D found -> the whole file reads as one line) --
+ed only round-trips its OWN files (or another high-bit-CR
+producer's) byte- exactly, which is exactly what this task's
+check-ed gate exercises.
+
+IN-BANK TEXT BUFFER, NO TEMP FILE (operator's ruling): the whole
+edit buffer -- the line-pointer table AND every line's text --
+lives in this process's own bank, above ed's code, up to
+PROC_HEAP_TOP ($BEFF). Concretely: up to MAXLINES (equ, below)
+lines, and a single bump allocator (ED_TEXTPTR, grows
+monotonically, never compacted) backing every line's actual
+characters out of ED_TEXTBUF (equ TEXTBUF_SIZE bytes, sized
+below along with the real numbers once the code's own footprint
+is known -- see the equ and its comment for the honest
+accounting). CONSEQUENCE, stated up front rather than discovered
+late: `d`/`c`/`s` orphan a deleted or replaced line's OLD text
+bytes -- there is no compaction/garbage collection in v1. A
+long, edit-heavy session can exhaust ED_TEXTBUF well before it
+exhausts MAXLINES; when the bump allocator would overrun
+TEXTBUF_SIZE, the operation that would have overrun it fails
+with the classic `?` and the buffer is left as it was (the
+failed operation is not applied) rather than corrupting adjacent
+memory.
+
+ADDRESSES: `.` (current line), `$` (last line), a decimal
+number, or `/re/` (forward search from the line AFTER `.`,
+wrapping around through line 1 back to `.` if not found before
+then -- classic ed; NO match anywhere is a hard `?`, never a
+phantom `.,.` -- 2026-08-19, see dated note below). `addr1,addr2`
+is the normal range form; `+N`/`-N` relative offsets are still
+NOT supported (v1 scope, documented limitation, not silently
+dropped). A fully-bare `,` (both sides omitted) is shorthand for
+`1,$`, and a fully-bare `;` is shorthand for `.,$` -- classic ed
+(2026-08-19, see dated note below); a PARTIALLY-bare range (`,5`
+or `1,`) is still NOT supported. An empty `//` pattern is NOT
+"reuse the last search" (real ed does that; this v1 does not) --
+it is simply the empty pattern, which matches trivially at the
+start of every line searched.
+
+PER-COMMAND ADDRESS DEFAULTS (classic ed, reproduced here since
+this header IS this file's own spec, same discipline as
+regex.s):
+  a  default `.` (append after); i default `.` (insert before); both
+     accept address 0 (append/insert at the very start of the buffer).
+  c d p n   default `.,.`
+  m t       default `.,.` ; the destination address (after the verb)
+     has no default and is required -- 2026-08-19
+  r  default `$` (append at end of buffer -- so `r file` alone on a
+     fresh buffer behaves like loading the whole file); a bare `r`
+     (no filename) reuses the remembered name -- 2026-08-19
+  w  address prefix NOT SUPPORTED -- always writes the WHOLE buffer,
+     `1,$`, regardless of `.` (classic v7 ed behavior; an explicit
+     address before `w` is a `?` error in this v1, not silently ignored);
+     a bare `w` (no filename) reuses the name remembered from the last
+     successful `r`/`w`, and is a `?` if nothing is remembered yet --
+     2026-08-19
+  s  default `.` (single line)
+  g  default `1,$` (whole buffer) -- the one command whose NATURAL
+     default is the whole file, per classic ed
+  q  no address accepted
+
+A bare address with no command letter (e.g. `2` alone, or `,`
+alone) is an implicit `p` -- classic ed (2026-08-19). A wholly
+blank command line (zero addresses, nothing else) is still a
+`?`, unchanged.
+
+`s/re/repl/[flags]`: `/` is the ONLY delimiter this v1 accepts
+(real ed allows any non-blank delimiter -- documented v1
+restriction). `&` in the replacement expands to the whole match;
+`\X` in the replacement is a literal X (so `\&` is a literal
+ampersand, `\\` a literal backslash); trailing flags are any mix
+of `g` (replace every non-overlapping match on the line, not
+just the first -- a zero-length match always advances at least
+one character to guarantee termination), `p` (print the
+resulting line), and a decimal `N` (replace ONLY the Nth match
+ON THAT LINE -- not "Nth and all after"; `g` and `N` are
+mutually exclusive, `?` if both given -- 2026-08-19, see dated
+note below). Any OTHER flag character is now a hard `?` too
+(2026-08-19) -- v1 used to silently ignore an unrecognized flag,
+which is how `s/x/Y/2` used to silently act like plain `s///`.
+A `s///` whose range matches NO line at all prints the classic
+`?`; a `g` command whose range matches no line is quietly a
+no-op (matches real ed -- only `s` treats "nothing matched" as
+an error).
+
+`m`/`t` (move/copy, 2026-08-19): `[addr1,addr2]mADDR3` moves the
+range to right after ADDR3; `[addr1,addr2]tADDR3` copies it
+there instead, leaving the originals in place. Default range
+`.,.` , same as c/d/p/n. ADDR3 is REQUIRED (no default) and must
+satisfy `0<=ADDR3<=$`. `m` into its own source range (ADDR3
+inside `[addr1,addr2]`) is a `?` (moving a block into itself is
+nonsensical); `t` has NO such restriction -- copying into your
+own range is classic-legal and correctly interleaves the copies
+in source order. Both leave `.` on the LAST moved/copied line
+(original relative order), at its new position -- classic ed.
+`t`'s copies SHARE text bytes with the originals rather than
+re-allocating (safe -- see ed.s's own ED_CMD_T header for why;
+ED_TEXTBUF's bump allocator never mutates existing bytes in
+place, so aliasing two line-table slots at the same text can
+never let one edit corrupt the other).
+
+`w` remembers the last filename an `r` or `w` successfully
+opened (2026-08-19); a bare `w` (no filename argument) writes to
+that remembered name. A bare `r` likewise reuses it. Bare `w`
+with nothing remembered yet (no prior successful `r`/`w` this
+session) is a `?`, same as before this fix.
+
+`g/re/verb`: AS ORIGINALLY SHIPPED, verb was a SINGLE command
+letter restricted to `p` or `d` (the operator's ruling only
+required these two as "the commanded verbs" -- and it was a
+deliberate, documented simplification, not an oversight:
+implementing `g`'s FULL POSIX command-LIST form (multiple
+commands, including ones that insert new lines and shift
+addresses out from under the mark set) needs real two-pass
+mark-by-pointer-identity bookkeeping. With the verb restricted
+to p/d, a single left-to-right pass sufficed: `g...p` just
+scanned and printed (nothing shifted); `g...d` scanned with an
+index that was NOT advanced when the current line was deleted
+(the next line slid into the same slot), which is provably
+correct for pure deletion without needing a mark pass at all.
+
+**2026-09-02 UPDATE: the restriction is lifted.** `cmds` may now
+be ANY addressable command (except `g`/`v`/`u`, refused with `?`
+per the Ex Reference Manual v1.1's own restriction,
+learning:01M1FX8HT89CKR9CB8T8VKCW1S) via the real two-pass mark
+set this note's own prose anticipated needing: `ED_GMARKS`
+(edsub2.s), shift-adjusted by `ED_GMARK_INS`/`ED_GMARK_DEL` at
+the same `ED_INSRT_AFTR`/`ED_DLT_RANGE` hook points `'x` marks'
+own `EX_MARK_INS`/`EX_MARK_DEL` (excmd.s) already use. Pass 1
+marks every (non-)matching line's CURRENT number; pass 2 re-
+enters edparse.s's own MAINLOOP dispatch re-entrantly per marked
+line, so any command -- including ones that insert/delete and
+shift the remaining marks -- runs correctly. `v/re/cmds` (global-
+inverse) landed the same round. See docs/EX-DESIGN.md sec 1.4/
+3.2 and edsub2.s's own header for the full design.
+
+ERRORS: the classic bare `?` + CR to fd 1, on ANY
+parse/range/command failure -- no elaboration (per the task's
+own framing, "authentic and cheap"). ed keeps reading commands
+after an error; it does not abort the whole script (also classic
+behavior).
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+window now $30-$56 39 bytes --
+----------------------------------------------------------------
+window now $30-$56, 39 bytes -- still inside the $30-$5F
+reservation.
+
+----------------------------------------------------------------
+EDBUMPALLOC -- copy a NUL-terminated liba
+----------------------------------------------------------------
+----------------------------------------------------------------
+ED_BUMP_ALLOC -- copy a NUL-terminated liba string into fresh
+space at the end of ED_TEXTBUF.
+IN:  A = length excluding the NUL (0-254 -- liba's own STRLEN ceiling,
+     see file header), ED_SRC/ED_SRC+1 = source string pointer
+OUT: carry clear, PTR0/PTR0+1 = pointer to the new copy; carry
+set =
+     ED_TEXTBUF is full, nothing copied, PTR0 undefined (caller's
+     command should fail with the classic `?`, buffer left as-is).
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+2026-08-19 audit fixes -- window now $30-$70, 65 bytes.
+----------------------------------------------------------------
+Six findings fixed, all in ed.s (see that file's own inline
+comments at each site for the mechanism):
+  1. `s/re/repl/N` (numbered occurrence, mutually exclusive with
+     `g`) implemented; any unrecognized flag char is now `?`
+     instead of silently skipped.
+  2. A no-match `/re/` address now restores ED_CMDPTR and
+     returns a genuine "no address" so the caller's normal
+     dispatch produces `?` -- it no longer leaves ED_CMDPTR past
+     the consumed pattern (which read as "no address here" and
+     silently ran the command against `.`).
+  3. A remembered-filename buffer (ED_CURFNAME, 65B, same MLI
+     length-prefixed shape as PATHBUF) backs bare `w` (and bare
+     `r`).
+  4. `m`/`t` implemented, composed from ED_DLT_RANGE +
+     ED_INSRT_AFTR (ED_DOMOVE) -- see ED_CMD_T's own header for
+     the text-arena sharing decision.
+  5. A bare address with no verb is now an implicit `p`.
+  6. A fully-bare `,` (`1,$`) and `;` (`.,$`) range shorthand
+     accepted at ED_PARSEADDR's own top, before the normal
+     address-token parse -- a partially-bare range is still
+     unsupported.
+New ZP: ED_SFLAGN/ED_SNUM/ED_SUBOCC (finding 1),
+ED_ADDRSTRT (finding 2), ED_MDEST/ED_MIA/ED_MCOUNT/ED_MPTR/
+ED_TCUR/ED_TSTART (finding 4) -- 19 bytes, $5E-$70. Nothing else
+in this tree claims $60-$AF (regex.s has $B0-$D1, zp.equ has
+$E0-$EB), so the box simply grew past its old $5F ceiling rather
+than needing to shuffle anything.
+----------------------------------------------------------------

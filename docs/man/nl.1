@@ -1,0 +1,138 @@
+.\" nl.1 -- maux's nl(1), in the V7 man(1) shape. An original page
+.\" (this project's own text), so it carries no third-party notice
+.\" -- MIT like the code, same posture as cut.1/fold.1. Rendered at
+.\" build time to build/man/NL.TXT and staged on the play image as
+.\" /usr/man/NL: `more /usr/man/NL`.
+.TH NL 1 "October 8, 2026" maux
+.SH NAME
+nl \- line numbering filter
+.SH SYNOPSIS
+.B nl
+[
+.BI \-b " type"
+] [
+.BI \-f " type"
+] [
+.BI \-h " type"
+] [
+.BI \-d " delim"
+] [
+.BI \-i " incr"
+] [
+.BI \-n " format"
+] [
+.B \-p
+] [
+.BI \-s " sep"
+] [
+.BI \-v " start"
+] [
+.BI \-w " width"
+] [
+.I file
+]
+.SH DESCRIPTION
+.I Nl
+copies
+.I file
+(standard input if none is given) to standard output, adding a
+line number field to some or all lines.  At most one
+.I file
+is accepted.
+.PP
+The input is read as a sequence of
+.I "logical pages,"
+each with a header, a body, and a footer section.  A line that
+consists of
+.I exactly
+the two\-character delimiter (backslash and colon, by default)
+repeated three, two, or one time \(em
+.BR \e:\e:\e: ,
+.BR \e:\e: ,
+or
+.B \e:
+\(em switches to the header, body, or footer section and is
+itself consumed: it is never numbered or printed.  With no such
+lines at all, the whole input is one page's body.
+.PP
+.BI \-b " type" ,
+.BI \-h " type" ,
+and
+.BI \-f " type"
+select which lines of the body (default
+.BR t ),
+header (default
+.BR n ),
+and footer (default
+.BR n )
+get a number:
+.B a
+numbers every line,
+.B t
+only non\-empty ones, and
+.B n
+none.
+.BI p bre
+numbers only the lines that contain a match for the basic regular
+expression
+.IR bre ,
+which follows the
+.B p
+with no separator
+.RB ( "\-b pfoo"
+and
+.B \-bpfoo
+are the same).  The body, header, and footer each keep their own
+expression.  An empty
+.I bre
+matches every line; a malformed one matches none.
+.PP
+.BI \-d " delim"
+sets the delimiter to
+.IR delim 's
+one or two characters (a single character leaves the second at
+its default colon).  By default, and unless
+.B \-p
+is given, encountering
+.I any
+delimiter line \(em header, body, or footer alike \(em resets
+the line number to the
+.B \-v
+start value;
+.B \-p
+suppresses every one of those resets.
+.PP
+.BI \-n " format"
+selects
+.B ln
+(left justified, no leading zeros),
+.B rn
+(right justified, no leading zeros \(em the default), or
+.B rz
+(right justified, zero\-padded).
+.BI \-w " width"
+sets the field width (default 6, capped at 20 in this
+implementation).
+.BI \-s " sep"
+sets the text between the number field and the line (default one
+tab); an unnumbered line still prints the field's own width in
+blanks and the separator, just no digits.
+.BI \-v " start"
+sets the initial and reset line number (default 1);
+.BI \-i " incr"
+sets the increment (default 1, optionally signed).
+.SH FILES
+/usr/man/NL  this page
+.SH "SEE ALSO"
+cat(1), fold(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if the file operand could not be opened; 2
+for a usage error, including more than one file operand, a
+malformed option value.
+.SH BUGS
+Line numbers are 16\-bit; the ceiling is 65535, and
+.B \-v
+/
+.B \-i
+arithmetic past it wraps silently.  A line longer than 200 bytes
+is truncated at that length before being printed back.

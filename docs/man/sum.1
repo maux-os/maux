@@ -1,0 +1,30 @@
+.\" Derived from Research UNIX V1 sum(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/sum
+.\" Retrieved 2026-09-19; archived response SHA256: e0f0f0bc4c0f253b86c3ddac1a32cdee02f447855a248e84d3485362de22fd85
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH SUM 1 "September 19, 2026" maux
+.SH NAME
+sum \- checksum files
+.SH SYNOPSIS
+.B sum
+.RI [ file ...]
+.SH DESCRIPTION
+.I Sum
+sums the contents of a file.
+On maux the sum is a 16-bit rotating checksum: rotate right one bit,
+add the next byte, and retain the low 16 bits.
+For each file it prints the checksum, the number of 512-byte blocks
+rounded upward, and the file name.
+With no operands it reads standard input and omits the name.
+An input which cannot be opened is reported and skipped.
+.SH FILES
+/usr/man/SUM  this page
+.SH "SEE ALSO"
+cksum(1), cmp(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 if any input cannot be opened.
+.SH BUGS
+This checksum detects accidental changes; it is not a cryptographic digest. It is not the CRC used by cksum.

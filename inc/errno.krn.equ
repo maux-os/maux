@@ -1,0 +1,110 @@
+*---------------------------------------------------------------
+* errno.krn.equ -- kernel-internal v1 process-call error
+* codes (task #3, docs/SYSCALL.md ruling on ABI FRICTION item
+* 4). Split out of inc/errno.equ (task #8, docs/SELFHOST-
+* CONVERSION.md phase 1) -- reference-set scan shows every one
+* of these codes is used ONLY inside src/kernel/*.s; no
+* src/bin/*.s program references any of them (sh.s needs
+* ERR_2BIG alone, which stayed narrower in
+* inc/errno.spawn.equ so a userland program never has to
+* PUT this whole table for one code).
+*
+* File-call errors are RAW ProDOS MLI error codes, passed
+* through verbatim -- this file does NOT re-enumerate that
+* table (ProDOS's own domain), only maux's own PROCESS-call
+* codes, which the MLI has no equivalent for and which live in
+* a range ($E0+) chosen to sit clear of every documented MLI
+* error code (all of which are <= $5A).
+*
+* V6-style: a syscall returns carry SET + one of these codes in
+* A on failure, carry CLEAR + a result on success (docs/
+* SYSCALL.md "Return convention"). liba propagates carry+A
+* untouched.
+*
+* `put`-only file (no code/org/dsk), same precondition
+* discipline as memmap.equ -- the top-level file must `put`
+* this directly.
+*---------------------------------------------------------------
+
+* -- maux PROCESS-call errors (no MLI equivalent --
+* spawn/exit/wait/ -- pipe/brk). Chosen clear of the MLI's own
+* $01-$5A error space. --
+ERR_NOMEM         equ   $E0   ;out of memory / no free banks
+                              ;(spawn image load, brk growth
+                              ;past a bank's ceiling)
+ERR_INVAL         equ   $E1   ;invalid argument -- bad call
+                              ;number, bad fd range, malformed
+                              ;parms block
+ERR_NOSYS         equ   $E2   ;function not implemented --
+                              ;the default for any call
+                              ;number the dispatch table doesn't
+                              ;cover
+ERR_CHILD         equ   $E3   ;no child processes -- wait()
+                              ;called by a process with none of
+                              ;its own outstanding
+ERR_AGAIN         equ   $E4   ;resource temporarily unavailable
+                              ;-- bank exhaustion, and since
+                              ;2026-08-23 fork's own verdict for
+                              ;it (src/kernel/procfork.s,
+                              ;docs/FORK.md), which is what
+                              ;ARCHITECTURE.md ruled: "fork()
+                              ;fails cleanly (EAGAIN-style)".
+                              ;PRC_ALLC_BANK still reports
+                              ;ERR_NOMEM for SPAWN -- an image
+                              ;that will not fit is not
+                              ;transient -- so fork overrides
+                              ;the verdict for itself rather
+                              ;than changing the shared
+                              ;allocator's answer under spawn
+ERR_PIPE          equ   $E5   ;broken pipe -- write() to a pipe
+                              ;with no reader
+
+ERR_SRCH          equ   $E7   ;no such process -- kill() named
+                              ;an unused PCB slot or one that
+                              ;is already a zombie
+ERR_INTR          equ   $E8   ;interrupted syscall -- a HELD
+                              ;(caught) signal arrived while the
+                              ;caller was blocked; V7's EINTR.
+                              ;Raised at exactly one point,
+                              ;PRC_BLCK_RTRY (docs/SIGNALS.md
+                              ;sec 2 "the one delivery point")
+ERR_NFILE         equ   $E9   ;file table overflow -- V7's
+                              ;ENFILE. The system-wide open-
+                              ;file table (OFT_COUNT) is full,
+                              ;or the io_buffer pool is empty
+                              ;with nothing lendable in it
+                              ;(src/kernel/procfd2.s
+                              ;PRC_ALLC_IBF). Distinct from
+                              ;ERR_AGAIN on purpose: three
+                              ;misdiagnoses in one month came
+                              ;from "cannot open" on a file
+                              ;that exists (docs/IOBUF-
+                              ;LENDING.md)
+ERR_P8_UNWIRE equ  $E6   ;a file-call number ($65, $80-$81,
+                              ;$C0-$D3) was dispatched to
+                              ;P8_DELEGATE
+                              ;(src/kernel/entry.s), which task
+                              ;#11 has not yet wired to real MLI
+                              ;-- distinct from every genuine
+                              ;MLI error code so a caller can
+                              ;never confuse "not wired yet"
+                              ;with a real ProDOS failure
+
+* -- bye slice 2 (docs/BYE.md "Slice 2 launch"): `bye
+* -- PATH.SYSTEM` refusals. The file-type ($FF) and size
+* -- (<= $7800) checks are NOT kernel error codes -- bye.s
+* -- (src/bin/bye.s) checks both in USERLAND, via liba's own
+* -- SC_GFI/SC_OPEN/LSEEK/SC_CLOSE, before ever calling SC_BYE
+* -- at all (a kernel-side check cost ~130 B of procbye.s's own
+* -- image against a 77 B PT_HOLD headroom -- measured, not
+* -- assumed; see docs/BYE-SLICE1-NOTES.md). Only the OFT park
+* -- loop is a genuine kernel operation, so only ITS refusal has
+* -- a kernel error code here.
+ERR_BYEPIN        equ   $EA   ;a PINNED (relatively-opened,
+                              ;PRC_OFT_SETP) open-file-table
+                              ;entry cannot be parked, so a
+                              ;clean ProDOS open-file table
+                              ;cannot be handed to the tenant --
+                              ;the OFT slot index is written
+                              ;back to the caller's own BYEPARM
+                              ;struct (offset 3) for the message

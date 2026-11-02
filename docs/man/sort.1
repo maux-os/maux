@@ -1,0 +1,77 @@
+.\" Derived from Research UNIX V6 sort(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/sort.1
+.\" Retrieved 2026-09-19; archived response SHA256: a406629617efb233802867495cfb9546b476ad6a90251a12b14609b443be973d
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH SORT 1 "September 19, 2026" maux
+.SH NAME
+sort \- sort or merge files
+.SH SYNOPSIS
+.B sort
+.RB [ \-bcfmnru ]
+.RB [ \-t " char" ]
+.RB [ \-k " N[type][,M[type]]" ]
+.RB [ \-o " file" ]
+.RI [ file ...]
+.SH DESCRIPTION
+.I Sort
+sorts all the named files together and writes the result on the standard
+output. The standard input is used if no input file names are given.
+Thus sort may be used as a filter.
+The default sort key is an entire line.
+Default ordering is lexicographic in ASCII collating sequence.
+.TP
+.B \-b
+Ignore leading blanks at the start of a key.
+.TP
+.B \-c
+Check ordering; print no sorted output. Report the first disorder.
+.TP
+.B \-f
+Fold lower case to upper case for comparison only.
+.TP
+.B \-m
+Accept already sorted inputs for merging. This implementation still sorts
+the combined input normally.
+.TP
+.B \-n
+Compare initial signed integer strings numerically.
+Leading blanks and zeroes are ignored; an absent number counts as zero.
+.TP
+.B \-r
+Reverse the sense of comparisons.
+.TP
+.B \-u
+Keep one line for each distinct key.
+.TP
+.B \-t char
+Separate fields at each occurrence of char, including empty fields.
+.TP
+.B \-k N[type][,M[type]]
+Use fields N through M as a key, counted from 1; omit M for end of line.
+Without -t a field includes its leading blanks.
+Up to eight -k options may be given; they are tried in order.
+Each type is a run of the letters b, f, n, r: -b on the start field,
+-f fold case, -n numeric, -r reverse, for that key alone.
+A key with any type takes none of the global -b -f -n -r;
+a key with none takes them all.
+Types on N and on M are merged, and b on M changes nothing.
+The final whole-line comparison is reversed by the global -r only.
+.TP
+.B \-o file
+Write to file instead of standard output. It may also be an input:
+all input is read before the output is opened.
+.PP
+Equal keys use the whole line as a final ordering comparison,
+except that -u decides equality using the keys alone.
+.SH FILES
+/usr/man/SORT  this page
+.SH "SEE ALSO"
+uniq(1), comm(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for disorder under -c, an input-open failure or a reported output-close failure; 2 for usage errors, insufficient storage or failure to create the output file.
+.SH BUGS
+All input and line pointers must fit in one process bank. Numeric comparison stops at a decimal point. The key types d and i, character positions (N.C), more than eight -k keys, and the old +pos/-pos notation are not implemented.
+Input-read errors are treated as end of file; not every output error is reflected in the exit status.

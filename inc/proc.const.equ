@@ -1,0 +1,110 @@
+*---------------------------------------------------------------
+* proc.const.equ -- kernel process-layer constants: the MLI
+* parmlist offsets, the
+* kernel zero-page scratch cells, and the pipe/tty channel and
+* io_buffer constants.
+*
+* HOISTED OUT OF process.s (S9 L4, 2026-08-30). Merlin-8's `ENT`
+* exports code labels only -- an EQUATE cannot cross the linker
+* -- so a constant two REL modules both name has to be shared at
+* ASSEMBLY time, through a put file. Equates emit nothing, so
+* the move is byte-neutral; check-bytes is the proof.
+*---------------------------------------------------------------
+P_PTR1      equ   $D0
+P_PTR2      equ   $D2
+*-- P_PTR3 moved here from process.s 2026-09-13: procfd2.s uses
+*-- it
+*-- too, and a cross-module equate cannot cross the REL linker
+*-- (check-librelas's staging refused process.s for it).
+P_PTR3      equ   $D4
+P_TMP       equ   $D6
+P_TMP2      equ   $D7
+P_IDX       equ   $D8
+P_COUNT     equ   $D9
+P_PID       equ   $DA
+P_BANK      equ   $DB
+P_FD        equ   $DC
+P_PIPE      equ   $DD
+P_OBJ       equ   $DE
+P_CHAN      equ   $DF
+PIPE_RD_CHAN  equ  $80
+PIPE_WR_CHAN  equ  $90
+TTY_RD_CHAN   equ  $A0
+SER_RD_CHAN   equ  $A4    ;serial RX (ser.s); $A0-$A3
+                          ;are TTY_RD_CHAN+console 0..3
+SLP_CHAN      equ  $B0    ;SYS_SLEEPUNTIL (procfile3.s)
+PPP_RNG_BASE equ $0C00
+MLI_ERR_EOF         equ $4C
+PMLI_XFR_SIZE  equ $200
+*-- MOVED 2026-08-30: io_buffers $6000 -> $9800, xfer buffer
+*-- $7800 -> $B000, discharging mm.mlibuf.equ's standing
+*-- debt. A .SYSTEM image loads FLAT from $2000, so whatever
+*-- sits above it IS its ceiling; the buffers on K_CODE_C's
+*-- floor capped every kernel image at 16,384 B and all 27 were
+*-- over it. Now 30,720 B. Derivation, measurements, and the
+*-- lower ceiling that survives ($9300, the harnesses' own
+*-- result cells) are in docs/CONSOLE.md sec 13 -- NOT here:
+*-- this file is put by every kernel module, so a paragraph
+*-- here is charged against every one of their source budgets.
+*-- 2026-09-07: EIGHT io_buffers $9800-$B7FF (ProDOS 8's own
+*-- open-file cap, TRM p.13), xfer $B000 -> $B800, and the
+*-- io_buffer LENDING store (path + saved mark per OFT slot)
+*-- above both. docs/IOBUF-LENDING.md has the design.
+*-- B1, 2026-10-21: SIX buffers $A000-$B7FF, which hands the
+*-- flat image $9800-$9FFF; docs/B1-NOTES.md.
+PMLI_IBF_BASE equ $A000
+PMLI_XFER_BUF   equ $B800
+* -- PBY_P1BUF: procbye.s's page-1 stage buffer, aliased onto
+* -- PMLI_XFER_BUF's first 128 bytes -- docs/KSEG.md "Cells and
+* -- equates".
+PBY_P1BUF       equ PMLI_XFER_BUF
+* -- SYSNAME280: ProDOS's system-program-name cell -- docs/
+* -- KSEG.md "Cells and equates".
+SYSNAME280      equ   $0280
+OFT_SLOT_BASE equ $BA00          ;OFT_COUNT x OFT_SLOT_SZ
+OFT_SLOT_SZ   equ 68             ;65 path bytes + 3-byte mark
+OFT_SLOT_MRK  equ 65             ;offset of the saved mark
+PRC_CANON     equ $BE40          ;65 B: canonical (absolute)
+                                 ;form of PRC_PATHBUF, built by
+                                 ;PRC_CANONPATH -- above the
+                                 ;slot store, below $BF00
+MLI_PATHLO    equ   1
+MLI_PATHHI    equ   2
+MLI_NPATHLO   equ   3            ;RENAME's new_pathname pointer
+MLI_NPATHHI   equ   4
+PRC_PATH2OFF  equ   65           ;offset of the 2nd path slot in
+                                 ;PRC_PATHBUF -- one buffer, two
+                                 ;slots, so the copier indexes
+                                 ;both with an 8-bit X
+MLI_IOBUFLO   equ   3
+MLI_IOBUFHI   equ   4
+MLI_OPEN_REF  equ   5
+MLI_REF       equ   1
+MLI_BUFLO     equ   2
+MLI_BUFHI     equ   3
+MLI_REQLO     equ   4
+MLI_REQHI     equ   5
+MLI_TRANSLO   equ   6
+MLI_TRANSHI   equ   7
+MLI_EOFLO     equ   2
+MLI_EOFHI     equ   3
+MLI_EOFBANK   equ   4
+* -- READ_BLOCK/WRITE_BLOCK unit_num/block_num offsets -- docs/
+* -- KSEG.md "Cells and equates".
+MLI_BLK_UNIT  equ   1
+MLI_BLK_NUMLO equ   4
+MLI_BLK_NUMHI equ   5
+MLI_GFI_ACC  equ 3
+MLI_GFI_ATYPE equ 5
+MLI_GFI_MDATE equ 10
+MLI_GFI_MTIME equ 12
+MLI_GFI_RLEN  equ 15  ;bytes from MLI_GFI_ACC..MLI_GFI_CTIME+1
+                        ;inclusive (offsets 3..17) -- the whole
+                        ;RESULT half of the parmlist, everything
+                        ;after param_count+pathname_ptr
+MLI_SFI_NULL  equ 7   ;3 bytes: offsets 7,8,9
+
+*-- VR_TAB row kinds (vroot.s); LP_CLASS (loopseg.s) tests them
+VK_MAP        equ   1
+VK_DEV        equ   2
+VK_MNT        equ   3

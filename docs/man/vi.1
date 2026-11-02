@@ -1,0 +1,147 @@
+.\" Derived from 4.3BSD-Reno vi(1) -- William Joy's page for his
+.\" editor (Mark Horton maintaining version 3); @(#)vi.1 6.1
+.\" (Berkeley) 4/29/85.
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=4.3BSD-Reno/src/usr.bin/ex/vi.1
+.\" Retrieved 2026-09-30; archived response SHA256: 32911a9b9a5d818d9769d50c47605b005865f9cfbae7fc53531bceef1eadfe67
+.\" Licence footing, stated rather than assumed (docs/MAN.md sec 7):
+.\" this file carries the 1980 Regents notice referring to the
+.\" Berkeley Software License Agreement, not a file-local BSD grant.
+.\" No archived edition of Joy's page carries one: Net/2 omitted
+.\" ex/vi entirely and 4.4BSD replaced the page with nvi's (Bostic,
+.\" 1993), which is what this page was derived from between
+.\" 2026-09-19 and 2026-09-30. Reuse rests on the University of
+.\" California's later release of the CSRG editions under the BSD
+.\" terms; see BSD-LICENSE and licenses(1). Operator ruling
+.\" 2026-09-30: the maux vi is a 1977/POSIX vi, so Joy's page is the
+.\" right parent.
+.\" maux adaptations, 2026-09-30: syntax, the implemented subset,
+.\" limits and diagnostics; the Berkeley BUGS describing features
+.\" maux does not have are omitted.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.\"
+.\" Copyright (c) 1980 Regents of the University of California.
+.\" All rights reserved.  The Berkeley software License Agreement
+.\" specifies the terms and conditions for redistribution.
+.\"
+.TH VI 1 "September 30, 2026" maux
+.SH NAME
+vi \- screen oriented (visual) display editor based on ex
+.SH SYNOPSIS
+.B vi
+[
+.I file
+]
+.SH DESCRIPTION
+.I Vi
+(visual) is a display oriented text editor based on
+.IR ex (1).
+.I Ex
+and
+.I vi
+run the same code; it is possible to get to
+the command mode of
+.I ex
+from within
+.I vi
+and vice-versa.
+.PP
+The
+.I "Vi Quick Reference"
+card and the
+.I "Introduction to Display Editing with Vi"
+describe the full Berkeley editor.
+What follows is the subset this
+.I vi
+implements.
+Changes affect the buffer, not the file, until it is written.
+.PP
+.B Modes.
+Start in command mode.
+i inserts text; Escape returns to command mode.
+:wq followed by Return writes and leaves; :q! discards the changes.
+ZZ writes if modified and quits.
+.PP
+.B Motion.
+h j k l move left, down, up and right.
+w b e move by words; W B E use whitespace-delimited words.
+0 goes to column zero, ^ to the first nonblank, $ to the last
+character.
+G goes to the last line; 1G to the first; a count before G selects
+that line.
+f/F find the next/previous character on the line; t/T stop short of
+it; ; repeats the find and , reverses it.
+Most motions accept a leading decimal count.
+.PP
+.B Changes.
+i/a insert before/after the cursor; I/A at the first nonblank/end.
+o/O open a line below/above.
+d, c and y followed by a motion delete, change or yank its span;
+the motions include /pattern, ?pattern, n and N, which end the span at
+the match (the match itself is not included);
+dd, cc and yy operate on lines.
+x/X delete at/before the cursor; D/C act through end of line;
+Y yanks a line; s/S substitute characters/lines.
+p/P put the unnamed register after/before the cursor.
+A span that crosses lines is kept whole, characterwise, and is put back
+with its line breaks.
+.PP
+.B Registers.
+"a through "z before a yank, delete, change or put name a register:
+"ayy and "add store into register a, "ap and "aP put from it.
+The unnamed register then holds whatever was last used.
+Capital names ("A to "Z, append) and the numbered registers ("1 to
+"9) are not implemented, and neither is any other name; they, a
+register name followed by a command that is not a yank, delete, change
+or put, and a put from an empty register all ring the bell and change
+nothing.
+All the registers share one 3699-byte area; a yank that does not fit
+rings the bell and leaves that register empty, and so does a span of
+more than 250 lines.
+J joins lines, r replaces one character, and ~ changes case.
+u undoes the last change; another u redoes it.
+.PP
+.B Searching and ex commands.
+/pattern and ?pattern followed by Return search forward and backward;
+n repeats the search and N reverses it.
+The basic regular expressions are those of ed(1).
+A colon command is executed by the
+.I ex
+engine: :w, :wq, :q!, :e file, :1,$s/old/new/g and the rest.
+.PP
+Control-Z suspends the editor and restores the shell's terminal
+state; fg resumes it.
+The editor uses an alternate screen and restores the terminal on a
+normal exit; reset(1) recovers from an abnormal one.
+.PP
+Text is held in an EX.SWPxx swap file in the working directory, so
+a file may be larger than process memory, within the line-table
+limit below.
+.SH FILES
+See
+.IR ex (1).
+.br
+/usr/man/VI  this page
+.SH "SEE ALSO"
+ex(1), ed(1), sh(1), reset(1), licenses(1),
+Vi Quick Reference'' card,
+An Introduction to Display Editing with Vi''.
+.SH AUTHOR
+William Joy
+.br
+Mark Horton added macros to \fIvisual\fR mode and is maintaining
+version 3
+.SH DIAGNOSTICS
+Exit status 0 on a clean session; nonzero when the shared ex engine
+recorded an editing or startup failure, even if the editor remained
+usable.
+.SH BUGS
+At most 2048 lines, with bounded line lengths as described in
+ex(1).
+There is no gg, no full-screen replace mode R and no crash recovery.
+There is no normal-mode filter command: ! (!!, !}) is ignored; use the
+colon forms :%!cmd, :a,b!cmd and :r !cmd.
+:w !cmd shows its output for a moment and then repaints, without the
+hit-return pause POSIX requires after a command overwrites the screen;
+:!cmd does pause.
+A characterwise yank on one line holds 254 bytes.
+This is an implemented subset, not all of Berkeley vi.

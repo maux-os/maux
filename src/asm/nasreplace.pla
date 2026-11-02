@@ -1,0 +1,581 @@
+// Single-owner native instruction control. Shared fastvalue/macros precede
+// this file. Services 100/101 evaluate, 102 flushes, 103..106 report errors.
+// Continuation 1 enters an already parsed/label-processed instruction;
+// 2 resumes sizing after evalexpr; 3 resumes commit after evalexpr/flush.
+// No callback into the VM, no second parse, no repeated replay advance.
+asm fastprobe(ctx)#1
+        +NLCTX 0
+        LDY #50
+        LDA (DST),Y
+        STA ESGUARD
+        +NLPTR 22
+        LDY #0
+        LDA (SRC),Y
+        STA TMPH
+        +NLPTR 12
+        LDY #2
+        LDA (SRC),Y
+        STA TMPL
+        LDY #6
+        LDA (SRC),Y
+        PHA
+        INY
+        LDA (SRC),Y
+        STA SRCH
+        PLA
+        STA SRCL
+NPLOOP  LDA TMPL
+        BEQ NPMISS
+        LDY #3
+        LDA (SRC),Y
+        CMP ESGUARD
+        BNE NPNEXT
+        LDY #5
+        LDA (SRC),Y
+        BEQ NPHIT
+        LDA TMPH
+        BEQ NPMISS
+NPHIT   DEY
+        LDA (SRC),Y
+        STA ESTKL,X
+        LDA #0
+        STA ESTKH,X
+        RTS
+NPNEXT  CLC
+        LDA SRCL
+        ADC #6
+        STA SRCL
+        BCC NPDEC
+        INC SRCH
+NPDEC   DEC TMPL
+        BNE NPLOOP
+NPMISS  LDA #$FF
+        STA ESTKL,X
+        STA ESTKH,X
+        RTS
+end
+asm fastloop(ctx, pass)#1
+!macro NRRET .code {
+        INX
+        LDA #.code
+        STA ESTKL,X
+        LDA #0
+        STA ESTKH,X
+        RTS
+}
+NLENTRY +NLCTX 1
+        LDY #84
+        LDA (DST),Y
+        PHA
+        LDA #0
+        STA (DST),Y
+        PLA
+        BEQ NRREAD
+        CMP #1
+        BNE NRRES2
+        +NLGOTO NRSTART
+NRRES2  CMP #2
+        BNE NRRES3
+        +NLGOTO NRVALUE
+NRRES3  +NLGOTO NREMIT
+NRREAD  +NLPTR 68
+        LDY #0
+        LDA (SRC),Y
+        LDY #6
+        CLC
+        ADC (DST),Y
+        DEX
+        STA ESTKL,X
+        INY
+        LDA (DST),Y
+        ADC #0
+        STA ESTKH,X
+        +NLARG 0
+        +NLARG 2
+        +NLARG 4
+        +NLCALL 32
+        LDA ESTKL,X
+        STA TMPL
+        LDA ESTKH,X
+        STA TMPH
+        INX
+        CMP #$FF
+        BNE NRCLASS
+        LDA TMPL
+        CMP #$FF
+        BNE NRRETURN
+        +NLNEXT
+NRCLASS LDA TMPL
+        BEQ NRCODE
+NRRETURN INX
+        LDA TMPL
+        STA ESTKL,X
+        LDA TMPH
+        STA ESTKH,X
+        RTS
+NRCODE  +NLCTX 1
+        +NLPTR 2
+        LDY #2
+        LDA (SRC),Y
+        BEQ NRSTART
+        +NLFALL
+NRSTART +NLPTR 2
+        LDY #8
+        LDA (SRC),Y
+        LDY #54
+        STA (DST),Y
+        LDY #9
+        LDA (SRC),Y
+        LDY #55
+        STA (DST),Y
+        LDY #10
+        LDA (SRC),Y
+        +NLSET 56
+        +NLPTR 18
+        LDY #6
+        LDA (SRC),Y
+        STA TMPL
+        INY
+        LDA (SRC),Y
+        STA TMPH
+        +NLPTR 30
+        LDY #0
+        LDA TMPL
+        STA (SRC),Y
+        INY
+        LDA TMPH
+        STA (SRC),Y
+        LDA ESTKL,X
+        CMP #1
+        BEQ NRSIZE
+        +NLGOTO NRREPLAY
+NRSIZE  +NLIND 2, 12
+        +NLIND 2, 4
+        +NLARG 8
+        +NLARG 10
+        +NLARG 12
+        +NLCALL 34
+        +NLCTX 1
+        +NLPTR 2
+        LDY #6
+        LDA (SRC),Y
+        CMP #3
+        BCC NRBAD
+        +NLPTR 12
+        LDY #2
+        LDA (SRC),Y
+        BNE NRKNOWN
+NRBAD   +NRRET 103
+NRKNOWN LDA #$FF
+        +NLSET 60
+        LDY #56
+        LDA (DST),Y
+        BNE NRHASOP
+        LDA #1
+        +NLSET 60
+        LDA #0
+        +NLSET 50
+        +NLGOTO NRPROBE
+NRHASOP +NLPTR 54
+        LDY #0
+        LDA (SRC),Y
+        AND #$DF
+        CMP #'A'
+        BEQ NRALEN
+        +NLGOTO NRBRANCH
+NRALEN
+        LDY #56
+        LDA (DST),Y
+        CMP #1
+        BEQ NRACC
+        +NLGOTO NRBRANCH
+NRACC
+        // Try accumulator; if absent, A is an ordinary symbol operand.
+        LDA #1
+        +NLSET 50
+        +NLADR 0
+        +NLCALL 42
+        LDA ESTKL,X
+        STA TMPL
+        LDA ESTKH,X
+        INX
+        +NLCTX 1
+        CMP #0
+        BNE NRBRANCH
+        LDA TMPL
+        +NLSET 58
+        +NLGOTO NRCHOSEN
+NRBRANCH +NLPTR 12
+        LDY #11
+        LDA (SRC),Y
+        AND #$40
+        BEQ NRDECOR
+        LDA #14
+        +NLSET 50
+        +NLGOTO NRPROBE
+NRDECOR +NLPTR 54
+        LDY #0
+        LDA (SRC),Y
+        CMP #'#'
+        BNE NRPAREN
+        LDA #2
+        +NLSET 50
+        +NLGOTO NRPROBE
+NRPAREN CMP #'('
+        BNE NRINDEX
+        LDY #56
+        LDA (DST),Y
+        TAY
+        DEY
+        LDA (SRC),Y
+        CMP #')'
+        BNE NRPY
+        // (expr,X), then (expr). Length guards match decidemode.
+        CPY #4
+        BCC NRIND
+        DEY
+        LDA (SRC),Y
+        AND #$DF
+        CMP #'X'
+        BNE NRIND
+        DEY
+        LDA (SRC),Y
+        CMP #','
+        BNE NRIND
+        LDA #13
+        +NLSET 60
+        LDA #10
+        BNE NRFIX
+NRIND   LDA #9
+        +NLSET 60
+        LDA #12
+        BNE NRFIX
+NRPY    AND #$DF
+        CMP #'Y'
+        BNE NRINDEX
+        CPY #4
+        BCC NRINDEX
+        DEY
+        LDA (SRC),Y
+        CMP #','
+        BNE NRINDEX
+        DEY
+        LDA (SRC),Y
+        CMP #')'
+        BNE NRINDEX
+        LDA #11
+NRFIX   +NLSET 50
+        +NLGOTO NRPROBE
+NRINDEX LDA #3
+        +NLSET 50
+        LDA #6
+        +NLSET 60
+        LDA #$48
+        +NLSET 64
+        LDY #56
+        LDA (DST),Y
+        CMP #2
+        BCC NRPAIR
+        TAY
+        DEY
+        LDA (SRC),Y
+        AND #$DF
+        STA TMPL
+        DEY
+        LDA (SRC),Y
+        CMP #','
+        BNE NRPAIR
+        LDA TMPL
+        CMP #'X'
+        BEQ NRX
+        CMP #'Y'
+        BNE NRPAIR
+        LDA #5
+        +NLSET 50
+        LDA #8
+        +NLSET 60
+        LDA #$20
+        +NLSET 64
+        LDA #1
+        LDY #65
+        STA (DST),Y
+        BNE NRTRIM
+NRX     LDA #4
+        +NLSET 50
+        LDA #7
+        +NLSET 60
+        LDA #$90
+        +NLSET 64
+NRTRIM  LDY #56
+        LDA (DST),Y
+        SEC
+        SBC #2
+        STA (DST),Y
+NRPAIR  +NLPTR 12
+        LDY #10
+        LDA (SRC),Y
+        LDY #64
+        AND (DST),Y
+        CMP (DST),Y
+        BEQ NRMASKHI
+        +NLGOTO NRLONG
+NRMASKHI
+        LDY #11
+        LDA (SRC),Y
+        LDY #65
+        AND (DST),Y
+        CMP (DST),Y
+        BEQ NRTRYVAL
+        +NLGOTO NRLONG
+NRTRYVAL
+        // fastvalue strips a selector in its scratch pointer; preserve the
+        // full expression for the PLASMA evaluator on refusal.
+        +NLARG 54
+        +NLARG 56
+        +NLADR 0
+        +NLCALL 74
+        LDA ESTKL,X
+        INX
+        +NLCTX 3
+        PHA
+        LDY #56
+        LDA ESTKL,X
+        STA (DST),Y
+        INX
+        LDY #54
+        LDA ESTKL,X
+        STA (DST),Y
+        INY
+        LDA ESTKH,X
+        STA (DST),Y
+        INX
+        PLA
+        BNE NRVALUE
+        +NRRET 100
+NRVALUE LDY #53
+        LDA (DST),Y
+        BNE NRLONG
+        LDY #78
+        LDA (DST),Y
+        BNE NRLONG
+        +NLGOTO NRPROBE
+NRLONG  LDY #50
+        LDA (DST),Y
+        PHA
+        LDY #60
+        LDA (DST),Y
+        LDY #50
+        STA (DST),Y
+        PLA
+        LDY #60
+        STA (DST),Y
+NRPROBE +NLADR 0
+        +NLCALL 42
+        LDA ESTKL,X
+        STA TMPL
+        LDA ESTKH,X
+        INX
+        +NLCTX 1
+        CMP #0
+        BEQ NRSELECT
+        LDY #60
+        LDA (DST),Y
+        CMP #$FF
+        BNE NRSECOND
+        +NRRET 103
+NRSECOND +NLSET 50
+        LDA #$FF
+        +NLSET 60
+        +NLGOTO NRPROBE
+NRSELECT LDA TMPL
+        +NLSET 58
+NRCHOSEN +NLARG 58
+        +NLARG 14
+        +NLARG 16
+        +NLARG 18
+        CLC
+        LDA ESTKL,X
+        ADC #6
+        STA ESTKL,X
+        BCC NRNOTE
+        INC ESTKH,X
+NRNOTE  +NLCALL 44
+        LDA ESTKL,X
+        INX
+        CMP #0
+        BNE NRNOTED
+        +NRRET 103
+NRNOTED +NLNEXT
+NRREPLAY +NLPTR 16
+        LDY #4
+        LDA (SRC),Y
+        STA TMPL
+        INY
+        LDA (SRC),Y
+        STA TMPH
+        LDY #3
+        CMP (SRC),Y
+        BCC NRGETOP
+        BNE NRSTREAM
+        DEY
+        LDA TMPL
+        CMP (SRC),Y
+        BCC NRGETOP
+NRSTREAM +NRRET 104
+NRGETOP LDY #0
+        LDA (SRC),Y
+        CLC
+        ADC TMPL
+        STA TMPL
+        INY
+        LDA (SRC),Y
+        ADC TMPH
+        STA TMPH
+        LDY #0
+        LDA (TMP),Y
+        +NLSET 58
+        +NLPTR 14
+        LDY #58
+        LDA (DST),Y
+        TAY
+        LDA (SRC),Y
+        +NLSET 50
+        +NLPTR 24
+        LDY #0
+        LDA (SRC),Y
+        BEQ NROPER
+        // DUM updates the PC and replay, never evaluates or emits.
+        +NLPTR 14
+        INC SRCH
+        LDY #50
+        LDA (DST),Y
+        TAY
+        LDA (SRC),Y
+        STA TMPL
+        +NLPTR 18
+        LDY #6
+        LDA (SRC),Y
+        CLC
+        ADC TMPL
+        STA (SRC),Y
+        INY
+        LDA (SRC),Y
+        ADC #0
+        STA (SRC),Y
+        +NLGOTO NRCOMMIT
+NROPER  LDY #50
+        LDA (DST),Y
+        CMP #2
+        BCS NREVAL
+        LDA #0
+        +NLSET 52
+        +NLGOTO NREMIT
+NREVAL  STA ESGUARD
+        +NLPTR 70
+        LDY ESGUARD
+        LDA (SRC),Y
+        LDY #54
+        CLC
+        ADC (DST),Y
+        STA (DST),Y
+        INY
+        LDA (DST),Y
+        ADC #0
+        STA (DST),Y
+        +NLPTR 72
+        LDY ESGUARD
+        LDA (SRC),Y
+        STA TMPL
+        LDY #56
+        LDA (DST),Y
+        SEC
+        SBC TMPL
+        STA (DST),Y
+        INY
+        LDA #0
+        SBC #0
+        STA (DST),Y
+        // Preserve decorated-stripped expression, including selector.
+        +NLARG 54
+        +NLARG 56
+        +NLADR 0
+        +NLCALL 74
+        LDA ESTKL,X
+        INX
+        +NLCTX 3
+        PHA
+        LDY #56
+        LDA ESTKL,X
+        STA (DST),Y
+        INY
+        LDA ESTKH,X
+        STA (DST),Y
+        INX
+        LDY #54
+        LDA ESTKL,X
+        STA (DST),Y
+        INY
+        LDA ESTKH,X
+        STA (DST),Y
+        INX
+        PLA
+        BNE NREMIT
+        +NRRET 101
+NREMIT  +NLPTR 20
+        LDY #80
+        LDA (DST),Y
+        LDY #6
+        STA (SRC),Y
+        LDY #81
+        LDA (DST),Y
+        LDY #7
+        STA (SRC),Y
+        LDY #76
+        LDA (DST),Y
+        LDY #8
+        STA (SRC),Y
+        LDY #77
+        LDA (DST),Y
+        LDY #9
+        STA (SRC),Y
+        LDY #78
+        LDA (DST),Y
+        LDY #10
+        STA (SRC),Y
+        LDY #82
+        LDA (DST),Y
+        LDY #11
+        STA (SRC),Y
+        +NLARG 58
+        +NLARG 50
+        +NLARG 52
+        +NLARG 18
+        +NLARG 20
+        +NLCALL 46
+        LDA ESTKL,X
+        STA TMPL
+        LDA ESTKH,X
+        INX
+        +NLCTX 1
+        CMP #0
+        BEQ NRCOMMIT
+        LDA TMPL
+        CMP #$FE
+        BNE NREFAIL
+        +NRRET 102
+NREFAIL CMP #$FD
+        BNE NRBRFAIL
+        +NRRET 106
+NRBRFAIL +NRRET 105
+NRCOMMIT +NLPTR 16
+        LDY #4
+        LDA (SRC),Y
+        CLC
+        ADC #1
+        STA (SRC),Y
+        INY
+        LDA (SRC),Y
+        ADC #0
+        STA (SRC),Y
+        +NLNEXT
+end

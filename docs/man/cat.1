@@ -1,0 +1,38 @@
+.\" Derived from Research UNIX V1 cat(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/cat
+.\" Retrieved 2026-09-19; archived response SHA256: d1f2b34d8e0ad29a7c7264c1ee170bd1d61ee9bfb3dfaae1cef7b62f2cacf5f7
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH CAT 1 "September 19, 2026" maux
+.SH NAME
+cat \- concatenate and print
+.SH SYNOPSIS
+.B cat
+.RI [ file ...]
+.SH DESCRIPTION
+.I Cat
+reads each file in sequence and writes it on the standard output stream.
+Thus:
+.PP
+.B cat file
+.PP
+is about the easiest way to print a file. Also:
+.PP
+.B cat file1 file2 >file3
+.PP
+is about the easiest way to concatenate files.
+If no input file is given,
+.I cat
+reads from the standard input file.
+Bytes are copied without changing their representation.
+A file which cannot be opened is reported and skipped.
+.SH FILES
+/usr/man/CAT  this page
+.SH "SEE ALSO"
+cp(1), tee(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 if an input file cannot be opened.
+.SH BUGS
+No options are implemented. A named file is not the same as an option; use no operands to read standard input.

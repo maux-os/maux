@@ -1,0 +1,35 @@
+.\" Derived from Research UNIX V1 cmp(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/cmp
+.\" Retrieved 2026-09-19; archived response SHA256: fcb101722fafe20b85a9c14c9d7670725f86f990e049a0f9988f399def76eb9e
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH CMP 1 "October 25, 2026" maux
+.SH NAME
+cmp \- compare two files
+.SH SYNOPSIS
+.B cmp
+.RB [ \-l | \-s ]
+.I file1 file2
+.SH DESCRIPTION
+The two files are compared for identical contents.
+By default, a discrepancy is noted by giving the first differing byte
+number and line number, both counted from 1.
+If one file is a prefix of the other, an end-of-file diagnostic is printed.
+.TP
+.B \-l
+List every differing byte: decimal position and the two octal byte values.
+.TP
+.B \-s
+Suppress ordinary difference reports. Open and usage errors still appear.
+.PP
+The two options are mutually exclusive.
+.SH FILES
+/usr/man/CMP  this page
+.SH "SEE ALSO"
+diff(1), comm(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 for identical files, 1 for different files, 2 for a usage or open error.
+.SH BUGS
+The byte position and line counters are 24-bit, which is exact for every file maux can open (a file's length is a 3-byte field, at most 16,777,215 bytes).

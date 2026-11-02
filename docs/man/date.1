@@ -1,0 +1,45 @@
+.\" Derived from Research UNIX V1 date(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/date
+.\" Retrieved 2026-09-19; archived response SHA256: 4d11b984db1275c3574341bf8d79259aa448ab5052bf03637232dbfd05479596
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH DATE 1 "September 19, 2026" maux
+.SH NAME
+date \- print the date
+.SH SYNOPSIS
+.B date
+.RI [ +format ]
+.SH DESCRIPTION
+The current date is printed, on maux to the minute:
+.BR "YYYY-MM-DD HH:MM" .
+A single operand beginning with
+.B +
+selects a format instead.
+.TP
+.B %Y %y %m %d
+Year, two-digit year, month and day.
+.TP
+.B %H %M %S
+Hour, minute and seconds. Seconds are always 00.
+.TP
+.B %F %D %R %T
+Equivalent to %Y-%m-%d, %m/%d/%y, %H:%M and %H:%M:%S.
+.TP
+.B %n %t %%
+Newline, tab and a percent sign.
+.PP
+Other characters are copied literally. For example:
+.PP
+.B date +%Y%m%d
+.PP
+The command does not set the clock.
+.SH FILES
+/usr/man/DATE  this page
+.SH "SEE ALSO"
+touch(1), time(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for an absent or unusable clock stamp, 2 for usage errors or unsupported format conversions.
+.SH BUGS
+ProDOS time has minute resolution. Weekday/month names and day-of-year conversions are not implemented. The legacy year window pivots at 78; this is not a general calendar interface.

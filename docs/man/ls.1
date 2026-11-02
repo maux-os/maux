@@ -1,0 +1,69 @@
+.\" Derived from Research UNIX V1 ls(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/ls
+.\" Retrieved 2026-09-19; archived response SHA256: 8ef9cb13950f2afd8b85a77268faeb278c52239d6e4414370c799036ae31d9fe
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" 2026-09-30: / and /dev synthetic directories, BLK/CHR type column
+.\" (docs/DEVFS.md, docs/DEV-BLOCK.md).
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH LS 1 "September 19, 2026" maux
+.SH NAME
+ls \- list files and directories
+.SH SYNOPSIS
+.B ls
+.RB [ \-lC1trdFRs ]
+.RI [ path ...]
+.SH DESCRIPTION
+.I Ls
+lists the contents of one or more directories under control of several
+options. If no argument is given, the current directory is listed.
+If an argument is not a directory, its name is given.
+The normal order is by name.
+.TP
+.B \-l
+List in long format: ProDOS type, size, modification date and name.
+There are no Unix ownership or rwx columns. A device entry under
+.I /dev
+shows BLK or CHR in the type column instead of a ProDOS file type.
+.TP
+.B \-t
+Sort by time modified, latest first.
+.TP
+.B \-r
+Reverse the selected order.
+.TP
+.B \-s
+Give allocated 512-byte blocks for each entry.
+.TP
+.B \-d
+List a directory itself, not its contents.
+.TP
+.B \-F
+Append / to directory names.
+.TP
+.B \-R
+Recursively list subdirectories in depth-first name order.
+.TP
+.B \-C, \-1
+Force columns or one entry per line.
+.PP
+ProDOS has no ordinary dot-file names needing a hidden-file option.
+.PP
+.I /
+and
+.I /dev
+are synthetic directories with no ProDOS file behind them: the root
+lists every online volume (never a 5.25-inch drive -- listing it never
+polls one), and
+.I /dev
+lists the fixed device names (tty, ttya0, null) plus one sNdM entry
+per online unit, including floppies.
+.SH FILES
+/usr/man/LS  this page
+.SH "SEE ALSO"
+file(1), du(1), chmod(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if all operands were listed, 1 for access errors or a truncated listing, 2 for usage errors.
+.SH BUGS
+A directory listing holds at most 128 entries; truncation is reported. Recursive listing allows at most sixteen pending directory paths. Unknown clock stamps appear as '-' rather than invented dates.

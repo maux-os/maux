@@ -1,0 +1,248 @@
+python3 scripts/check_carrier.py
+[check-carrier] PASS: vendor/prodos-basic.po matches the lock
+python3 scripts/check_carrier.py --selftest
+[check-carrier] self-test: planted mismatch and missing carrier both refused: PASS
+python3 scripts/build_play_image.py
+[build-play] carrier=/Users/mdj/src/maux/.claude/worktrees/agent-a15b80f33a9019ed3/vendor/prodos-basic.po volname=MAUX
+[build-play] kept=[] removed=[]
+[build-play] wrote MAUX.SYSTEM (30912 bytes), echo (1244 bytes), cat (1751 bytes), ls (6872 bytes), cp (5278 bytes), rm (4266 bytes), sh (36587 bytes), ed (9699 bytes), ex (15055 bytes), grep (6216 bytes), wc (2395 bytes), mkdir (1971 bytes), mv (5790 bytes), pwd (1215 bytes), ps (1847 bytes), touch (2680 bytes), cmp (2677 bytes), sort (4315 bytes), uniq (2795 bytes), tr (2700 bytes), od (4024 bytes), file (1927 bytes), tail (3279 bytes), head (2204 bytes), nm (3013 bytes), find (8093 bytes), diff (8354 bytes), expr (6571 bytes), du (4186 bytes), tee (2757 bytes), comm (2367 bytes), sum (1979 bytes), date (2371 bytes), chmod (1833 bytes), df (3817 bytes), sed (10446 bytes), sleep (1936 bytes), time (3082 bytes), make (8342 bytes), chvt (1807 bytes), vidmode (2206 bytes), kill (2186 bytes), more (12353 bytes), stty (2039 bytes), reset (1499 bytes), true (123 bytes), false (123 bytes), vi (25683 bytes), tip (2241 bytes), cut (2835 bytes), xargs (4855 bytes), printf (3837 bytes), basename (1533 bytes), dirname (1463 bytes), env (3350 bytes), uuencode (2497 bytes), uudecode (3203 bytes), rmdir (1867 bytes), tty (1309 bytes), uname (1675 bytes), cksum (2077 bytes), paste (2649 bytes), fold (2354 bytes), nl (6455 bytes), expand (2226 bytes), unexpand (2573 bytes), man (2827 bytes), cal (3384 bytes), strings (2645 bytes), nohup (3423 bytes), timeout (4410 bytes), realpath (2471 bytes), tsort (2276 bytes), pr (6410 bytes), pathchk (2238 bytes), split (2940 bytes), csplit (6708 bytes), join (3764 bytes), patch (5238 bytes), shutdown (1628 bytes), chtyp (2418 bytes), nulib2 (11525 bytes), mount (3734 bytes), umount (2447 bytes), bye (2950 bytes)
+[build-play] MAN pages: ADMIN, AR, AS, ASA, AT, BASENAME, BATCH, BPATCH, BYE, C17, CAL, CAT, CFLOW, CHGRP, CHMOD, CHOWN, CHTYP, CHVT, CKSUM, CMP, COMM, COMPRESS, CP, CRONTAB, CSPLIT, CTAGS, CUT, CXREF, DATE, DD, DELTA, DF, DIFF, DIRNAME, DU, ECHO, ED, ENV, EX, EXPAND, EXPR, FALSE, FILE, FIND, FOLD, FUSER, GENCAT, GET, GETCONF, GETTEXT, GREP, HEAD, ICONV, ID, IPCRM, IPCS, JOIN, KILL, LD, LEX, LICENSES, LINK, LN, LOCALE, LOCALEDEF, LOGGER, LOGNAME, LP, LS, MAILX, MAKE, MAN, MESG, MKDIR, MKFIFO, MORE, MOUNT, MSGFMT, MV, NAS, NEWGRP, NGETTEXT, NICE, NL, NM, NOHUP, NULIB2, OD, PASTE, PATCH, PATHCHK, PLASM, PLASMA, PR, PRINTF, PROSHIM, PRS, PS, PWD, READLINK, REALPATH, RENICE, RESET, RM, RMDEL, RMDIR, SACT, SCCS, SED, SH, SHUTDOWN, SLEEP, SORT, SPLIT, STRINGS, STRIP, STTY, SUM, TABS, TAIL, TALK, TEE, TIME, TIMEOUT, TIP, TOUCH, TPUT, TR, TRUE, TSORT, TTY, ULIMIT, UMASK, UMOUNT, UNAME, UNCOMPRESS, UNEXPAND, UNGET, UNIQ, UNLINK, UUCP, UUDECODE, UUENCODE, UUSTAT, UUX, VAL, VI, VIDMODE, WC, WHAT, WHO, WRITE, XARGS, XGETTEXT, YACC, ZCAT
+[build-play] /Users/mdj/src/maux/.claude/worktrees/agent-a15b80f33a9019ed3/build/play.po ready (4194304 bytes), 6333 of 8192 blocks free
+python3 scripts/check_posixsed.py build/play.po
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[check-posixsed] skip misc/l backslash: needs a GNU sed oracle (POSIX and GNU write \\; this Mac's BSD sed writes a bare \ -- non-conformant, so BSD cannot oracle it)
+[check-posixsed] 137 byte-exact cases vs sed, 12 boot groups
+[check-posixsed] group 1/12 (12 cases)
+[check-posixsed] ok   s/basic
+[check-posixsed] ok   s/g flag
+[check-posixsed] ok   s/Nth match
+[check-posixsed] ok   s/Np with -n
+[check-posixsed] ok   s/null matches under g
+[check-posixsed] ok   s/null-adjacent rule
+[check-posixsed] ok   s/anchor with g fires once
+[check-posixsed] ok   s/groups and backrefs in repl
+[check-posixsed] ok   s/escaped ampersand
+[check-posixsed] ok   s/ampersand
+[check-posixsed] ok   s/comma delimiter
+[check-posixsed] ok   s/delimiter inside brackets
+[check-posixsed] group 2/12 (12 cases)
+[check-posixsed] ok   s/backslash-newline in repl
+[check-posixsed] ok   s/newline escape in repl
+[check-posixsed] ok   s/interval
+[check-posixsed] ok   s/empty RE reuses the last
+[check-posixsed] ok   s/flags gp with -n
+[check-posixsed] ok   s/no match leaves the line
+[check-posixsed] ok   addr/line number
+[check-posixsed] ok   addr/last line
+[check-posixsed] ok   addr/numeric range delete
+[check-posixsed] ok   addr/regex address
+[check-posixsed] ok   addr/regex range
+[check-posixsed] ok   addr/regex range end searched from next line
+[check-posixsed] group 3/12 (12 cases)
+[check-posixsed] ok   addr/regex range delete
+[check-posixsed] ok   addr/regex range whose end never comes
+[check-posixsed] ok   addr/number to regex
+[check-posixsed] ok   addr/regex to number
+[check-posixsed] ok   addr/regex range with s inside
+[check-posixsed] ok   addr/range reopens after closing
+[check-posixsed] ok   addr/addr2 below addr1 selects one line
+[check-posixsed] ok   addr/regex then passed number
+[check-posixsed] ok   addr/custom delimiter address
+[check-posixsed] ok   addr/negation
+[check-posixsed] ok   addr/negated range
+[check-posixsed] ok   addr/negation with a blank
+[check-posixsed] group 4/12 (12 cases)
+[check-posixsed] ok   addr/last line of the last file
+[check-posixsed] ok   addr/newline in an address RE
+[check-posixsed] ok   text/i
+[check-posixsed] ok   text/a
+[check-posixsed] ok   text/c one line
+[check-posixsed] ok   text/c over a range prints once
+[check-posixsed] ok   text/c to $
+[check-posixsed] ok   text/c negated
+[check-posixsed] ok   text/multi-line text
+[check-posixsed] ok   text/leading blanks kept
+[check-posixsed] ok   text/a on the last line
+[check-posixsed] ok   text/a and i print under -n
+[check-posixsed] group 5/12 (12 cases)
+[check-posixsed] ok   text/a then q flushes
+[check-posixsed] ok   text/backslash in text
+[check-posixsed] ok   hold/tac
+[check-posixsed] ok   hold/H then x at the end
+[check-posixsed] ok   hold/g from empty hold
+[check-posixsed] ok   hold/G on empty hold
+[check-posixsed] ok   hold/x on line 1
+[check-posixsed] ok   hold/h then G
+[check-posixsed] ok   multi/$!N;P;D
+[check-posixsed] ok   multi/N joins pairs
+[check-posixsed] ok   multi/$!N join
+[check-posixsed] ok   multi/N;N on three
+[check-posixsed] group 6/12 (12 cases)
+[check-posixsed] ok   multi/D without newline is d
+[check-posixsed] ok   multi/P without newline
+[check-posixsed] ok   multi/bracket newline class
+[check-posixsed] ok   multi/dot spans the newline
+[check-posixsed] ok   flow/b to label
+[check-posixsed] ok   flow/b to end
+[check-posixsed] ok   flow/t loop
+[check-posixsed] ok   flow/t not taken
+[check-posixsed] ok   flow/block
+[check-posixsed] ok   flow/nested blocks
+[check-posixsed] ok   flow/negated block
+[check-posixsed] ok   flow/block with two commands
+[check-posixsed] group 7/12 (12 cases)
+[check-posixsed] ok   misc/y
+[check-posixsed] ok   misc/y with escaped delimiter
+[check-posixsed] ok   misc/y newline
+[check-posixsed] ok   misc/= on every line
+[check-posixsed] ok   misc/= last line with -n
+[check-posixsed] ok   misc/l escapes
+[check-posixsed] ok   misc/l folds long lines
+[check-posixsed] ok   cycle/2q
+[check-posixsed] ok   cycle/n;d prints odd lines
+[check-posixsed] ok   cycle/n then s
+[check-posixsed] ok   file/r inserts a file
+[check-posixsed] ok   file/r of a missing file is nothing
+[check-posixsed] group 8/12 (12 cases)
+[check-posixsed] ok   file/a and r keep order
+[check-posixsed] ok   file/w writes the file
+[check-posixsed] ok   file/s///w
+[check-posixsed] ok   file/addressed w
+[check-posixsed] ok   opt/bare script operand
+[check-posixsed] ok   opt/-e twice
+[check-posixsed] ok   opt/-n -e
+[check-posixsed] ok   opt/#n first line
+[check-posixsed] ok   opt/comments
+[check-posixsed] ok   opt/empty script
+[check-posixsed] ok   opt/-e before -f
+[check-posixsed] ok   opt/semicolons and blanks
+[check-posixsed] group 9/12 (12 cases)
+[check-posixsed] ok   regex/class digit interval
+[check-posixsed] ok   regex/class alpha star
+[check-posixsed] ok   regex/class space
+[check-posixsed] ok   regex/negated class alnum
+[check-posixsed] ok   regex/two classes in one bracket
+[check-posixsed] ok   regex/class beside a member
+[check-posixsed] ok   regex/class then dash
+[check-posixsed] ok   regex/blank punct xdigit
+[check-posixsed] ok   regex/lower upper cntrl print
+[check-posixsed] ok   regex/graph
+[check-posixsed] ok   regex/equivalence class
+[check-posixsed] ok   regex/collating symbol
+[check-posixsed] group 10/12 (12 cases)
+[check-posixsed] ok   regex/collating dash as a member
+[check-posixsed] ok   regex/class inside a bracket with the delimiter
+[check-posixsed] ok   regex/longest: star then repeated group
+[check-posixsed] ok   regex/longest: star then optional group
+[check-posixsed] ok   regex/longest: star then group star
+[check-posixsed] ok   regex/longest: starred group then literal
+[check-posixsed] ok   regex/longest: captures follow the longest
+[check-posixsed] ok   regex/longest under g
+[check-posixsed] ok   regex/longest with an address
+[check-posixsed] ok   regex/star before a group
+[check-posixsed] ok   regex/star before a group, capture
+[check-posixsed] ok   regex/star before a group, disjoint control
+[check-posixsed] group 11/12 (12 cases)
+[check-posixsed] ok   regex/star before a close paren
+[check-posixsed] ok   regex/star before a backref
+[check-posixsed] ok   regex/group repeated 11 times
+[check-posixsed] ok   regex/group interval of 10
+[check-posixsed] ok   regex/star first is literal
+[check-posixsed] ok   regex/caret mid is literal
+[check-posixsed] ok   regex/dollar mid is literal
+[check-posixsed] ok   regex/star after caret is literal
+[check-posixsed] ok   regex/caret after group open anchors
+[check-posixsed] ok   regex/dollar before group close anchors
+[check-posixsed] ok   regex/bracket leading close
+[check-posixsed] ok   regex/negated bracket leading close
+[check-posixsed] group 12/12 (5 cases)
+[check-posixsed] ok   regex/trailing dash
+[check-posixsed] ok   regex/backref of a star group
+[check-posixsed] ok   bound/254-char line
+[check-posixsed] ok   bound/empty lines
+[check-posixsed] ok   bound/many lines
+
+[check-posixsed] PASS: 137/137 cases byte-exact against sed (stdout, exit status, written files) through maux's own shell and -f scripts

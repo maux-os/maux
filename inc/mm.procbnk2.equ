@@ -1,0 +1,206 @@
+*---------------------------------------------------------------
+* mm.procbnk2.equ -- the rest of the process-bank layout
+* (docs/MEMMAP.md #3): process ZP/stack/low-free, the packed
+* argv string region and its two derived ceilings, the heap top,
+* the $BF00 overlay page, process LC storage, and
+* the $FFxx page's internal stub layout (dum'd at its real
+* address). Split out of inc/memmap.equ (docs/SELFHOST-
+* CONVERSION.md phase 1) -- kept separate from the tiny, nearly-
+* universal inc/mm.procbank.equ because only
+* spawn/lazy-free kernel code and the kernel-bearing test
+* manifests need this half; ordinary userland programs (echo,
+* cat, ls, ...) never do. Requires inc/mm.procbank.equ
+* PUT first: ARG_MAX below derives from LOAD_BASE.
+* Full design notes: I.MEMMAPE.TXT (docs/a2/), docs/MEMMAP.md #3
+*---------------------------------------------------------------
+
+PRC_ZP         equ   $0000       ;256B process ZP
+PRC_STACK      equ   $0100       ;256B process stack
+PRC_LOWFREE    equ   $0200       ;1536B free low process space,
+                                  ;no display hole in banks != 0
+
+PRC_ARGV_STR   equ   $0300       ;packed NUL-terminated strings
+                                  ;-- argv's, THEN envp's
+
+* -- SUSTAINABILITY NOTE 2026-08-25 (operator: "I wonder if the
+* -- page3 thing is sustainable"). Not a bug, not scheduled --
+* -- pinned so it is not rediscovered. Two distinct worries:
+* --
+* -- 1. THE WINDOW CANNOT GROW. It is walled by the stack below
+* --    and LOAD_BASE above, and ARG_MAX is DERIVED, not chosen.
+* --    Growing it means lowering PRC_ARGV_STR (eating the
+* --    pointer array) or raising LOAD_BASE (relocating every
+* --    binary -- liba bytes are volume bytes, ~40 gate images).
+* --    Meanwhile tenancy grows: argv alone -> argv+envp
+* --    (2026-08-22, numbers unchanged, COVERAGE doubled) -> the
+* --    subshell design went looking for a third tenant and
+* --    found nowhere. The trend points one way.
+* --
+* -- 2. PAGE 3 IS THE MOST CONTESTED PAGE ON AN APPLE II. Period
+* --    software treats $0300 as scratch and $03D0-$03FF is
+* --    DOS/ProDOS vector territory. In an aux bank it is plain
+* --    RAM, so this is free TODAY -- but task #8 is self-
+* --    hosting: real Merlin-8 making period assumptions in a
+* --    process bank whose $0300 holds live argv strings. That
+* --    assumption was written down NOWHERE before this note
+* --    (grepped docs/MEMMAP.md and the selfhost docs).
+* --
+* --    AND PAGE 2 IS NO BETTER (operator, 2026-08-30): $0200
+* --    is the ROM's keyboard input buffer -- GETLN/READLN read
+* --    lines INTO $0200-$02FF -- which is exactly where the
+* --    argv header and pointer array sit. Not hypothetical:
+* --    real Merlin-8's core uses $0200 as its console buffer
+* --    and WORKSP=$0280 for PUT filenames, in the SAME bank
+* --    where `as` staged its own argv. Sequenced-safe today
+* --    only because `as` finishes with argv before invoking
+* --    the core; any period code calling ROM READLN in a
+* --    process bank scribbles the startup frame. maux's own
+* --    kernel/liba never touch $0200 (grepped 2026-08-30).
+* --    One more weight on the BETTER FORM below: args above
+* --    the image leave $0200-$07FF to the period software
+* --    that believes it owns it.
+* --
+* -- ESCAPE HATCH, if it ever bites: stage low as now, then have
+* -- crt0 relocate argv/envp into the heap and release the
+* -- window. One copy, size unbounded, PCB_BRK already exists.
+* --
+* -- BETTER FORM, operator same day ("once argv and envp are in
+* -- the heap (well, under the BRK) size concerns change"): do
+* -- not transit through the low window at all. The kernel
+* -- stages argv/envp immediately ABOVE the image and sets
+* -- PCB_BRK past them rather than zeroing it, so the strings
+* -- land inside [LOAD_BASE, brk) below the program's initial
+* -- break and sbrk grows from there. No crt0 copy, no transit
+* -- buffer -- and a transit buffer would have kept the 1280 B
+* -- ceiling anyway, since transit capacity IS the limit. The
+* -- low window is then freed outright: 1536 B back per bank,
+* -- and worry 2 above DISSOLVES rather than being managed.
+* -- fork needs no change (procfork.s:17 already copies
+* -- [PRC_LOWFREE, PCB_BRK*256) -- the block just moves from the
+* -- low end of that range into the middle); lazy-free already
+* -- restages. Item 13c's rule that the kernel does the ERR_2BIG
+* -- check survives: the kernel knows the image length.
+* --
+* -- TWO COSTS, so this is not free:
+* --
+* -- a. THE CEILING WOULD GO PER-PROGRAM, which is real Unix
+* --    drift -- ARG_MAX is a system constant you can query, and
+* --    a command line that works with echo failing with as is
+* --    exactly the non-obvious divergence the house rule
+* --    forbids. Not forced, though: publish a conservative
+* --    CONSTANT floor (4 KB, say) always available regardless
+* --    of image size and refuse above it. ARG_MAX stays a
+* --    constant, simply tripled. The relocation buys the
+* --    FREEDOM to pick a bigger number; picking one keeps the
+* --    contract.
+* --
+* -- b. PCB_BRK == 0 MEANS "UNSET" and that is load-bearing in
+* --    three places (SCH_CREATE zeroes it, procfork.s:439 calls
+* --    that "right for spawn", lazy-free zeroes it on reuse).
+* --    Pre-setting it to image+args changes that invariant.
+* --
+* -- AND ONE THING GETS BETTER: the environment-reuse idea
+* -- (docs/SYSCALL.md item 13c note, same day) wants to know
+* -- whether a warm bank already holds the right environment.
+* -- Same program -> same image length -> staged block at the
+* -- SAME address, so the generation tag has a fixed place to
+* -- compare instead of a moving one.
+* -- NEITHER FORM IS RULED OUT BY ITEM 13c, though the order
+* -- above makes it look that way. 13c rejected the heap for
+* -- staging because it does not exist when the kernel must
+* -- stage. That is correct, and it kills neither: the FIRST
+* -- form relocates AFTER start, when the heap does exist; the
+* -- SECOND does not wait for a heap at all, because the kernel
+* -- SETS the initial break itself rather than finding one.
+* --
+* -- ARG_MAX's CEILING is gated (check_argv.py, e2e_limits.py).
+* -- What is unmeasured is HEADROOM: how close real spawns get.
+* -- That is the cheap first move if this starts feeling live.
+* See I.MEMMAPE.TXT: "ARG_MAX -- the spawn() argument-list"
+* -- BOTH ceilings became COMBINED budgets on 2026-08-22
+* -- (docs/SYSCALL.md item 13c): the environment shares this
+* -- block with argv, so ARG_MAX bounds argv's strings PLUS
+* -- envp's, and ARGV_PTR_LIM bounds argv's pointers PLUS the
+* -- envc byte PLUS envp's pointers. The numbers did not move --
+* -- what they cover did. spawn() still returns ERR_2BIG rather
+* -- than staging a prefix, so a program that started at all can
+* -- trust that argv AND environment are complete.
+ARG_MAX        equ   LOAD_BASE-PRC_ARGV_STR
+                                  ;1280B of packed strings,
+                                  ;NULs included
+ARGV_PTR_LIM   equ   PRC_ARGV_STR-PRC_ARGV_PTRS
+                                  ;255B of pointer array -> 127
+                                  ;entries max, the count that
+                                  ;used to be declared
+PRC_HEAP_TOP   equ   $BEFF       ;top of sbrk-managed heap
+                                  ;(below overlay)
+BF00_OVERLAY    equ   $BF00       ;256B reserved-but-optional
+                                  ;MLI overlay pg
+
+* -- PRC_BRK_LIM -- the highest LEGAL break (src/kernel/
+* -- process.s PRC_BRK, 2026-08-22). A break is the address
+* -- ONE PAST the heap, so a break of $BF00 owns through
+* -- $BEFF == PRC_HEAP_TOP and stops exactly below the overlay
+* -- page. Deliberately spelled as BF00_OVERLAY rather than
+* -- PRC_HEAP_TOP+1: real Merlin-8 has no parentheses and
+* -- evaluates strictly left to right, so a caller writing
+* -- `lda #<PRC_HEAP_TOP+1` is one dialect trap away from
+* -- $00 instead of the intended low byte
+* -- (learning:01M051DJW89KV4JYM1EC9SDZ5Y). The kernel keeps
+* -- the break as a PAGE NUMBER (see PCB_BRK,
+* -- inc/mm.annex.equ), so only >PRC_BRK_LIM is ever
+* -- compared against.
+PRC_BRK_LIM     equ   BF00_OVERLAY
+
+* SB_WINDOW REMOVED 2026-08-22 (docs/STICKY.md sec 25): it named
+* the $0800-$BEFF span a CACHED image had to fit inside, and
+* lazy free has no cache -- a retained bank IS a process bank,
+* so the only span that matters is the one PRC_BRK_LIM already
+* bounds. Recorded rather than silently dropped, the same way
+* INODE_*'s removal is recorded in inc/mm.annex.equ.
+PRC_IO_SLTROM equ   $C000       ;4096B never process memory --
+                                  ;refused by copyin/copyout
+                                  ;outright
+PRC_LC_BANK1   equ   $D000       ;4096B process LC storage,
+                                  ;bank 1
+PRC_LC_BANK2   equ   $D000       ;4096B process LC storage,
+                                  ;bank 2 (DEFAULT target of the
+                                  ;ALTZP-aware copy path -- see
+                                  ;LC_DFLT_BANK below)
+PRC_LC_COMMON  equ   $E000       ;7936B process LC storage,
+                                  ;common
+FFXX_PAGE       equ   $FF00       ;256B -- the kernel's ONLY
+                                  ;claim in a native bank; see
+                                  ;below
+
+LC_DFLT_BANK equ   2           ;the cold-read finding: ALTZP-
+                                  ;aware copyin/ copyout always
+                                  ;explicitly selects bank 2
+                                  ;before touching process LC
+                                  ;memory (never trusts ambient
+                                  ;bank-1/2 latch state)
+
+* -- 3.3 $FFxx page internal layout (dum'd at its real, absolute
+* address --
+*    every label here IS the address code jumps/vectors to) --
+            dum   $FF00
+SYSCALL_ENTRY   ds    20          ;JSR $FF00 syscall door
+IRQ_ENTRY       ds    14          ;$FFFE-vectored IRQ/BRK door
+EXIT_TAIL       ds    12          ;shared exit tail, both doors
+BANK_ID         ds    1           ;per-bank identity byte (PCB
+                                  ;per-bank half)
+FFXX_SCRATCH    ds    5           ;reserved per-bank kernel
+                                  ;scratch
+NMI_TRAP        ds    2           ;BRA * -- NMI ruled out, parks
+                                  ;for debugger
+RESET_STUB      ds    6           ;defensive-only; real recovery
+                                  ;is $03F2
+FFXX_SLACK      ds    190         ;unused -- headroom for task
+                                  ;#3
+NMI_VEC         equ   $FFFA
+RESET_VEC       equ   $FFFC
+IRQ_VEC         equ   $FFFE
+            dend
+* Budget check: 20+14+12+1+5+2+6 = 60 stub bytes + 190 slack =
+* 250 usable, + 6 hardware-vector bytes = 256 = the whole page.
+* 60 of 250 used.

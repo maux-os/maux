@@ -1,0 +1,102 @@
+.\" Original maux page, MIT, 2026-09-19.
+.\" Historical-source decision: Historical UNIX ld has incompatible object/library formats and options; this is a house Merlin REL linker.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH LD 1 "September 19, 2026" maux
+.SH NAME
+ld \- link Merlin REL objects
+.SH SYNOPSIS
+.B ld
+.RB [ \-a " address" ]
+.RB [ \-z ]
+.RB [ \-t " type" ]
+.BI \-o " output"
+.RB [ \-L " directory" ]
+.RI [ module " | " \-l " library | " \-s " address ...]"
+.br
+.B ld
+.BI @ file
+.SH DESCRIPTION
+Link Merlin REL modules, resolving their exported definitions and
+external references, and write a flat output file.
+Module code lengths are taken from each object's ProDOS auxiliary type;
+preserve the file metadata when transporting objects.
+.TP
+.B \-a address
+Set the link origin in hexadecimal, default 0800.
+.TP
+.B \-o output
+Name the output file (required).
+.TP
+.B \-t type
+Set the output ProDOS type byte in hexadecimal, default 06 (BIN).
+The link origin becomes its auxiliary type.
+.TP
+.B \-z
+Omit trailing zero bytes from the output. Use only when the program
+establishes any required working storage itself.
+.TP
+.B \-L directory
+Add a search directory, before /mnt/MAUX/LIB. Used for
+.B \-l
+library resolution (unchanged: searched before /usr/lib), and also to
+resolve an explicit
+.I module
+operand that contains no slash: such a module is tried in each
+.B \-L
+directory, in the order given on the command line, before falling back
+to the name exactly as given (relative to the current prefix; unlike
+.BR \-l ", " \-L
+does not fall back to /usr/lib for a bare module operand). A module
+operand containing a slash is never searched; it is opened exactly as
+given, by construction, so existing absolute\- or relative\-path
+invocations are unaffected by adding
+.BR \-L .
+The attached spelling \-L/path (one token, no space) is accepted, the
+same idiom as
+.BR \-s .
+It exists because a command line with several modules and one or more
+.B \-L
+directories can exceed the shell's 32-token argument limit before it
+exceeds the 254-character line limit; the attached form removes one
+token per
+.B \-L
+without shortening anything.
+.TP
+.B \-l library
+Search for directory LIBlibrary, selecting REL members needed to satisfy
+unresolved names. Each library is rescanned until it adds no members.
+Selected members occupy the flag's position among modules, in directory
+order. Library order matters.
+.TP
+.B \-s address
+Link following modules at a separate run address while the output file
+offset continues. -s 0 ends the run; up to two nonzero runs are
+allowed (sh links a segment at E000 and one at D000).
+The attached spelling -sE000 is accepted.
+.TP
+.BI @ file
+Read the arguments from
+.IR file :
+its words, separated by blanks and line ends (either ASCII convention),
+replace the command line, and every option above works in it.
+.BI @ file
+must be the only operand. A shell command line is limited to 31
+arguments, which
+.BR make (1)
+and
+.BR sh (1)
+share; the native build links sh, vi, more, ex, nulib2 and diff through
+an argument file (up to 99 words and 1022 bytes). An unreadable or
+oversized file is refused with a diagnostic and status 1.
+.PP
+Options normally take separate operands. Addresses have hexadecimal digits
+without $ or 0x prefixes.
+A library is a ProDOS directory, not a Unix ar archive.
+.SH FILES
+/usr/man/LD  this page
+.SH "SEE ALSO"
+nas(1), as(1), nm(1), make(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for link/I/O failures, 2 for usage errors.
+.SH BUGS
+Limits include 96 total modules, four -L directories, four -l requests, a 3584-byte dictionary tail per object and a 16384-byte symbol-name pool. A pass-two failure attempts to remove partial output; do not use a pre-existing output as proof of a successful link. Supplied on native toolchain images.

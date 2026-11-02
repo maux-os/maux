@@ -1,0 +1,45 @@
+print.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+PUBLIC CALLING CONVENTION UNCHANGED from this slice's original
+draft (X=fd, A=byte for PUTC; X=fd, PTR0=string for PUTS) even
+though the underlying MLI WRITE parmlist shape is entirely new
+(docs/SYSCALL.md ruling 3) -- these two routines absorb that
+churn internally so no util needed to change a single call site.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+PUTC -- write a single byte to a file descriptor. Does NOT touch
+bit 7 -- if the caller wants a liba-string-valid byte on the far
+end, the caller sets it (see string.s MAKEHI, or just pass a
+byte that's already high-bit -- e.g. a character pulled out of a
+liba string is already correct).
+IN:  X = fd, A = byte
+OUT: carry clear = ok; carry set, A = errno (SC_WRITE's error)
+CLOBBERS: A, X, Y.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+GETC -- read a single RAW
+----------------------------------------------------------------
+----------------------------------------------------------------
+GETC -- read a single RAW byte from a file descriptor. Added
+this round (sh.s, docs/SH-DESIGN.md ruling 6: "sh reads stdin
+one byte at a time via SC_READ (or liba's PUTC/GETC-shaped
+equivalent) and assembles its own line buffer"). Symmetric with
+PUTC -- same X=fd convention -- but does NOT return a liba-
+string-valid byte: a raw stdin/file byte can be anything
+(docs/USERLAND.md "liba converts nothing on read()"), unlike
+PUTC's caller-supplies-a-valid-byte contract.
+IN:  X = fd
+OUT: carry clear, A = byte read; carry set = EOF or read error
+(no byte
+     available). GETC does not distinguish a genuine MLI error from
+     trans_count==0 (EOF) -- both collapse to "no byte, stop reading,"
+     the same "read error treated as EOF" posture cat.s's COPYFD already
+     established (docs/USERLAND.md "ABI RESOLUTIONS": no v1 util decodes
+     a specific error code).
+CLOBBERS: A, X, Y.
+----------------------------------------------------------------

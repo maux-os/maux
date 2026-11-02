@@ -1,0 +1,124 @@
+*---------------------------------------------------------------
+* mli.equ -- ProDOS 8 MLI parameter-list shapes and field VALUES
+* that liba's file calls need, transcribed VERBATIM from the
+* ProDOS 8 Technical Reference Manual ch. 4 (housekeeping/filing
+* calls) and Appendix B.4.2 (access/storage_type/file_type
+* attributes) -- fetched live this round from the TRM artifact
+* cited by learning:01KW1GTYGP8MHN9YAE5JTSP62Z, not from memory.
+* docs/SYSCALL.md ruling 3 requires file-call parmlists to be
+* the REAL MLI shapes, verbatim -- this file (plus each util's
+* own static parmlist declarations, which use these shapes
+* directly via `dfb`/`da` rather than an indirected `dum`/`dend`
+* offset table, since each util needs exactly ONE instance per
+* call type, not an array) is where that verbatim shape is
+* recorded once so five utils don't independently transcribe it
+* and risk five independent transcription slips.
+* Full design notes: L.MLIE.TXT (docs/a2/)
+*---------------------------------------------------------------
+
+PCOUNT_CREATE   equ   7
+
+* See L.MLIE.TXT: "DESTROY ($C1) -- TRM 4.4.2 3"
+PCNT_DESTROY  equ   1
+
+* See L.MLIE.TXT: "OPEN ($C8) -- TRM 4.5.1 6"
+PCOUNT_OPEN     equ   3
+
+* See L.MLIE.TXT: "READ ($CA) -- TRM 4.5.3 8"
+PCOUNT_READ     equ   4
+
+* See L.MLIE.TXT: "WRITE ($CB) -- TRM 4.5.4 8"
+PCOUNT_WRITE    equ   4
+
+* See L.MLIE.TXT: "CLOSE ($CC) -- TRM 4.5.5 3"
+PCOUNT_CLOSE    equ   1
+PCNT_RENAME     equ   2        ;pathname + new_pathname
+
+* -- GET_FILE_INFO ($C4) -- TRM 4.4.3, param_count $0A (10):
+* -- pathname ptr, access, file_type, aux_type(2), storage_type,
+* -- blocks_used(2), mod_date(2), mod_time(2), create_date(2),
+* -- create_time(2). Added 2026-08-19 (task: wire GET_FILE_INFO
+* -- into the kernel broker + liba) -- transcribed from the same
+* -- TRM artifact the rest of this file cites, not from memory.
+PCOUNT_GFI      equ   10
+
+* -- SET_FILE_INFO ($C3) -- TRM 4.4.4, param_count 7: pathname
+* -- ptr, access, file_type, aux_type(2), null_field(3 bytes --
+* -- TRM: "preserve symmetry between this and the GET_FILE_INFO
+* -- call", should be zero), mod_date(2), mod_time(2). No
+* -- storage_type/blocks_used/create_date/create_time slots --
+* -- those are not settable via this call. Added 2026-08-21
+* -- (chmod task): read-modify-write is the CALLER's job (GET_
+* -- FILE_INFO first, change only access, write file_type/
+* -- aux_type/dates back unchanged) -- see src/bin/chmod.s.
+PCOUNT_SFI      equ   7
+
+* ---- pathname buffer shape (used by OPEN/CREATE/DESTROY's
+* pathname ---- pointer field, TRM 4.4.1/4.5.1 prose): 1-byte
+* COUNT, then up to 64 ---- RAW 7-BIT-ASCII characters -- NOT
+* NUL-terminated, NOT high-bit-set. ---- "ProDOS clears this
+* high bit" (TRM ch. 2, "By the Way" note on ---- Apple II ASCII
+* convention) -- liba's own high-bit-set string ---- convention
+* (docs/USERLAND.md) is backwards from what the MLI wants, ----
+* so src/liba/mli.s's MKPATH is a MANDATORY boundary conversion,
+* not ---- a nicety. See docs/USERLAND.md "ABI RESOLUTIONS" for
+* the citation.
+MLI_PTH_MAXLN equ   64
+
+* See L.MLIE.TXT: "CREATE field VALUES this round had"
+ACCESS_UNLKD equ   $C3
+* -- access byte bit masks (TRM 4.4.3 -- "D RN B rsv rsv rsv W
+* -- R", bits 7 6 5 4-2 1 0). docs/ANACHRONISMS.md sec W2 rules
+* -- OUT a Unix rwx mapping -- chmod.s speaks these bits
+* -- directly, letters d/n/b/w/r (learning:01M0798FFCHB60SW-
+* -- QDE8NQEQXN, the GNO/ME precedent). Bits 4-2 are reserved;
+* -- "only ProDOS may change" them (TRM) -- chmod never touches
+* -- them.
+ACC_DESTROY equ   $80
+ACC_RENAME  equ   $40
+ACC_BACKUP  equ   $20
+ACC_WRITE   equ   $02
+ACC_READ    equ   $01
+* See L.MLIE.TXT: "filetype ($06  BIN) standard ProDOS"
+FTYPE_BIN       equ   $06
+* -- The type is maux's OWN metadata, not an interop
+* -- courtesy. It is where "can this be run?" lives (the GNO
+* -- precedent: no chmod +x, use chtyp), what Merlin filters
+* -- on when self-hosting, and what ls -l will report.
+* -- Creating everything BIN, as this tree did until
+* -- 2026-08-17, throws all three away silently.
+FTYPE_TXT       equ   $04        ;ProDOS TXT. What a shell
+                                 ;redirect and an ed write
+                                 ;produce -- both are text
+                                 ;streams by definition
+* See L.MLIE.TXT: "storagetype ($01  seedling) TRM Appendix"
+STYP_SEEDLING  equ   $01
+STYP_DIR        equ   $0D        ;storage_type for a directory
+FTYPE_DIR       equ   $0F        ;file_type DIR. CREATE makes a
+                                 ;real subdirectory when both
+                                 ;are set -- which is why mkdir
+                                 ;needs no kernel support
+
+* -- the rest of Appendix B.4.2's file_type byte values.
+* -- Identity mapping only (which byte means what) --
+* -- RENDERING (a 3-char ls column vs. file's prose) stays
+* -- per-tool, docs/PLAN.md "The liba wave".
+FTYPE_SYS       equ   $FF        ;system program
+FTYPE_BAS       equ   $FC        ;applesoft program
+FTYPE_INT       equ   $FA        ;integer basic program
+FTYPE_VAR       equ   $FB        ;applesoft variables
+FTYPE_REL       equ   $FE        ;REGISTERED relocatable code
+                                 ;-- Apple's own EDASM toolchain
+                                 ;(ESD/RLD records) -- NOT the
+                                 ;Merlin format (FTYPE_RELM).
+FTYPE_RELM      equ   $F8        ;MERLIN REL object -- NOT $FE:
+                                 ;real Merlin-8 writes its REL
+                                 ;modules (code + dictionary,
+                                 ;aux = code length) as $F8,
+                                 ;measured off five real files
+                                 ;(docs/REL-LIBA-SPIKE.md). $FE
+                                 ;is the EDASM convention and no
+                                 ;maux tool reads or writes it.
+FTYPE_PAS       equ   $EF        ;pascal area
+FTYPE_ATK       equ   $E2        ;appletalk file
+FTYPE_S16       equ   $B3        ;gs/os application

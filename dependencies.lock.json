@@ -1,0 +1,263 @@
+{
+  "schema": 4,
+  "repositories": {
+    "a2til": {
+      "env": "A2TIL",
+      "default": "~/src/a2til",
+      "tiers": ["test"],
+      "url": "https://forgejo.cornflower.au/mdj/a2til.git",
+      "commit": "8771012b5f6201d08329d5ead0dc75e95fb7692d",
+      "manifest_sha256": "31078ed54ab9ef8d722ee9f7256c475f9afa3aa01c2a1d9739c60f9854864093",
+      "mirror": {
+        "comment": "The public flat mirror of the Forgejo commit above, pushed by a2til's tools/publish-mirror.sh as ONE snapshot commit with no shared history, so its hash cannot be derived from the Forgejo one and its git tree differs by exactly the excluded paths. check-deps holds both pins to one content manifest (mode, blob id, path of every file the mirror carries; scripts/check_dependencies.py tree_manifest) and fails when they name different content: if the Forgejo pin moves, run publish-mirror.sh and re-pin this block.",
+        "url": "https://github.com/emdeejay/a2til.git",
+        "commit": "3a9e88eeb3857c19c1a68b8ae1ceea3c4c74dceb",
+        "mirrors": "8771012b5f6201d08329d5ead0dc75e95fb7692d",
+        "excluded_paths": [".forgejo", "notes/market-gaps.md", "notes/unconstrained-redesign.md", "notes/history"],
+        "manifest_sha256": "31078ed54ab9ef8d722ee9f7256c475f9afa3aa01c2a1d9739c60f9854864093"
+      }
+    },
+    "plasma": {
+      "env": "PLASMA",
+      "default": "~/src/PLASMA",
+      "tiers": ["build", "test"],
+      "url": "https://github.com/emdeejay/PLASMA.git",
+      "commit": "1b4d711ad07a75cd615b020a23affc8f30d9ea80",
+      "build": [
+        ["make", "-C", "src", "xplasm"]
+      ]
+    },
+    "verilogapple": {
+      "env": "VERILOGAPPLE",
+      "default": "~/src/verilogapple",
+      "tiers": ["test"],
+      "url": "https://forgejo.cornflower.au/mdj/verilogapple.git",
+      "commit": "296d93a5d596e8a093457eae15bd5a5b2b1f1219",
+      "generated_tracked": ["sim/mcp/.build-rev"],
+      "build": [
+        ["make", "mcp"],
+        ["make", "fast"]
+      ]
+    }
+  },
+  "tiers": {
+    "build": {
+      "purpose": "make play-image and full-image (the play and release disks): no emulator, no ROMs, no Forgejo",
+      "tools": ["merlin32", "acme"],
+      "required_commands": ["git", "make", "cc"],
+      "operator_inputs": []
+    },
+    "test": {
+      "purpose": "everything: the build tier plus the verilogapple gates and make play",
+      "tools": ["merlin32", "acme", "verilator", "sdl2", "nlohmann_json"],
+      "optional_tools": ["ffmpeg"],
+      "required_commands": ["git", "make", "cc", "c++"],
+      "operator_inputs": ["roms"]
+    }
+  },
+  "python_packages": {
+    "a2til": {
+      "comment": "The build tier installs this into a project-local venv with pip --require-hashes --only-binary :all:. A version alone is not a pin; the hash is. Either file is accepted; the wheel is what installs. source_commit is the GitHub pin the release was cut from (the GitHub 0.9.0 tag); the sdist is that commit's tree plus PKG-INFO (checked 2026-10-19). If the host's Python has no pip (Debian without python3-venv), the wheel is downloaded from its url, held to bytes and sha256 here, and unzipped into the venv. If PyPI is unreachable, bootstrap falls back to git_url@source_commit and check-deps holds the result to installed_manifest_sha256, the hash of the installed a2til/ files, which is the same for both routes (measured 2026-10-19).",
+      "version": "0.9.0",
+      "files": [
+        {"filename": "a2til-0.9.0-py3-none-any.whl", "url": "https://files.pythonhosted.org/packages/29/e3/3088c861601ab110a9522cb91b385eac6fc5664b7836b235987e067dcc6d/a2til-0.9.0-py3-none-any.whl", "bytes": 162825, "sha256": "f88bebae7c7c1ff56a471653ca46aece712a2b0347aeb2d1a2ac4bdcb621c723"},
+        {"filename": "a2til-0.9.0.tar.gz", "url": "https://files.pythonhosted.org/packages/2f/91/0f27ac0c99890f78236b5a1212f4b3d059596a9b2197fb76f7d28ffc8efb/a2til-0.9.0.tar.gz", "bytes": 369980, "sha256": "f3ffd045168ca26f0c8177af2bc04c2e5f7c4f90ba84b273d91f653ee8132a8b"}
+      ],
+      "source_commit": "3a9e88eeb3857c19c1a68b8ae1ceea3c4c74dceb",
+      "git_url": "https://github.com/emdeejay/a2til.git",
+      "installed_manifest_sha256": "8f754d4c23496d3bee64a3dead5d7d524732ea5e6369bcd88f1cc18df564bc22"
+    }
+  },
+  "tools": {
+    "acme": "release 0.97",
+    "merlin32": "v1.1.10",
+    "python_min": [3, 10],
+    "sdl2": "2.32.72",
+    "verilator": "5.048",
+    "nlohmann_json": "3.12.0",
+    "ffmpeg": {
+      "comment": "OPTIONAL, test tier only (tiers.test.optional_tools). Only `make demos` encodes (scripts/demo_record.py --record); no sweep does, and the Linux box has none. Absent is fine; if it is on PATH, check-deps requires it to meet this floor and have these encoders and filters, so a half-capable build is named before a recording fails. min is the version the recorder's numbers were measured on (docs/RECORDER-NOTES.md sec 3). scripts/ffmpeg_probe.py reads this block for both check-deps and demo_record.py; neither carries its own copy.",
+      "min": [9, 0],
+      "encoders": ["libx264", "libvpx-vp9"],
+      "filters": ["scale", "split", "format"],
+      "needed_by": "make demos"
+    },
+    "required_commands": ["git", "make", "cc", "c++"]
+  },
+  "source_tools": {
+    "mandoc": {
+      "url": "https://mandoc.bsd.lv/snapshots/mandoc-1.14.6.tar.gz",
+      "sha256": "8bf0d570f01e70a6e124884088870cbed7537f36328d512909eb10cd53179d9c",
+      "directory": "mandoc-1.14.6",
+      "executable": "mandoc",
+      "render_probe_sha256": "0abbcf005b9aaf9e888920df937e9c15fd1d7db8b1caf647ea075c6cb6b27377",
+      "build": [
+        ["./configure"],
+        ["make", "mandoc"]
+      ]
+    }
+  },
+  "artifacts": {
+    "merlin": {
+      "path": "vendor/VALIDATE.PO",
+      "url": "https://mirrors.apple2.org.za/ftp.apple.asimov.net/images/programming/assembler/merlin/VALIDATE.PO",
+      "bytes": 819200,
+      "sha256": "8141b6082900c9b4965dab9d1068716c019677cec84b792d0deadb5dafc43245"
+    },
+    "prodos": {
+      "2.5": {
+        "path": "vendor/ProDOS_2_5_a8.dsk",
+        "url": "http://releases.prodos8.com/ProDOS_2_5_a8_143k.dsk",
+        "bytes": 143360,
+        "sha256": "d28b6c74a0cc9346a8ed81e270c7806fd79b8d89bd061ce791df39de623e18d5"
+      },
+      "2.4": {
+        "path": "vendor/ProDOS_2_4.dsk",
+        "url": "https://mirrors.apple2.org.za/ftp.apple.asimov.net/images/masters/prodos/ProDOS_2_4.dsk",
+        "bytes": 143360,
+        "sha256": "6b6833b1cec6cb494be96241b599b5ac093c43c58dbad1c2d2b66c9075c9187c"
+      }
+    },
+    "prodos_carrier": {
+      "path": "vendor/prodos-basic.po",
+      "bytes": 143360,
+      "sha256": "fa707ab81fb1012f176c128e1de69b62652df961c1619d67d62322bb8a6114d0",
+      "derived_from": "prodos 2.5: Boot.blocks, PRODOS, BASIC.SYSTEM"
+    }
+  },
+  "roms": [
+    {
+      "path": "sim/roms/iie_cd_ef.rom",
+      "source": "iie_cd_ef.rom",
+      "bytes": 16384,
+      "sha256": "aab38a03ca8deabbb2f868733148c2efd6f655a59cd9c5d058ef3e0b7aa86a1a",
+      "feeds": "every emulator gate (the system ROM), make play"
+    },
+    {
+      "path": "sim/roms/iie_video.rom",
+      "source": "iie_video.rom",
+      "bytes": 4096,
+      "sha256": "52c3b87900ac939f6525402cab1ccfd8f8259290fc6df54da48fb4c98ae3ed0f",
+      "feeds": "every emulator gate (video ROM), make play, check-mame via vendor-mame-roms"
+    },
+    {
+      "path": "sim/roms/applemouse.rom",
+      "source": "applemouse.rom",
+      "bytes": 2048,
+      "sha256": "7f8e50c0e8a409991264201f9300f109b872b68e09c43f3e6c26af35fd8b89af",
+      "feeds": "every emulator gate (the 60 Hz VBL tick), check-mame via vendor-mame-roms"
+    },
+    {
+      "path": "sim/roms/ultraterm/firmware_v3.bin",
+      "source": "ultraterm/firmware_v3.bin",
+      "bytes": 4096,
+      "sha256": "cb17d747d3370723df02504f94bcf72aae9ef6d7419dc1e2edeb2cccfedf4024",
+      "feeds": "the UltraTerm gates (check-ultraterm, check-ut-bold, check-play80, check-vi-alt, and the e2e_term ones that reset ultraterm), make play, check-mame via vendor-mame-roms"
+    },
+    {
+      "path": "sim/roms/ultraterm/chargen_v3.bin",
+      "source": "ultraterm/chargen_v3.bin",
+      "bytes": 4096,
+      "sha256": "cbbfd3d07be729795d2b5a2bcdb1f1daf01af945f2f80430a5666bb7f0fedcd0",
+      "feeds": "the same UltraTerm gates, make play (HQ mousetext graft), check-mame via vendor-mame-roms"
+    },
+    {
+      "path": "sim/roms/disk2.rom",
+      "source": "disk2.rom",
+      "bytes": 256,
+      "sha256": "de1e3e035878bab43d0af8fe38f5839c527e9548647036598ee6fe7ec74d2a7d",
+      "feeds": "every gate that mounts a floppy: check-floppy, check-devfs, check-unpack, check-mount, check-devpath, check-loop, check-dirtyram"
+    },
+    {
+      "path": "sim/roms/ssc.rom",
+      "source": "ssc.rom",
+      "bytes": 2048,
+      "sha256": "4fa1323ba31f4bd562486838397b7744257c126806766e360876720daca6e2aa",
+      "feeds": "every serial-card gate: check-ser, check-tip, check-tip-vim, check-vt102 (its serial leg), scripts/tip_live.sh"
+    },
+    {
+      "path": "sim/roms/ultraterm/chargen_v1.bin",
+      "source": "ultraterm/chargen_v1.bin",
+      "bytes": 4096,
+      "sha256": "d9c3108abb2a21a3807deb992af62c963891f18938f1da945e536f82e4676651",
+      "feeds": "make play and make play-rec: their --ut flag is the HQ mode, which pairs v3 firmware with v1's tall chargen (fast_sdl.cpp:726); check-mame and check-release-image, through make vendor-mame-roms (the a2ulttrm romset's chs_7859); the UltraTerm demo films draw the original card with it"
+    },
+    {
+      "path": "sim/roms/ultraterm/pal_u4_v3.jed",
+      "source": "ultraterm/pal_u4_v3.jed",
+      "bytes": 773,
+      "sha256": "e7b25b6be6c220317d4d81a0f538784cc72024821f402d6edaf80b81d9012082",
+      "feeds": "check-mame and check-release-image, through make vendor-mame-roms (the a2ultrme romset's ult_251c.jed)"
+    },
+    {
+      "path": "sim/roms/ultraterm/firmware_v1.bin",
+      "source": "ultraterm/firmware_v1.bin",
+      "bytes": 4096,
+      "sha256": "8c9888dbc0c5dc8d51493e3f192a09415216ccb96d99e9d94ea29c58dec643e0",
+      "feeds": "check-mame and check-release-image, through make vendor-mame-roms (the ORIGINAL card's a2ulttrm romset, frm_b537); the UltraTerm demo films (check-demos, check-recorder, make demos), which boot the original card"
+    },
+    {
+      "path": "sim/roms/ultraterm/pal_u4_v1.jed",
+      "source": "ultraterm/pal_u4_v1.jed",
+      "bytes": 773,
+      "sha256": "9e4e93f9634a058e4cb8dd4ce06aa7987d4ca93eb43d9f47069b95ce36775f85",
+      "feeds": "check-mame and check-release-image, through make vendor-mame-roms (the a2ulttrm romset's ult_2a313.jed)"
+    }
+  ],
+  "roms_exempt": [
+    {
+      "name": "/Users/mdj/Downloads/timemaster_ii_ho_rom_v5.bin",
+      "reason": "the authentic AE Timemaster ROM, read only from the absolute path or VERILOGAPPLE_TIMEMASTER_AE_ROM; the clock the gates use is the built-in timemaster firmware assembled in-tree",
+      "selected_by": ["VERILOGAPPLE_TIMEMASTER_AE_ROM", "timemaster_ii_ho_rom"]
+    }
+  ],
+  "pinned": {
+    "comment": "Emulator-made build inputs, committed so the build tier needs no emulator (docs/DEPS-TIER.md, pinned/README.md). The test tier regenerates them; check-ascore-warm and check-liba-pins fail when a regeneration differs.",
+    "files": [
+      {"path": "pinned/ascore-warm-as.obj", "build": "build/ascore-warm-as.obj", "regenerate": "make check-ascore-warm", "bytes": 4674, "sha256": "805ad10b41611187a04fa3aca28b90ac4784472c017092724e8ebd1186d683c1"},
+      {"path": "pinned/ascore-warm-bank1.obj", "build": "build/ascore-warm-bank1.obj", "regenerate": "make check-ascore-warm", "bytes": 4045, "sha256": "4c4f587c703e91c4493ca9a55a1b3b5038894dfabbe754d05e7eed6f9b94499e"}
+    ],
+    "liba": {
+      "comment": "/usr/lib/LIBA, the REL objects nas makes from src/liba (type $F8). Order is directory order.",
+      "dir": "pinned/liba",
+      "suffix": ".rel",
+      "type": 248,
+      "regenerate": "python3 scripts/build_full_image.py --repin-liba",
+      "objects": [
+        {"name": "ARGVR", "aux": 21, "bytes": 32, "sha256": "c92b137bad5593054cd4f05604b523ce38286f0c2b7b40884db0f9adf41726fd"},
+        {"name": "BRKR", "aux": 53, "bytes": 125, "sha256": "8cc75e01896cc1f7cc9e644fc2f77f9fe5114113d11751f8daf016ae86f540bf"},
+        {"name": "CMDPATHR", "aux": 114, "bytes": 176, "sha256": "b3a0319e982704c2d18332696d8736ef1e23d278f7ff49789d4491993204765b"},
+        {"name": "CPTREER", "aux": 604, "bytes": 1768, "sha256": "84578525ab91314907c4ddc3824abf7bd813ebd24390a9931352dc08ab8d73fa"},
+        {"name": "CPTREE2R", "aux": 597, "bytes": 1829, "sha256": "cd95d5f2f85a5a46feb2688ac88e92ec08da3e1c43c4b5d869a1f4525e94003f"},
+        {"name": "CPTREEBSSR", "aux": 945, "bytes": 1602, "sha256": "160c98a6e7bfabe3067224bdec3cece4d941597a1401a2ad857356eb2f733c11"},
+        {"name": "CREATR", "aux": 141, "bytes": 562, "sha256": "0802db368c15b716ec05e4fb4686e0e7ab759397de3d191fb5016a486f5c8374"},
+        {"name": "ENVR", "aux": 190, "bytes": 322, "sha256": "63e3ed06d256bb22a2ded48419154a5b7a39f4849e65807cdf2264bc1f1053a9"},
+        {"name": "GETOPTR", "aux": 206, "bytes": 416, "sha256": "090e3dd86c58e088898a32f0787a7cc1f59aaa59cc01b437ccceae29a511619c"},
+        {"name": "GLOBR", "aux": 328, "bytes": 665, "sha256": "f68d5f0bb5a5bfdd65ef5a3dc18655ba7bf6ba57ddc8f2d181fa675d7b47255c"},
+        {"name": "HEXR", "aux": 61, "bytes": 175, "sha256": "762779f3dddcf7cc7dd8a2dc6395e1260a3596f6c3beafb301534b628059db0b"},
+        {"name": "LIBABSSR", "aux": 1927, "bytes": 3357, "sha256": "cb6eac28dd90093744427006fb92ae3a3bd69b5f3605d4b85c5031575be2f71b"},
+        {"name": "MLIR", "aux": 207, "bytes": 338, "sha256": "6d292be4022b5eaa6672545ecb6e51912fcb3df08d48fe22be87807fc8b35780"},
+        {"name": "NUMR", "aux": 129, "bytes": 214, "sha256": "b53774f5a9af2ef19dced15b802198368cfe8dca7ab5fe2cd35cb5dfce5ddd3c"},
+        {"name": "PATHRESR", "aux": 325, "bytes": 750, "sha256": "16752e8729c0d6b22ee1c95e5c0aa0474547a8f7a7c28bb1cbfce018ae4e66f1"},
+        {"name": "PATHTABR", "aux": 6, "bytes": 18, "sha256": "ded60979d54d688c0564a2cef7e9f9ecd0bd9439d51e796912c814c44ec7670d"},
+        {"name": "PRINTR", "aux": 130, "bytes": 557, "sha256": "175892f9e472d4abe35479735206ff1067f79c1ed74b23c28244c9f45239c4d5"},
+        {"name": "READDIRR", "aux": 557, "bytes": 1313, "sha256": "2353b7ba377f15fa6b63d715bb9b710c2fcfc60be4f10a558bbeeade5d4ae2b3"},
+        {"name": "READFOLDR", "aux": 13, "bytes": 25, "sha256": "3c22a5416ae8cd2d462bb16a4361816a40bf4bd602d81a2e47af7103276cea13"},
+        {"name": "READSYNR", "aux": 546, "bytes": 1186, "sha256": "d17850aa6d43c91c204c2f99cf654a23ed29592f6049746afa8023dcedf91958"},
+        {"name": "READSYSR", "aux": 32, "bytes": 101, "sha256": "cd96052c89e21e20e1d66899426724bd40a1848bb69dc6ec76693c359bc27a0b"},
+        {"name": "REGEXR", "aux": 1248, "bytes": 1754, "sha256": "da9fdf938ce94acf1e2a7afb4f84bff607afc7af8208b05b2fa2ce2299d2a823"},
+        {"name": "REGEX2R", "aux": 1603, "bytes": 2056, "sha256": "6f66bc0c1d9cde618b84db458a8b5f958b92e1fbd0015feebda9cf4a8754150c"},
+        {"name": "REGEXBSSR", "aux": 84, "bytes": 235, "sha256": "8b165b6473423f704edacf9586916ee6380fc3ca1fe7813aa4a252bfca9102d4"},
+        {"name": "SEEKR", "aux": 124, "bytes": 317, "sha256": "7e3ab2bfe5390d229bc01a6db9f4693013900e6cca8c20ca35de7384b04b8717"},
+        {"name": "SPAWNWHYR", "aux": 78, "bytes": 122, "sha256": "9e1b0fd390e4e392394022cc97fb7bae87fdbb0145ad968643bb409e77609c24"},
+        {"name": "STDIOR", "aux": 325, "bytes": 774, "sha256": "66ecee29aedcded4bdf3130731da30b356c7a747a0c9aad0d18378dab97046ad"},
+        {"name": "STDIOFLR", "aux": 356, "bytes": 1039, "sha256": "7df042d26f4fbcd5ed1b8a52e5469508c6df0d963269b79d39c930abb10b5d10"},
+        {"name": "STRINGR", "aux": 182, "bytes": 263, "sha256": "b0d307ea2fa7796518555ac79626a8d3198b2e8e5d67042d006b3f6a718db173"},
+        {"name": "SYSCALLPR", "aux": 362, "bytes": 899, "sha256": "fdcf55ca8b45f60de7551c5127387808ff8adb86d2fd119571949b541673a1d9"},
+        {"name": "SYSCALLSR", "aux": 118, "bytes": 350, "sha256": "1c967233dbbc4ad972150bab6405744314325fe9916c29a5aa9decbf0bcc6540"},
+        {"name": "SYSSLEEPR", "aux": 6, "bytes": 22, "sha256": "09d23b1204141a500baa4b0a87ff28846c7b0c5c4affe310a46fe1271e91fba9"},
+        {"name": "SYSVROOTR", "aux": 12, "bytes": 39, "sha256": "645f8f2548e4edcabae6a910fdb09c08c02f80d37439fc1c456f918b95bf9a47"}
+      ]
+    }
+  }
+}

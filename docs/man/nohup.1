@@ -1,0 +1,72 @@
+.\" nohup.1 -- maux's nohup(1), in the V7 man(1) shape. An original
+.\" page (this project's own text, not copied from a historic
+.\" nohup(1)), so it carries no third-party notice -- MIT like the
+.\" code, same posture as env.1. Rendered at build time to
+.\" build/man/NOHUP.TXT and staged on the play image as
+.\" /usr/man/NOHUP: `more /usr/man/NOHUP`.
+.TH NOHUP 1 "September 15, 2026" maux
+.SH NAME
+nohup \- run a utility with the hangup signal ignored
+.SH SYNOPSIS
+.B nohup
+.I utility
+[
+.I argument
+] ...
+.SH DESCRIPTION
+.I Nohup
+runs
+.I utility
+with the SIGHUP signal set to be ignored, then exits with its
+status. On this machine nothing ever SENDS a hangup signal (no
+controlling-terminal-drop concept), so the ignore step is a
+real, harmless syscall rather than a fiction -- the SUBSTANCE of
+.I nohup
+here is the output redirection.
+.PP
+If standard output is a terminal, all output
+.I utility
+writes to its standard output is appended to
+.B NOHUP.OUT
+in the current directory. If that file cannot be created or
+appended to, it is instead appended to
+.B NOHUP.OUT
+in the directory named by the
+.B HOME
+environment variable; if
+.B HOME
+is not set, or that also fails,
+.I utility
+is not invoked. Before either is attempted, a message naming the
+destination is written to standard error. If standard error is
+also a terminal, it is redirected the same way.
+.PP
+.I Utility
+is resolved against
+.B PATH
+exactly as a shell resolves a bare command word (execvp), and
+its
+.IR argv [0]
+is the word as typed, not the resolved path.
+.SH FILES
+/usr/man/NOHUP  this page
+.br
+NOHUP.OUT  the default output destination, current directory
+.SH "SEE ALSO"
+sh(1), env(1), timeout(1), kill(1)
+.SH DIAGNOSTICS
+Exit status is that of
+.I utility
+if it ran; 127 if it could not be found on
+.B PATH
+or if neither output destination could be opened; 126 if it was
+found but could not be run; 2 on a usage error (no
+.I utility
+operand).
+.SH BUGS
+ProDOS has no permission bits, so
+.B NOHUP.OUT
+is created with whatever access CREATE's own default grants --
+there is no narrower mode to request. This machine has no
+hangup-signal source at all, so the ignore step can be measured
+as a successful syscall but never as a behavioural difference.

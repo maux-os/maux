@@ -1,0 +1,48 @@
+.\" Derived from Research UNIX V6 tr(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/tr.1
+.\" Retrieved 2026-09-19; archived response SHA256: 2e18b3a3356d2ab90e73bbd0036b0ba0fc6084cb846c1c35b19a5f768f961840
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH TR 1 "September 19, 2026" maux
+.SH NAME
+tr \- transliterate
+.SH SYNOPSIS
+.B tr
+.RB [ \-cds ]
+.I string1
+.RI [ string2 ]
+.SH DESCRIPTION
+.I Tr
+copies the standard input to the standard output with substitution or
+deletion of selected characters.
+Input characters found in string1 are mapped into the corresponding
+characters of string2.
+A short string2 is extended by repeating its last character.
+.TP
+.B \-c
+Complement string1 over all 256 byte values.
+.TP
+.B \-d
+Delete input characters in string1 instead of translating.
+.TP
+.B \-s
+Squeeze repeated output characters in string2 to one copy.
+If string2 is absent, use string1 as the squeeze set.
+.PP
+Only translation requires two strings; deletion or squeezing alone
+can use one.
+An ascending range such as a-z abbreviates successive characters.
+Unlike V6 tr, ranges are not bracketed.
+Quote the strings to protect them from the shell:
+.PP
+.B tr a-z A-Z <input >output
+.SH FILES
+/usr/man/TR  this page
+.SH "SEE ALSO"
+sh(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on completion, 2 for usage errors.
+.SH BUGS
+No backslash escapes, character classes or repetition notation are implemented. Shell operands are high-bit maux text; they do not name the corresponding low-ASCII bytes. Input bytes are otherwise passed unchanged.

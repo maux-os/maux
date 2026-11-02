@@ -1,0 +1,207 @@
+.\" more.1 -- maux's more(1), in the V7 man(1) shape. An original
+.\" page (V7 had no more; this describes maux's own POSIX-shaped
+.\" one), so it carries no third-party notice -- MIT like the code.
+.\" Rendered at build time to build/man/MORE.TXT and staged on the
+.\" play image as /usr/man/MORE: `more /usr/man/MORE`.
+.TH MORE 1 "September 12, 2026" maux
+.SH NAME
+more \- page through a file
+.SH SYNOPSIS
+.B more
+[
+.B \-ceisu
+] [
+.B \-n
+lines ] [ file ... ]
+.SH DESCRIPTION
+.I More
+displays the named
+.I files
+(standard input default) on the console a screenful at a time,
+pausing after each with a
+.B \-\-More\-\-
+prompt.
+A single key at the prompt says what to do next; the keys are
+those of POSIX
+.IR more ,
+and most take a
+.I count
+typed first.
+Every line's position is remembered, so the display can also go
+backward.
+When standard output is not the console the files are simply
+copied to it and only
+.B \-s
+has any effect.
+.PP
+The options are
+.TP
+.B \-c
+Clear the screen before each file rather than scrolling.
+A full page forward is always painted from the top of a cleared
+screen; a half page or a counted number of lines scrolls.
+.TP
+.B \-e
+Exit when the last line of the last file has been written,
+instead of prompting there.
+.TP
+.B \-i
+Ignore case in searches.
+.TP
+.BI \-n " lines"
+Use
+.I lines
+as the screenful, instead of one less than the console's rows.
+.TP
+.B \-s
+Squeeze runs of empty lines to one.
+.TP
+.B \-u
+Leave backspaces alone.
+Without it a character overstruck with itself (as
+.IR nroff (1)
+emboldens) is shown bold, and one overstruck with an underscore
+plain.
+.TP
+.B \-A
+Page on the terminal's alternate screen: the screen as it was
+before
+.I more
+started comes back when it exits, as
+.IR vi (1)
+does. Not in POSIX;
+.IR man (1)
+uses it, so a manual page leaves no trace.
+.PP
+The commands are
+.TP
+.BR SPACE ", " f ", ^F"
+Forward a screenful; with a count, that many lines
+.RB ( f :
+past the screen, only the last screenful).
+.TP
+.BR RETURN ", " j
+Forward one line, or
+.I count
+lines.
+.TP
+.B k
+Back one line, or
+.I count
+lines.
+.TP
+.BR d ", ^D"
+Forward half a screenful.
+A count becomes the new half.
+.TP
+.BR u ", ^U"
+Back half a screenful.
+.TP
+.BR b ", ^B"
+Back a screenful, or
+.I count
+lines.
+.TP
+.B s
+Skip
+.I count
+lines (one by default) and show a screenful.
+.TP
+.B g
+Go to line
+.I count
+(the first by default).
+.TP
+.B G
+Go to line
+.IR count ,
+or to the last screenful.
+.TP
+.BI / pattern
+Search forward for the
+.IR count th
+line matching the regular expression (the basic regular
+expressions of
+.IR ed (1)),
+and show a screenful starting there.
+A leading `!' finds a line
+.I not
+matching; an empty pattern repeats the last one.
+.TP
+.BI ? pattern
+The same, searching backward.
+.TP
+.BR n ", " N
+Repeat the last search in the same, or the opposite, direction.
+.TP
+.BI m letter
+Mark the current position with a lower-case
+.IR letter .
+.TP
+.BI \(aa letter
+Return to that mark; `\(aa\(aa' returns to where the last large
+movement started.
+.TP
+.BR = ", ^G"
+Show the file name, line number, and how far through the file
+the display is.
+.TP
+.BR r ", ^L"
+Redraw the screen.
+.TP
+.BR :n ", " :p
+The next, or previous, file named on the command line.
+.TP
+.BI :e " file"
+Examine
+.IR file .
+.TP
+.B v
+Edit the current file with
+.IR vi (1),
+then continue.
+.TP
+.BI ! command
+Run
+.I command
+through
+.IR sh (1).
+.TP
+.B h
+A summary of the commands.
+.TP
+.BR q ", " :q ", " ZZ
+Quit.
+.PP
+At the end of a file the prompt says so, or names the next file;
+a forward command then goes on to it, or, after the last file,
+quits.
+A file that fits on one screen is shown and
+.I more
+exits.
+The arrow keys act as
+.BR k ,
+.BR j ,
+SPACE and
+.BR b .
+.SH FILES
+.TP
+MORE.INxx
+where a pipe on standard input is kept while it is paged (xx
+names the process), removed on exit
+.TP
+MORE.CMDxx
+the `!' command on its way to the shell
+.SH "SEE ALSO"
+cat(1), sed(1), vi(1), ed(1)
+.SH DIAGNOSTICS
+Exit status is 0, or 1 when a file could not be opened, or 2 on
+a usage error.
+.SH BUGS
+A line longer than 255 characters is searched only in its first
+255.
+Bold on the Apple //e's own text page shows as inverse, and
+inverse lower case is not in that character set; on the
+UltraTerm it is bright.
+The line table holds 10000 lines; past that the rest of a file
+is out of reach.

@@ -1,0 +1,50 @@
+//
+// cookt.pla -- the plascut restore-teeth fixture (docs/PLASCUT.md).
+//
+// A cooked binary's module DATA lives inside the image and is
+// mutated at run time; lazy free hands a warm respawn the same bank
+// with last run's data still in it (docs/STICKY.md sec 27). rt's
+// cooked init restores every data range from the pristine copies
+// plascut appended to the image, so this program must print RUNS=0
+// on EVERY launch. With the restore disabled it prints RUNS=1 on a
+// warm second launch -- which is also the proof that the second
+// launch WAS warm (a cold load would print 0 either way).
+//
+// Exit status = the value of `runs` before the increment, so the
+// shell's $? is a second, independent readout of the same cell.
+// NATIVE=0 tests a self-modified immediate, also restored each run;
+// FIXED=42 exercises the immutable helper excluded from the copy.
+//
+include "inc/cmdsys.plh"
+
+word runs = 0
+
+// Mutable native code MUST remain in the pristine restore range.
+asm mutable()#1
+        DEX
+        LDA #0
+        STA $C0,X
+        LDA #0
+        STA $A0,X
+        RTS
+end
+
+// Zero-byte ESD boundary: only the following helper is immutable.
+export asm ckdataend()#0
+end
+asm fixed()#1
+        DEX
+        LDA #42
+        STA $C0,X
+        LDA #0
+        STA $A0,X
+        RTS
+end
+
+puts("RUNS="); puti(runs)
+puts(" NATIVE="); puti(mutable())
+puts(" FIXED="); puti(fixed()); putln
+runs++
+^(@mutable + 2) = 1
+return runs - 1
+done

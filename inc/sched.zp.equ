@@ -1,0 +1,17 @@
+*---------------------------------------------------------------
+* sched.zp.equ -- the two scheduler zero-page cells other
+* modules name.
+*
+* HOISTED OUT OF sched.s (S9 L4, 2026-08-30). Merlin-8's `ENT`
+* exports code labels only -- an EQUATE cannot cross the linker
+* -- so a constant two REL modules both name has to be shared at
+* ASSEMBLY time, through a put file. Equates emit nothing, so
+* the move is byte-neutral; check-bytes is the proof.
+*---------------------------------------------------------------
+K_SW_CHAN   equ   $EC        ;1  SCH_SLEEP/SCH_WAKEUP's chan
+                             ;argument, cached (same cross-
+                             ;bracket reasoning)
+K_WAKE_COUNT equ  $ED        ;1  SCH_WAKEUP's found-pid
+                             ;counter -- ZP so it's safely
+                             ;readable while RAMRD=aux is open
+                             ;for the whole scan

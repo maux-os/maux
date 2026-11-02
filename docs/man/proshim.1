@@ -1,0 +1,29 @@
+.\" Original maux page, MIT, 2026-09-19.
+.\" Historical-source decision: House ProDOS compatibility loader; no Research UNIX or early BSD predecessor.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH PROSHIM 1 "September 19, 2026" maux
+.SH NAME
+proshim \- host a compatible ProDOS SYSTEM program
+.SH SYNOPSIS
+.B proshim
+.I file.system
+.SH DESCRIPTION
+Load a compatible ProDOS 8 SYSTEM program at $2000 in a process bank.
+A shim supplies supported ProDOS MLI calls and monitor entry points,
+and connects the program's console I/O to maux.
+.PP
+The tenant takes over the process. It runs cooperatively, yielding at
+translated MLI calls; a compute loop need not yield to other work.
+Only programs tested against the supported shim surface should be run.
+.PP
+This is a compatibility-development tool, supplied on its dedicated
+image. It is not a general Apple II emulator or a promise that any
+SYSTEM program will work.
+.SH FILES
+/usr/man/PROSHIM  this page
+.SH "SEE ALSO"
+bpatch(1), plasma(1)
+.SH DIAGNOSTICS
+Startup, usage, open/read and size failures return 1. A successfully loaded tenant determines how the session terminates.
+.SH BUGS
+Programs that depend on unsupported hardware, ProDOS internals, interrupt behaviour or ROM entry points may fail or hang. Preserve originals and test patched tenants on disposable images.

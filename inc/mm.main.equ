@@ -1,0 +1,153 @@
+*---------------------------------------------------------------
+* mm.main.equ -- the kernel's main-memory map (docs/
+* MEMMAP.md #1, #1.1, #1.1a, #1.1b, #1.2): kernel ZP/stack
+* budget, the main-context kernel zero-page collision map,
+* video-page reserves, kernel code-segment sizing, and the
+* main LC region.
+* Split out of inc/memmap.equ (docs/SELFHOST-CONVERSION.md
+* phase 1) as its own file. Unlike every other split file here,
+* NOTHING in src/kernel, src/bin, src/liba or src/test currently
+* references any symbol in this file directly by name -- each
+* module instead states its own ZP range as a literal `equ`
+* (src/kernel/process.s, sched.s, entry.s) and this file exists
+* to give review a single machine-checkable budget table to
+* compare those literals against (src/check.memmap.s, `make
+* check-memmap`), same role docs/MEMMAP.md's own tables play in
+* prose. Kept as one file rather than several because nothing
+* PUTs it except that one gate, so there is no per-unit window
+* cost to economize by splitting further.
+* Full design notes: I.MEMMAPE.TXT (docs/a2/), docs/MEMMAP.md #1
+*---------------------------------------------------------------
+
+K_ZP            equ   $0000       ;256B kernel ZP
+K_STACK         equ   $0100       ;256B kernel stack -- SEE
+                                  ;K_STACK_FLOOR below: the
+                                  ;usable budget is HALF this,
+                                  ;not the full 256B, once the
+                                  ;page-1 copy stubs
+                                  ;(src/kernel/entry.s
+                                  ;COPYIN_ENTRY/ COPYOUT_ENTRY)
+                                  ;are counted
+
+* See I.MEMMAPE.TXT: "KSTACKFLOOR (task #13 CODEXCODEREVIEW.mds"
+K_STACK_FLOOR   equ   $0180
+K_STCK_BUDGET  equ   $01FF-K_STACK_FLOOR+1   ;128 -- self-
+                                              ;verifying, not a
+                                              ;hand-copied
+                                              ;literal
+
+* See I.MEMMAPE.TXT: "-- 1.1a Main-context kernel zero-page"
+ZP_RSVDP8_LO equ $3A     ;TRM ch 3.3.1: $3A-$3F disk-
+                                  ;driver working
+ZP_RSVDP8_HI equ $4E     ;set (never restored) +
+                                  ;$40-$4E MLI working set (TRM
+                                  ;claims restored; docs/PRODOS-
+                                  ;SPIKE.md answer (a) found 2
+                                  ;of 15 bytes empirically are
+                                  ;NOT, for even the cheapest
+                                  ;isolated call)
+
+ZP_PROCESS_LO   equ  $D0          ;src/kernel/process.s:
+                                  ;P_PTR1..P_CHAN
+ZP_PROCESS_HI   equ  $DF          ;(process syscalls / file-call
+                                  ;bridge temporaries --
+                                  ;P_PTR1/2/3, P_TMP, P_TMP2,
+                                  ;P_IDX, P_COUNT, P_PID,
+                                  ;P_BANK, P_FD, P_PIPE, P_OBJ,
+                                  ;P_CHAN)
+ZP_SCHED_LO     equ  $E0          ;src/kernel/sched.s:
+                                  ;K_PCB_PTR..K_PCB_TMP2
+ZP_SCHED_HI     equ  $EE          ;(scheduler/PCB-access
+                                  ;temporaries)
+ZP_ENTRY_LO     equ  $F3          ;src/kernel/entry.s:
+                                  ;K_RESULT..K_CPY_ERR
+ZP_ENTRY_HI     equ  $FC          ;(syscall entry/exit cross-
+                                  ;ALTZP-flip cells +
+                                  ;copyin/copyout scratch)
+K_GLOBALS       equ   $0200       ;256B curbank/VBL-
+                                  ;tick/HAD_RAM/scratch
+K_RESETVEC_PG   equ   $0300       ;256B reset-chain page (owns
+                                  ;$03F2/$03F4)
+K_RST_INTCPT equ $03F2       ;AE-manual $C073-reset-
+                                  ;persistence hook
+TEXT_PAGE1      equ   $0400       ;1024B main 40-col text page
+                                  ;-- HARD video reserve, fixed
+TEXT_PAGE2      equ   $0800       ;1024B main text/lores page 2
+                                  ;-- SOFT video reserve; not
+                                  ;native-console-critical
+K_CODE_A        equ   $0800       ;6144B kernel code segment A;
+                                  ;first 1K overlaps soft-
+                                  ;reserved text page 2
+K_CODE_B        equ   $2000       ;8192B hires page 1 -- HARD
+                                  ;video reserve / temporary
+                                  ;text-only V1 reclaim.
+                                  ;Historically held MLI file-
+                                  ;buffer slack after task #11;
+                                  ;new fixed allocations should
+                                  ;avoid it
+HIRES_PAGE1     equ   $2000       ;8192B main hires page 1 --
+                                  ;HARD video
+HIRES_PAGE2     equ   $4000       ;8192B main hires page 2 --
+                                  ;RECLAIMED for kernel code on
+                                  ;the same temporary text-only
+                                  ;V1 terms as K_CODE_B above.
+                                  ;Every .SYSTEM image has run
+                                  ;straight through it since
+                                  ;before this line was written
+                                  ;-- they load flat from $2000
+                                  ;-- so "HARD video" described
+                                  ;an intention, not the build.
+                                  ;Graphics work reclaims it
+                                  ;back by SHRINKING the kernel,
+                                  ;not by relabelling
+K_CODE_C        equ   $6000       ;24576B preferred non-video
+                                  ;kernel code segment C +
+                                  ;structures
+IO_SLOTROM      equ   $C000       ;4096B $C0xx I/O + $C100-CFFF
+                                  ;slot ROM -- NOT RAM, excluded
+                                  ;from every budget
+
+* -- kernel code C sub-allocations (all inside preferred non-
+* video K_CODE_C,
+*    sizes only --
+*    exact placement is link-order, not a fixed address) --
+* K_DISKBUF_SIZE (2 x 512B homegrown block staging buffers)
+* REMOVED, task #11 amendment: obsolete since the ProDOS ruling
+* (commit 32fd146) cut the homegrown V6 fs + ramdisk that owned
+* it -- see inc/mm.mlibuf.equ's MLI_IOBUF_* below, the
+* real replacement, originally budgeted in K_CODE_B's temporary
+* text-only slack (the MLI's own page-alignment requirement made
+* it awkward to co-locate with K_CODE_C's other byte-granular
+* sub-allocations). The console/video amendment keeps that
+* historical allocation as a debt: future graphics/BASIC
+* display-owner work should relocate MLI buffers into non-video
+* main slack first. docs/PRODOS-SPIKE.md answer (e) has the
+* original accounting.
+* -- DEBT DISCHARGED 2026-08-30: PMLI_IBF_BASE moved $6000 ->
+* -- $9800 and PMLI_XFER_BUF $7800 -> $B000, both now inside
+* -- K_CODE_C's own slack rather than sitting on the floor of it
+* -- where a flat-loading .SYSTEM image runs into them. The
+* -- kernel image budget went 16,384 B -> 30,720 B and all 27
+* -- test images came under the ceiling for the first time.
+* -- inc/proc.const.equ carries the derivation.
+K_BNCBF_SIZE equ  256         ;bank-clone bounce buffer
+                                  ;(bounce via main)
+K_BNKTBL_SIZE  equ   256         ;free-list/allocator table, 1B
+                                  ;x 128 banks
+K_TTYSTT_SIZE equ   160         ;tty low-level state (current
+                                  ;slice uses 135B; budget
+                                  ;rounds up for raw/noecho
+                                  ;flags)
+K_TEXT_SIZE     equ   12288       ;kernel text/code budget
+                                  ;(judgment call)
+
+* -- 1.2 main LC region ($D000-$FFFF, 16384B total, separate
+* physical RAM) --
+K_LC_BANK1      equ   $D000       ;4096B main LC bank 1
+                                  ;(unallocated headroom)
+K_LC_BANK2      equ   $D000       ;4096B main LC bank 2, same
+                                  ;logical addr
+K_LC_COMMON     equ   $E000       ;7936B main LC common
+                                  ;($E000-$FEFF)
+K_FFPAGE        equ   $FF00       ;256B main's own vector-table-
+                                  ;only page

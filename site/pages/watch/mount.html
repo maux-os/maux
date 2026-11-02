@@ -1,0 +1,27 @@
+title: Mount a disk image
+description: mount attaches a file as a disk; its volume appears under /mnt; cp copies out; umount lets it go.
+demo: mount
+---
+<div class="band demo">
+<h1>Mount a disk image</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / mount</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/mount.py; docs/LOOP-S1.md -->
+<p class="lead">A disk image is just a file. <code>mount</code> attaches it as a block device and its volume appears under <code>/mnt</code>, where it can be listed, read and copied from like any disk. <code>umount</code> lets it go and the volume is gone again.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/mount.py; docs/DEMOS-W1-NOTES.md -->
+<p>This film is made by <code>site/demos/mount.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that only the boot disk is mounted at first, that the image then appears as a second device mounted at its volume name, that <code>ls</code> shows exactly the files the image was built with, that a copy made from it survives <code>umount</code>, and that afterwards the boot disk is alone again. The checks themselves were tested: with <code>mount</code> replaced by a copy of <code>true</code> the demo fails at "only the boot disk is mounted"; with <code>umount</code> replaced by <code>true</code> it fails at "back to the boot disk alone"; with <code>cp</code> replaced by <code>cat</code> it fails at "cp prints nothing".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

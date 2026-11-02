@@ -1,0 +1,86 @@
+ffpage.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+PUT-included module (no ORG/DSK of its own -- same convention as
+src/kernel/bankprobe.s). This is byte-for-byte what every
+process bank's $FF00-$FFFF is stamped with at bank-creation time
+-- "every bank has its own $FFFE"
+(learning:01KYYJ98T5R0M9K1AW2550M132). Assembled TWICE by two
+different top-level files, never together in one run:
+  1. src/test/ffpage.size.s -- `org $FF00`, proves this assembles to
+     EXACTLY 256 bytes (the deliverable's own acceptance check).
+  2. src/test/syscalltest.s -- put here at whatever address the outer
+     file's linear org happens to reach, as an inert byte BLOB the
+     kernel's stamp routine copies (via the RAMWRT+BANKSEL bounce, same
+     mechanism the exec loader will use) into a target bank's $FF00.
+
+LABEL NAMING: this file's labels are FFP_-prefixed
+(FFP_SYSCALL_ENTRY, not SYSCALL_ENTRY) even though
+docs/MEMMAP.md's prose and inc/memmap.equ's own `dum
+$FF00...dend` block use the bare names. Deliberate: memmap.equ's
+dum block defines SYSCALL_ENTRY/IRQ_ENTRY/etc. as OFFSET
+CONSTANTS (for code elsewhere that wants to talk about the
+page's layout without assembling a real stub) -- if this file
+ALSO defined bare SYSCALL_ENTRY etc. as real code labels, any
+top-level file that both `use`s memmap.equ AND `put`s this file
+in (syscalltest.s does exactly that, for
+PROC_LOWFREE/BANKSEL/etc.) would hit a duplicate-label assembler
+error. The FFP_ prefix sidesteps the collision; byte-offset
+correctness against memmap.equ's budget is enforced mechanically
+by this file's own `ds SECTION+BUDGET-*` padding at the end of
+every section (same idiom src/bootblock.s uses to pad to 512
+bytes) plus the ffpage.size.s build gate's exact-256-byte check
+-- not by sharing labels.
+
+VECTOR TABLE IS NOT `da LABEL` -- SELF-RELOCATION NOTE: because
+this file is assembled at TWO DIFFERENT addresses across its two
+use sites (real $FF00 in ffpage.size.s; some arbitrary other
+address when embedded as a copy-source blob in syscalltest.s),
+the hardware vector table at the end CANNOT use ordinary `da
+FFP_NMI_TRAP`-style absolute label references -- those would
+emit THIS ASSEMBLY's address for the label, which is only
+correct in the org-$FF00 context. Every other instruction in
+this file is already safe (PC-relative branches; JMPs to
+EXTERNAL fixed targets like KERNEL_ENTRY or BANKSEL that don't
+depend on this file's own base address) -- the vector table is
+the one place with a genuine internal self-reference, so it's
+computed as a PAGE-RELATIVE OFFSET (a label difference,
+independent of base address) added to the literal target base
+$FF00, giving the correct 2-byte vector value regardless of
+which context assembled this file. Same PIC discipline as
+src/kernel/bankprobe.s's RDAUX_SRC stub, applied to data instead
+of code.
+
+PRECONDITION ON THE INCLUDER (put/use one-level-nesting gotcha,
+docs/TOOLCHAIN.md): the includer must `use inc/memmap.equ`
+(for RAMRDMAIN/RAMRDAUX/RAMWRTMAIN/RAMWRTAUX/BANKSEL) directly,
+BEFORE putting this file in -- and must `equ` two external jump
+targets before the `put` line:
+  KERNEL_ENTRY      -- where SYSCALL_ENTRY's door JMPs (main-side syscall
+                       dispatch entry, src/kernel/entry.s)
+  KERNEL_IRQ_ENTRY  -- where IRQ_ENTRY's door JMPs (main-side IRQ/BRK
+                       entry, src/kernel/entry.s) -- BRK shares the
+                       hardware $FFFE vector with real IRQs (6502/65C02
+                       architecture, not a maux choice); discrimination
+                       via the stacked B flag happens in KERNEL_IRQ_ENTRY
+                       itself, not in this stub (docs/MEMMAP.md #3.3).
+ffpage.size.s (the byte-count-only gate) equs both to a
+placeholder value since it never actually runs this code -- see
+that file's header.
+
+TRAPFRAME CONTRACT (docs/ARCHITECTURE.md, docs/SYSCALL.md): both
+doors produce the IDENTICAL 6-byte frame [PCH][PCL][P][A][X][Y]
+on the process's own stack, in that push order (bottom to top)
+-- SYSCALL_ENTRY pushes P itself (PHP, capturing the caller's D
+flag verbatim) then SEI/CLD; IRQ_ENTRY relies on the hardware
+interrupt sequence having already pushed PCH/PCL/P and set I
+(65C02 auto-clears D on IRQ/BRK entry -- no SEI/CLD needed in
+this stub). EXIT_TAIL is the single shared unwind for both,
+valid because the frame shape is identical either way. See
+docs/SYSCALL.md's per- window interrupt-safety argument for why
+every instruction boundary in both doors is safe.
+----------------------------------------------------------------
+
+===== SYSCALL_ENTRY -- $FF00, 20-byte budget =====*

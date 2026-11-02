@@ -1,0 +1,34 @@
+zp.equ -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+RECONCILED against docs/MEMMAP.md #3.2 / inc/memmap.equ's
+PROC_ZP ("$0000, 256B process ZP, own, ALTZP-selected"): $E0-$EB
+falls inside that 256-byte budget with room to spare. MEMMAP.md
+does not subdivide PROC_ZP further (no canonical per-purpose ZP
+symbols exist below that), so this file's specific 12-byte
+window remains a liba-private choice WITHIN the ratified budget,
+not itself DRAFT-ABI or unratified -- there is simply no more
+specific symbol to adopt yet. This file claims a small,
+arbitrary 12-byte window ($E0-$EB) so liba has SOMEWHERE to keep
+its pointer args and working cells. Every consumer of liba (the
+five src/bin/*.s utils) gets these addresses only through this
+file -- if a future PCB/kernel ZP convention wants a different
+sub-range, this is the only file that needs new addresses; no
+liba routine or util hardcodes $E0-$EB itself.
+
+Chosen away from $00-$1F (likely monitor/kernel-reserved, per
+ROM convention) and away from anything malisp's zp.s claims
+(different process image, but no reason to collide with house
+precedent for $24/$25/$26 -- CH/CV/CON_PTR-style cursor cells a
+future console driver may want). Not verified against any kernel
+decision because none exists yet; this is a placeholder, not a
+claim.
+----------------------------------------------------------------
+
+-- General-purpose pointer arguments, shared by
+string/print/num/argv -- routines and by the SC_* syscall stubs
+(syscalls.s marshals these into -- its own SCPARM parameter
+block -- see syscalls.s header). Caller-set -- before the call,
+clobbered as documented per routine.

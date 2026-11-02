@@ -1,0 +1,60 @@
+.\" man.1 -- maux's man(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as env.1. Rendered
+.\" at build time to build/man/MAN.TXT and staged on the play
+.\" image as /usr/man/MAN: `more /usr/man/MAN`.
+.TH MAN 1 "September 15, 2026" maux
+.SH NAME
+man \- display a manual page
+.SH SYNOPSIS
+.B man
+[
+.I section
+]
+.I name
+.SH DESCRIPTION
+.I Man
+locates the manual page for
+.I name
+at
+.BR /usr/man/ NAME
+(the name upper\-cased -- every page in this tree is staged
+there in upper case) and writes it to standard output.  A
+leading numeric
+.I section
+operand is accepted and ignored: this tree ships exactly one
+section.
+.PP
+If standard output is a terminal,
+.I man
+pages the file through
+.BR more (1)
+(exiting with
+.I more's
+own status).  Otherwise \(em standard output redirected to a
+file or a pipe \(em the page is copied through unpaged, the
+same way
+.I more
+itself behaves when its own output is not a console.
+.PP
+.B \-k
+and
+.B \-f
+(apropos/whatis) are not implemented: this tree builds no page
+index to search.
+.SH FILES
+.br
+/usr/man/NAME  every page, including this one
+.SH "SEE ALSO"
+more(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if no page named
+.I name
+exists, or the pager could not be run; 2 for a usage error
+(wrong operand count, a non\-numeric section, or an operand
+beginning with
+.BR \- ).
+.SH BUGS
+No apropos/whatis index (see above). A page name longer than 20
+characters cannot exist on this tree's volumes and is reported
+as "no manual entry" rather than a separate diagnostic.

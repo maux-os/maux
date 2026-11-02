@@ -1,0 +1,27 @@
+title: Two consoles, one machine
+description: A job runs on console 1 while vi is used on console 2; chvt switches between them.
+demo: twocons
+---
+<div class="band demo">
+<h1>Two consoles, one machine</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / twocons</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/twocons.py -->
+<p class="lead">A job runs on console 1, a loop that appends a tick to a log every five seconds. <code>chvt 2</code> moves to a second console with a shell of its own, where <code>vi</code> is used and quit. <code>chvt 1</code> comes back to the same screen, and the log shows the job kept ticking the whole time.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/twocons.py; docs/DEMOS-W1-NOTES.md -->
+<p>This film is made by <code>site/demos/twocons.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that console 1&rsquo;s screen, snapshotted before <code>chvt 2</code>, comes back exactly, followed by the <code>chvt 2</code> line and a fresh prompt; that console 2 starts fresh and its file is written; that the log read on console 2 and the log read on console 1 after the job is killed are both ticks one to k in order, with at least two more ticks in the second, so the job ran while console 2 was in use; and that the loop had not finished. A variant that stops the job for the whole interval was run and is red. With <code>sleep</code> replaced by a copy of <code>true</code> the demo fails at the Terminated notice; with <code>chvt</code> replaced by <code>true</code> it fails at "console 2 is a fresh, blank screen with a prompt".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

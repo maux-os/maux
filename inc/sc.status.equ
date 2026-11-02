@@ -1,0 +1,41 @@
+*---------------------------------------------------------------
+* sc.status.equ -- process-status ABI constants: the wait()
+* status byte a ^C-killed process reports (STATUS_INTR, docs/
+* CONSOLE.md section 4) and the pstat() record length
+* (PSTAT_LEN). Split out of inc/syscall.equ (task #8,
+* docs/SELFHOST-CONVERSION.md phase 1) -- reference-set scan
+* shows these two are needed together by `ps` and the kernel's
+* pstat/spawn paths, disjoint from the call-number tables
+* (inc/sc.proc.equ / sc.file.equ) most other
+* consumers need instead.
+*
+* `put`-only file (no code/org/dsk), same precondition
+* discipline as memmap.equ -- the top-level file must `put`
+* this directly.
+*---------------------------------------------------------------
+
+* -- ^C (docs/CONSOLE.md section 4). Not a syscall: the tty's
+* -- interrupt character kills the console shell's descendants
+* -- from the tick path. This is the exit STATUS the killed
+* -- process's parent reaps -- ABI surface, so it lives here.
+STATUS_INTR equ   $82   ;wait() status of a ^C-killed process
+                        ;-- the encoding is $80|signo (^C is
+                        ;signal 2); SYS_KILL stamps the same
+                        ;shape from its own signo
+STATUS_TERM equ   $8F   ;wait() status of a kill'd process
+                        ;(default signal 15)
+STATUS_HUP  equ   $81   ;wait() status of a stopped orphan that
+                        ;took the default SIGHUP (ORPHAN-1)
+STATUS_TRAP equ   $85   ;wait() status of a process that ran
+                        ;BRK (signal 5, V7 SIGTRAP): the kernel
+                        ;kills it, PRC_BRK_TRAP, procspawn2.s
+PSTAT_LEN   equ   6     ;bytes returned: PID STATE WCHAN BANK
+                        ;PARENT EXITSTAT
+PSTAT_BLK   equ   320   ;mode 1: raw $0200-$033F of the process
+PSTAT_M_BLK equ   $40   ;slot|this = its argv block
+PSTAT_M_PTH equ   $80   ;slot|this = its spawn pathname tag
+                        ;slot bytes $40-$6F / $80-$AF are modes,
+                        ;no longer ERR_INVAL; $C0 and up decode
+                        ;as mode 2 -- nothing may rely on that
+                        ;(docs/SYSCALL.md, PSTAT modes)
+PSTAT_PTH   equ   65    ;mode 2: length byte + up to 64 chars

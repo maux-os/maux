@@ -1,0 +1,74 @@
+.\" uudecode.1 -- maux's uudecode(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic uudecode(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as env.1. Rendered at build
+.\" time to build/man/UUDECODE.TXT and staged on the play image
+.\" as /usr/man/UUDECODE: `more /usr/man/UUDECODE`.
+.TH UUDECODE 1 "September 14, 2026" maux
+.SH NAME
+uudecode \- decode a uuencode(1) file
+.SH SYNOPSIS
+.B uudecode
+[
+.B \-o
+.I outfile
+] [
+.I file
+]
+.SH DESCRIPTION
+.I Uudecode
+reads
+.I file
+(or standard input) and skips any text before the first
+.B begin
+or
+.B begin-base64
+line -- tolerant of banner or mail-header noise ahead of it.
+Both the historical uuencode alphabet and base64 (RFC 4648) are
+accepted, distinguished by that header line; the body's trailer
+(a zero-length line and
+.BR end ,
+or a line of
+.BR ==== )
+is required, matching this line of uuencode/uudecode elsewhere.
+.PP
+The decoded bytes are written to the pathname named in the
+header, unless
+.B \-o
+overrides it.
+.TP
+.BI \-o " outfile"
+Write the decoded bytes to
+.I outfile
+instead of the header's own pathname.
+.I Outfile
+of
+.B /dev/stdout
+writes to standard output instead of creating a file.
+.PP
+.I Uudecode
+accepts EITHER of maux's two text conventions on input: a
+high-bit maux text file (what this build's own
+.I uuencode
+writes) or plain 7-bit ASCII (what arrives over
+.BR tip (1),
+whose line reader strips the high bit before a byte ever
+reaches a redirected file, docs/SERIAL.md). Every input byte is
+normalized to 7 bits before use, so the same decode path reads
+either convention without a flag or a guess.
+.SH FILES
+/usr/man/UUDECODE  this page
+.SH "SEE ALSO"
+uuencode(1), tip(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success; 1 if no
+.B begin
+line is ever found, if the body ends before its trailer (a
+short file), if the body contains an invalid character or a
+misplaced
+.BR = ,
+or if the output file could not be opened or created; 2 on a
+usage error.
+.SH BUGS
+The header's mode field is read and discarded: this machine has
+no permission bits to apply to the decoded file.

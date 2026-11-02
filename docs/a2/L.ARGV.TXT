@@ -1,0 +1,17 @@
+argv.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+----------------------------------------------------------------
+GETARG -- fetch a pointer to the Nth argv string.
+IN:  A = index N (0 = program name, Unix argv[0]-style)
+OUT: carry clear, PTR0/PTR0+1 = pointer to the Nth argument
+(liba
+     NUL-terminated, high-bit-set string); carry set = N >= ARGC (no
+     such argument), PTR0/PTR0+1 unchanged
+CLOBBERS: A, X. NOTE: index doubling via ASL assumes N < 128
+(argv realistically never gets remotely that large for a v1
+shell with no globbing) -- not range-checked beyond the ARGC
+compare, V6-minimal.
+----------------------------------------------------------------

@@ -1,0 +1,83 @@
+title: Hello, world in assembly
+description: Assemble and link a 6502 program with nas and ld against liba, run it, then break it on purpose and read what nas says.
+lesson: l2
+---
+<h1>L2. hello, world, in assembly</h1>
+<p class="crumb"><a href="/learn/">Learn</a> / L2</p>
+
+<!-- src: docs/SITE.md sec 5; examples/hello/hello.s -->
+<p class="lead">Goal: turn a 6502 source file into a program with <code>nas</code> and
+<code>ld</code>, run it, and then make one mistake and see how the assembler
+reports it.</p>
+
+<h2>What you need</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p><a href="/learn/shell-hello/">L1</a> (you can edit a file with
+<code>vi</code>). The source is already on the disk, so this lesson copies it;
+retype it with <code>vi</code> if you want the practice.</p>
+
+<h2>The file</h2>
+<!-- src: examples/hello/hello.s; src/liba/print.s -->
+<p>About twenty lines of code under a long comment. <code>PUTS</code> and
+<code>EXIT</code> belong to <code>liba</code>, maux's own small C-less library:
+<code>ext</code> says "defined somewhere else", and <code>ld</code> will find them.</p>
+{{file:examples/hello/hello.s}}
+
+<h2>The session</h2>
+<!-- src: scripts/check_examples.py (row_l2) -->
+<p>The first half builds and runs the program. The second half, which is the film
+&ldquo;a typo, caught&rdquo;, breaks it twice.</p>
+{{gen:session}}
+
+<h2>What just happened</h2>
+<!-- src: docs/man/nas.1; docs/man/ld.1 -->
+<p><code>nas</code> assembled <code>hello.s</code> into <code>hello.o</code>, an
+object file of type <code>$F8</code>, the Merlin REL format. <code>ld</code>
+linked it into <code>hello</code>, a <code>BIN</code> file: the module you name
+goes first, at <code>$0800</code>, and <code>-l a</code> told it to pull from the
+library directory <code>/usr/lib/LIBA</code> the modules that define the names your
+program left open. That is why <code>hello</code> is much larger than the 32 bytes
+<code>nas</code> reported: the rest is liba.</p>
+
+<!-- src: examples/hello/hello.s; docs/man/ld.1 -->
+<p>A <code>BIN</code> file's auxiliary type is its load address, and
+<code>$0800</code> is where every maux program starts. The shell loads
+<code>hello</code> there and runs it. The program builds its message in plain
+7-bit ASCII (single quotes) ending in <code>$0D</code> and a zero; the console takes
+either polarity, and maux's own text, the kind <code>vi</code> writes, has the
+high bit set and ends lines with <code>$8D</code>.</p>
+
+<h2>A typo, caught</h2>
+<!-- src: docs/EXAMPLES-NOTES.md sec 2 -->
+<p>The first mistake changes <code>jsr   PUTS</code> to <code>jsr   PUTZ</code>
+with a <code>vi</code> command: <code>:%s/jsr   PUTS/jsr   PUTZ/</code> replaces
+on every line. <code>nas</code> says:</p>
+{{sessionout:cat ERRS#1}}
+
+<!-- src: docs/man/nas.1; docs/EXAMPLES-NOTES.md sec 2 -->
+<p>That is the whole format: the label, the file, the line. Both lines came out of
+<code>2&gt; ERRS</code>: in Unix the shell's <code>2&gt;</code> catches the error
+stream, and <code>nas</code> prints its diagnostics there, so the screen stayed
+quiet and the file holds the complaint. (Its success line, with the byte count, goes
+to the ordinary output.) Its exit status is 1 when it fails, which is what
+<code>make</code> will use in <a href="/learn/make/">L5</a> to stop.
+<a href="/watch/typo/">Watch</a> the whole repair, from the failed <code>make</code> to
+<code>vi</code> on the line.</p>
+
+<!-- src: docs/EXAMPLES-NOTES.md sec 2 -->
+<p>The second mistake is a misspelt instruction, <code>ldq</code> for
+<code>lda</code>. This one is reported more tersely: <code>nas: pass 1 failed</code>
+and nothing else, no line number and no reason. It is the same message you get for
+an instruction nas does not know, for a 65C02 instruction in a file that never says
+<code>xc</code> (the directive that enables them), and for a source file that does
+not exist. When you see it, look at the lines you changed last;
+<code>grep -n</code> prints a matching line with its number, which is how the session
+finds the line.</p>
+
+<h2>Try next</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p>Change the message, assemble, link and run it again. Then make it print the
+message twice. The call that prints is six lines long and you already have
+it.</p>
+
+{{gen:lessonnav}}

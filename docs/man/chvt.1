@@ -1,0 +1,25 @@
+.\" Original maux page, MIT, 2026-09-19.
+.\" Historical-source decision: House console protocol; no Research UNIX or early BSD counterpart.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH CHVT 1 "September 19, 2026" maux
+.SH NAME
+chvt \- switch virtual console
+.SH SYNOPSIS
+.B chvt
+.I number
+.SH DESCRIPTION
+Switch the active console to number, from 1 through 4.
+The command writes the maux console-switch escape sequence to standard
+output. Its normal use is from a console:
+.PP
+.B chvt 2
+.PP
+Each console retains its own screen and shell context.
+.SH FILES
+/usr/man/CHVT  this page
+.SH "SEE ALSO"
+vidmode(1), sh(1)
+.SH DIAGNOSTICS
+Exit status is 0 for a valid request, 2 for a missing or invalid number.
+.SH BUGS
+Redirecting standard output writes the escape bytes into the destination; it does not switch the console.

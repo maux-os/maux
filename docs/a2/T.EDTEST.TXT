@@ -1,0 +1,77 @@
+edtest.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+2026-09-12: every ed SCRIPT/fixture file this harness's sessions
+read (EDSCR1..EDSCR10, EDFILE6, EDFIX1) is staged onto ed.po at
+BUILD time by scripts/build_ed_image.py's FIXTURES table, not
+written at runtime from text embedded in this image -- the
+embedded `_TEXT` blocks left MAUXEDTEST.SYSTEM only 4 bytes under
+PMLI_IBF_BASE (docs/CONSOLE-VT102.md sec 7), same debt shape
+de7ea88 retired for MAUXEXTEST.SYSTEM via build_ex_image.py's own
+FIXTURES table. PARENT_PROC now only OPENs these files; the two
+steps below describe what each session DOES, not how its script
+bytes reach disk.
+
+  1. open the ed SCRIPT file (EDSCR1: `a`, three lines -- two
+     containing BANK -- `.`, `w /BASIC/EDFILE`, `q`, staged by
+     build_ed_image.py), spawn the real build/ed.bin (installed as
+     /BASIC/ED) with fd 0 dup'd from that script (read) and fd 1
+     dup'd from a throwaway capture file, wait for exit 0, then
+     read back /BASIC/EDFILE and stage its raw bytes for
+     scripts/check_ed.py to assert byte-exact.
+  2. open a SECOND script (EDSCR2: `r /BASIC/EDFILE`, `g/BANK/p`,
+     `3s/BANK/&X/`, `w /BASIC/EDFILE2`, `q`) -- one ed session that
+     covers both the g/re/p acceptance criterion AND an s/RE/&X/
+     substitution round-trip (read back the file it wrote) -- with fd 1
+     dup'd to a SECOND capture file this time (so the g/re/p output is
+     observable), wait for exit 0, stage BOTH the captured fd 1 output
+     and the rewritten /BASIC/EDFILE2 for the same byte-exact assertion.
+
+Every string ed itself reads or writes (script content, ed's own
+fd 1 output, file content) is ed's own high-bit-set/CR-$8D
+convention (see ed.s's header) -- so this harness's
+script/expected-output data is ordinary merlin32 `asc "..."`
+(already high-bit, per learning:01KW1GTYGZ9TE2ZGCDG0V2CNE0), no
+manual per-byte poking needed, UNLIKE fileproctest.s's path
+buffers (which stayed on that pattern because MLI pathnames are
+7-bit/length-prefixed, not NUL-terminated -- see this file's own
+PATH labels below, `asc '...'` single-quoted, still 7-bit, still
+length-prefixed by hand, same as that file). The one thing that
+DOES need to be true here (and IS, automatically): every label
+between PARENT_PROC and PARENT_PROC_LEN -- code AND data -- gets
+copied byte-for-byte into bank 1 by BOOT_COPY_PARENT, so a data
+label's compile- time address is ALSO its runtime bank-1
+address; nothing here needs the runtime-poke workaround
+fileproctest.s used for ITS own path buffers (a stylistic
+choice in that file, not a hard requirement -- this file just
+uses the simpler option, made available by putting all the
+constant data inline in the copied span instead of building it
+with runtime STA sequences).
+
+Results live in bank 1 at $1200+ for scripts/check_ed.py.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+2026-08-19 audit-fix phases (findings 1-6, B.ED.TXT's own dated
+note has the per-finding mechanism list). Same two-session
+pattern as above, no new harness machinery -- just a THIRD
+script (EDSCR3) run in a THIRD spawned session, its own capture
+file, staged the same way. Covers, in one buffer built by EDSCR3
+itself (so each phase's expected bytes are self-contained and
+don't depend on session 1/2's leftover files):
+  - `s/x/Y/2` numbered-occurrence correctness AND an unrecognized
+    flag character (`s/x/Y/z`) producing `?`
+  - a no-match `/re/` address (`/zzz/p`) producing `?` with the
+    buffer and `.` unchanged (checked by printing `.` right after)
+  - `m`/`t` round-trips, including `m` into its own range (`?`)
+  - a bare address (`2`) printing implicitly
+  - `,p` (bare-comma = `1,$`) printing the whole buffer
+  - bare `w` after an explicit `r`/`w` reusing the remembered
+    name; bare `w` in a FOURTH, filename-virgin session staying
+    `?`
+Every phase's sabotage/teeth pairing is recorded in the task
+report, not here (this file documents what the harness tests,
+not the fix-verification process that built it).
+----------------------------------------------------------------

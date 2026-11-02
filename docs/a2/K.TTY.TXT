@@ -1,0 +1,62 @@
+
+----------------------------------------------------------------
+TTY_SHDW_TAP -- record process WRITE-path
+----------------------------------------------------------------
+---------------------------------------------------------------
+TTY_SHDW_TAP -- record process WRITE-path bytes into
+TTY_OUTSHDW for ^L's prompt replay (docs/CONSOLE.md section 4,
+2026-08-19). Tapped from TTY_WRITE's copy loop ONLY -- above
+TTY_PUT_BYTE, not inside it -- so cooked-mode echo (TTY_COOK1)
+and ^L's own replay never re-record: both call TTY_PUT_BYTE
+directly and neither routes through TTY_WRITE.
+
+Recording rules, all in service of one guarantee: replay can
+NEVER inject a partial escape sequence from tick context (the
+hazard TTY_CLR_SCRN's header warns about, since TTY_ESC_STATE
+is shared with whatever write() is live when ^L fires):
+  - only bytes in $A0-$FE (the high-bit-set printable range,
+    as the tty speaks it) are recorded;
+  - CR ($8D) resets TTY_OSHDW_LEN to 0 instead of being
+    recorded, starting the shadow fresh for the next line;
+  - a byte written while TTY_ESC_STATE is already nonzero --
+    i.e. any byte that is itself part of an escape/CSI
+    sequence, checked BEFORE this byte reaches TTY_PUT_BYTE --
+    is never recorded, even when its value falls in $A0-$FE
+    (CSI digit and final bytes do); the bare ESC byte itself
+    is excluded by the range test alone (it is $1B, below
+    $A0);
+  - at 80 bytes recording stops until the next CR reset. A
+    truncated replay beats a corrupted one.
+Clobbers A/X.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+TTY_TICK -- the K_TICK_HOOK entry point.
+----------------------------------------------------------------
+---------------------------------------------------------------
+TTY_TICK -- the K_TICK_HOOK entry point. TTY_POLL and
+everything it can reach (echo, scroll, the CSI parser if the
+user types ESC) writes process.s zero-page scratch: PRC_BYTE,
+P_PTR1, P_PTR2, P_IDX, P_TMP, P_TMP2. That is the SAME scratch
+syscall bodies use, and per docs/PRODOS-SPIKE.md ticks
+demonstrably land inside live MLI calls -- so the hook must be
+transparent to whatever it interrupted. Save/restore on the
+stack (not a fixed buffer: the IRQ path can nest, see
+entry.s's rig-finding note).
+
+Scoped to process.s's cells on purpose. The tick path ALREADY
+clobbered sched.s's own PCB scratch via SCH_SWITCH on
+quantum expiry long before this hook existed, so "no syscall
+holds sched scratch across a tick" is a pre-existing invariant
+this routine neither creates nor needs to repair.
+
+TTY_READ calls TTY_POLL directly instead: it runs in syscall
+context with I=1, where none of this scratch is live across
+the call.
+
+This save list covers EXACTLY the P_*/sched scratch the hook
+chain touches today (audited 2026-08-19, docs/SYSCALL.md 7.8).
+Any new scratch cell used by code reachable from the tick hook
+MUST be added here, or the $45 bug class reopens one address
+at a time.
+---------------------------------------------------------------

@@ -1,0 +1,45 @@
+.\" tty.1 -- maux's tty(1), in the V7 man(1) shape. An original
+.\" page (this project's own text, not copied from a historic
+.\" tty(1)), so it carries no third-party notice -- MIT like the
+.\" code, same posture as env.1. Rendered at build time to
+.\" build/man/TTY.TXT and staged on the play image as
+.\" /usr/man/TTY: `more /usr/man/TTY`.
+.TH TTY 1 "September 14, 2026" maux
+.SH NAME
+tty \- print the terminal attached to standard input
+.SH SYNOPSIS
+.B tty
+.SH DESCRIPTION
+.I Tty
+writes the name of the terminal attached to standard input, one
+of
+.BR /dev/tty1 " through " /dev/tty4
+(the four consoles) or
+.BR /dev/ttya0
+(the Super Serial Card line). If standard input is not a
+terminal,
+.I tty
+writes
+.B "not a tty"
+instead. There are no operands; one given is a usage error,
+exit status 2.
+.SH FILES
+/usr/man/TTY  this page
+.SH "SEE ALSO"
+stty(1), chvt(1)
+.SH DIAGNOSTICS
+Exit status is 0 if standard input is a terminal, 1 if it is
+not, 2 if standard input's file descriptor could not be
+inspected at all (closed, or out of range).
+.SH BUGS
+.B /dev/null
+is a device by this system's own buffering rules but is not a
+terminal by any Unix's definition, so
+.I tty
+reports it as
+.BR "not a tty" ,
+narrower than the isatty test some other maux code uses for
+buffering decisions alone. The historical
+.B \-s
+option (silence the name, keep only the exit status) is not
+implemented -- POSIX.1-2024 itself removed it as obsolescent.

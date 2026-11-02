@@ -1,0 +1,78 @@
+.\" Derived from Research UNIX V6 grep(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/grep.1
+.\" Retrieved 2026-09-19; archived response SHA256: efae0840753512bf9bc427b61122408f4c0eb0e0068f7ac13ae82db83c81557b
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH GREP 1 "September 19, 2026" maux
+.SH NAME
+grep \- search files for a pattern
+.SH SYNOPSIS
+.B grep
+.RB [ \-cFilnqsvx ]
+.RB [ \-e
+.IR expression ]
+.RB [ \-f
+.IR pattern_file ]
+.I expression
+.RI [ file ...]
+.SH DESCRIPTION
+.I Grep
+searches the input files (standard input default) for lines matching
+the regular expression.
+Normally, each line found is copied to the standard output.
+.TP
+.B \-v
+Select all lines but those matching.
+.TP
+.B \-c
+Print only a count of selected lines, per file.
+.TP
+.B \-n
+Precede each selected line by its line number, counted from 1.
+.TP
+.B \-i
+Match without regard to case.
+.TP
+.B \-l
+Print each file name once if it has a selected line.
+.TP
+.B \-q
+Print nothing; succeed as soon as a selected line is found.
+.TP
+.B \-s
+Suppress cannot-open messages, not error status.
+.TP
+.B \-x
+Require a whole-line match.
+.TP
+.B \-e expression
+Supply a pattern explicitly; necessary if it begins with -.
+May be given more than once: a line is selected if it matches any of
+the patterns.
+.TP
+.B \-f pattern_file
+Read patterns from the file, one to a line, and add them to the set.
+An empty file supplies the null expression, which matches every line.
+.TP
+.B \-F
+Treat each pattern as a fixed string rather than a regular expression.
+.PP
+With more than one input file, line and count output is prefixed by
+the file name. Line numbering restarts for each file.
+Care should be taken with characters meaningful to the shell;
+it is generally necessary to enclose the entire expression in quotes.
+For example:
+.PP
+.B grep \-n '^START' source
+.PP
+The matcher is the same basic regular-expression engine used by ed(1).
+.SH FILES
+/usr/man/GREP  this page
+.SH "SEE ALSO"
+ed(1), sed(1), sh(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if a line was selected, 1 if none was selected, 2 for usage or input-open errors. With -q a selected line returns 0 even after an earlier open error.
+.SH BUGS
+Only one pattern is supported: repeated -e, -f, -E and -F are refused. Lines are truncated to 255 bytes before matching. A final unterminated line is printed with a newline.

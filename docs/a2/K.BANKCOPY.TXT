@@ -1,0 +1,324 @@
+bankcopy.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+PUT-included module (no ORG/DSK -- same convention as entry.s/
+bankprobe.s). ONE routine, `BankCopy`, handles all three shapes
+the task asks for: main->bank, bank->main, and bank->bank (via
+the K_BOUNCEBUF page bounce) -- selected by two kind flags, not
+three separate entry points, per docs/TASKS.md #4's own framing
+("One routine for all bank<->bank / main<->bank copies").
+
+THIS IS A CLIENT OF entry.s's COPYIN_ENTRY/COPYOUT_ENTRY, NOT A
+REIMPLEMENTATION (review finding A2 ruling, docs/ARCHITECTURE.md "General
+user-buffer access"): those two relocated page-1 routines
+already do the proven, sec 5.1-clean single-chunk RAMRD/RAMWRT-
+flip-and-copy work (fetch-immune to RAMRD, refuse $C0xx-$CFxx
+forever, refuse $D000+ as "not wired yet" -- SAME two error
+codes, surfaced verbatim below, never renumbered). What THIS
+file adds, on top of that proven machinery:
+  (a) the $C073 bank-select write COPYIN_ENTRY/COPYOUT_ENTRY assume is
+      already correct (they only flip RAMRD/RAMWRT -- selecting WHICH
+      aux bank is this file's job)
+  (b) 16-bit-length multi-chunk looping (COPYIN/COPYOUT's own K_CPY_LEN
+      is a single 0-255 byte count -- one physical page-ish chunk)
+  (c) the bank<->bank page bounce through K_BOUNCEBUF when NEITHER side
+      is main (COPYIN/COPYOUT only ever talk to "main + one aux bank"
+      in a single call; two calls per chunk, bouncing through a main
+      scratch page, is how two DIFFERENT aux banks exchange data
+      without a third physical A/B port)
+  (d) the whole-call CLR80STORE/restore-exact bracket
+      (learning:01KW1GTYHGXMBZNR6DMQB2F712 -- 80STORE makes RAMRD/
+      RAMWRT ignored for display apertures ($0400-$0BFF and the hires
+      ranges, depending on PAGE2/HIRES); PAGE2 alone routes
+      those addresses to main-vs-aux-CARD when 80STORE is set, and
+      which BANK "aux card" resolves to was an open, [likely]-grade
+      question this task closes, see EXPERIMENT below)
+  (e) PHP/SEI/PLP masking granular to each individual $C073-selection
+      window (not one giant SEI over the whole transfer -- see CYCLE
+      ESTIMATE / GRANULARITY below)
+
+Library handles fetched for this task (HACKING.md's notebook loop):
+  learning:01KW1GTYHGXMBZNR6DMQB2F712 -- THE 80STORE trap this whole
+    primitive exists to encapsulate. Re-fetched 2026-08-14 (this task):
+    the title/body were CORRECTED since task #2 read it -- $C073 is
+    "NOT ignored" (an earlier revision saying so was wrong); with
+    80STORE set, RAMRD/RAMWRT are ignored for $0400-$07FF (+ $2000-
+    $3FFF w/ HIRES) and PAGE2 ALONE decides main-vs-"aux card" for that
+    range. Which PHYSICAL BANK "aux card" resolves to when $C073 names
+    a non-zero bank was flagged there as "[likely], not fact... it
+    appears to be the selected bank; Empson disclaims certainty and no
+    primary doc covers it" -- this is the docs/TASKS.md #4 EXPERIMENT
+    below, and its answer is deposited back to this exact learning.
+  learning:01KW1GTYGVYAPQRGS5P7J66RWD -- RAMRD governs ALL reads in
+    $0200-$BFFF including instruction fetch (why COPYIN/COPYOUT are
+    relocated out of $0200-$BFFF, not this file's concern directly since BankCopy never
+    flips RAMRD/RAMWRT/ALTZP itself) PLUS its 2026-08-14 kernel-data-
+    read corollary (docs/SYSCALL.md 5.1): inside a RAMRD=aux/RAMWRT=aux
+    bracket, kernel data reads are registers/ZP ONLY, never an absolute
+    $0200-$BFFF read. BankCopy inherits this by construction -- it
+    never itself opens a RAMRD/RAMWRT bracket (COPYIN_ENTRY/
+    COPYOUT_ENTRY do, internally, already following the discipline);
+    the one thing BankCopy must get right is not introducing a NEW
+    bracket of its own that violates it, and it doesn't -- BankCopy's
+    own code always runs with RAMRD/RAMWRT=main (COPYIN/COPYOUT restore
+    them before RTS), so every K_BC_*/K_CPY_* read/write in this file's
+    loop bodies is an ordinary, always-correct main-memory access.
+  learning:01KWF4QBFJ8EJWK21JVP16VEM7 -- verilogapple MCP tool surface
+    (peek/poke bank param, softswitches, step cycle-unit-per-backend)
+    driving both the check-bankcopy gate and the write-landing
+    experiment below.
+Own search sweep (HACKING.md's notebook rules), no new deposit-worthy gap found
+beyond the above (all hits were either already-cited handles or
+background material -- $C07x contention, paddle-strobe/no-one-
+shot-model, verilogapple wire-protocol -- already covered by
+tasks #1/#2/#5's own citations): "80STORE PAGE2 HIRES write
+landing which bank aux memory", "RamWorks bank select $C073
+bounce buffer copy routine", "65C02 IRQ latency interrupt mask
+critical section", "exec loader copy into process bank fork
+clone", "VBL frame budget interrupt latency scheduler tick".
+
+PRECONDITION ON THE INCLUDER (same one-level-`put` discipline as
+bankprobe.s/entry.s -- docs/TOOLCHAIN.md): before `put`ting this
+file in, the includer must, in this order:
+  1. `use inc/memmap.equ`   (BANKSEL, CLR80STORE/SET80STORE,
+                                  RD80STORE/RDPAGE2/RDHIRES -- the
+                                  task #4-added status registers)
+  2. `put src/kernel/entry.s`   (COPYIN_ENTRY/COPYOUT_ENTRY + the
+                                  K_CPY_PROC/K_CPY_MAIN/K_CPY_LEN/
+                                  K_CPY_ERR zero-page cells this file
+                                  drives; entry.s's own preconditions
+                                  -- memmap.equ, errno.equ, a dummy
+                                  K_DISPATCH_LO/HI/COUNT + K_IRQ_HOOK
+                                  if the includer never calls
+                                  KERNEL_ENTRY -- still apply)
+  3. `jsr INSTALL_COPY` once, at boot, before the first `jsr BankCopy`
+     (entry.s's relocation step; BankCopy calls COPYIN_ENTRY/COPYOUT_ENTRY
+     at their low-main-stack-page homes, $0100/$0140, and does not
+     (re)install them itself)
+
+----------------------------------------------------------------
+------- CONTRACT: RESTORE-EXACT, not canonicalize (docs/TASKS.md
+#4 offers both; this file picks one and states it, per the
+task's own instruction). ---------------------------------------
+-------------------------------- BankCopy reads the CALLER's
+incoming RD80STORE/RDPAGE2/RDHIRES bits
+(K_BC_SAVE80/SAVEP2/SAVEHI) and restores 80STORE to EXACTLY that
+value on every exit path (success, empty-length no-op, and both
+refusal codes) -- never leaves it forced off. PAGE2/HIRES are
+captured too (the task's contract literally lists reading all
+three) but NEVER WRITTEN by this routine at all: with 80STORE
+forced off for the duration (see below), PAGE2/HIRES have no
+effect whatsoever on RAMRD/RAMWRT-governed memory routing
+(MEMMAP.md #4: "with 80STORE off, RAMRD/RAMWRT + $C073 route
+normally across the ENTIRE $0200-$BFFF range" -- PAGE2/HIRES
+only matter when 80STORE is ALSO set). So "restoring"
+PAGE2/HIRES is free -- they're never touched, hence never wrong
+on exit -- and capturing them still satisfies the letter of the
+contract and gives the check-bankcopy gate three real switches
+to round-trip through the 2x2x2 matrix, not a degenerate one-
+switch test.
+
+CHOSEN OVER CANONICALIZE, AND WHY: MEMMAP.md #4 declares
+80STORE=OFF/ PAGE2=OFF/HIRES=OFF as the kernel's OWN steady
+state -- in every real v1 call, the incoming state IS already
+that canonical triple (text-console V1 has no graphics/display-
+owner mode; the dormant display-backend brackets never span a
+syscall return per MEMMAP's own text), so restore-exact and
+canonicalize are OBSERVATIONALLY IDENTICAL for every actual v1
+caller. The 8-state matrix gate below exercises the other 7,
+non-canonical combinations too, purely as a ROBUSTNESS property
+(a future caller -- or a bug elsewhere in the kernel that leaves
+a switch set -- must not have ITS state silently clobbered by an
+unrelated copy primitive). Restore-exact is the more defensive
+contract for that case: it never assumes it knows better than
+its caller what the "right" resting state is, it just puts back
+what it found. ARCHITECTURE.md/TASKS.md's own repeated phrasing
+("save incoming state and restore exactly (or canonicalize)")
+also lists restore-exact first in every one of its three
+appearances (ARCHITECTURE.md's fork() section, TASKS.md #4's
+body, and the A4 amendment) -- read together with the
+amendment's "primitive saves/restores... WHERE CALLER STATE
+VARIES" (a phrase that only makes sense under restore-exact;
+canonicalize wouldn't need to read the incoming value AT ALL
+beyond depositing it as a diagnostic), this is the better-
+supported reading of the two options offered.
+
+----------------------------------------------------------------
+------- WHY THE 80STORE BRACKET SPANS THE WHOLE CALL, NOT JUST
+THE DISPLAY-APERTURE SUB-RANGES (a judgment call, flagged for
+review): -------------------------------------------------------
+---------------- 80STORE only affects routing for the display
+apertures (MEMMAP.md #4) -- so a range-conditional bracket
+(CLR80STORE only when THIS chunk's address overlaps a hole,
+SET80STORE back between non-overlapping chunks) would be
+strictly more surgical. This file does NOT do that: it clears
+80STORE ONCE, before the first chunk, and restores ONCE, after
+the last (or on early refusal) -- uniform, independent of
+whether any given call's range happens to touch a hole at all.
+Chosen because (a) it is auditable as ONE invariant ("80STORE is
+off for the whole primitive, restored on every exit") rather
+than a per-chunk conditional that has to be proven correct on
+chunk boundaries too; (b) the cost is one $C000 store per call,
+not per chunk -- negligible against the ~2.3ms/window copy cost
+below; (c) it exactly matches ARCHITECTURE.md's own stated
+sidestep ("we sidestep by keeping 80STORE off in copy
+primitives") and MEMMAP.md #4's framing of CLR80STORE/SET80STORE
+as a call-scoped bracket, not a per-address one.
+
+----------------------------------------------------------------
+------- CYCLE ESTIMATE / INTERRUPT-MASK GRANULARITY
+JUSTIFICATION (task's explicit requirement: "SEI/CLI bracketing
+per switch window, not one giant SEI over the whole copy -- keep
+VBL latency bounded; justify... with a cycle estimate"): -------
+----------------------------------------------------------------
+BC_CHUNK = 128 bytes/window (below). Each $C073 write gets its
+OWN immediately-following SEI, and PLP restores the incoming
+interrupt mask the instant that window's
+COPYIN_ENTRY/COPYOUT_ENTRY call returns -- so a bank<->bank copy
+opens and closes TWO separate PHP/SEI/PLP brackets per chunk
+(source-side read, then dest-side write), with interrupts re-
+enabled in the gap between them only when the caller entered
+interruptible; main<->bank copies open exactly ONE (only one
+side is ever a bank). This is the finest granularity that still
+makes sense: each bracket's job is "don't let a context switch
+or another $C073 write land between MY bank-select and MY copy"
+-- splitting further than one-bracket-per-selection buys
+nothing, since the bank selection and its dependent copy are
+inseparable (an IRQ landing between them, with $C073 pointing at
+a bank the IRQ handler doesn't expect, is exactly the race this
+exists to prevent).
+
+Per-window cost (65C02 cycles, counting instructions in this
+file plus COPYIN_LC_SRC/COPYOUT_LC_SRC's inner loop from
+entry.s):
+  fixed overhead: PHP(3) + SEI(2) + STA BANKSEL(4) + set K_CPY_PROC, 2 bytes
+    (2x[LDA abs(4)+STA zp(3)]=14) + kind-branch(~3) + set K_CPY_MAIN,
+    2 bytes (~12 avg, immediate-vs-absolute source) + set K_CPY_LEN
+    (LDA zp(3)+STA zp(3)=6) + JSR(6) + PLP(4) + error check
+    (LDA zp(3)+BEQ(2)=5) ~= 69 cycles
+  COPYIN/COPYOUT inner loop (entry.s): LDA (zp),y(5) + STA (zp),y(6) +
+    INY(2) + DEX(2) + BNE(3) = 18 cycles/byte x 128 bytes = 2304 cycles
+  TOTAL per window ~= 69 + 2304 = 2373 cycles =~ 2.32ms @ 1.023MHz
+    (Apple IIe NTSC CPU clock)
+Worst-case IRQ latency THIS PRIMITIVE CONTRIBUTES is bounded by
+ONE window (~2.3ms), never the whole multi-KB transfer -- PLP
+runs between every window (even within the same chunk, for
+bank<->bank), so a pending VBL IRQ is serviced immediately after
+the PLP that follows whichever window it arrived during, before
+the NEXT window's SEI even executes. 2.3ms is ~14% of one 16.6ms
+VBL frame, leaving ample margin for the scheduler's own per-tick
+work and any other IRQ-window latency already budgeted elsewhere
+in the kernel. BC_CHUNK=128 (not 256, the K_BOUNCEBUF/K_CPY_LEN
+ceiling) was chosen specifically to keep this per-window figure
+comfortably under half a VBL frame even for the two-window
+bank<->bank case (worst realistic stacking: two consecutive
+windows for the SAME chunk, ~4.6ms combined, still < one VBL
+period) while not fragmenting the transfer into so many tiny
+windows that per-window fixed overhead (64 cycles, ~2.8% of a
+128-byte window) dominates. NOTE: this is an ANALYTICAL
+justification (instruction-by-instruction cycle counting), not
+verified via live IRQ injection in this task -- no interrupt
+source is wired into the check-bankcopy gate (it runs with no
+active IRQ device). The RAMRD/RAMWRT-bracket precedent elsewhere
+in this kernel (docs/SYSCALL.md #7's per-window argument)
+establishes the METHOD as sound; a future task wiring BankCopy
+behind a live scheduler is where this bound gets an empirical
+check.
+
+----------------------------------------------------------------
+------- REFUSAL CODES (same numbering as entry.s's K_CPY_ERR,
+docs/SYSCALL.md section 5 -- surfaced verbatim in K_BC_ERR,
+never renumbered): ---------------------------------------------
+--------------------------
+  0  ok
+  1  refused -- an aux-side address fell in $C0xx-$CFxx (forbidden
+     forever: never process/bank memory, the one-page invariant)
+  2  refused -- an aux-side address fell in $D000+ (the ALTZP-aware
+     process-LC path is SPECIFIED in docs/SYSCALL.md section 5 but not
+     wired into COPYIN_ENTRY/COPYOUT_ENTRY's dispatch yet -- "not wired
+     yet", distinct from code 1 so a caller can tell "will never work"
+     from "not implemented yet")
+These checks happen INSIDE COPYIN_ENTRY/COPYOUT_ENTRY (entry.s),
+on whichever address is the "process/bank" side (K_CPY_PROC) of
+that particular call -- for a bank<->bank copy, BOTH the source
+and dest addresses get checked (once each, as K_CPY_PROC in
+their respective windows); for main<->bank, only the bank-side
+address is checked (the main-side address is assumed kernel-
+controlled and valid, same precedent as entry.s's own
+K_CPY_MAIN, which is never range-checked either). On refusal,
+the copy STOPS at that chunk (does not attempt further chunks)
+but the 80STORE restore-exact tail below still always runs -- a
+refused copy never leaves 80STORE forced off.
+
+----------------------------------------------------------------
+------- [likely]-GRADE EXPERIMENT (docs/TASKS.md #4 deliverable
+3): with 80STORE+PAGE2 set and a non-zero bank selected via
+$C073, do CPU writes to $0400-$07FF land in bank 0 or the
+SELECTED bank? -------------------------------------------------
+---------------------- ANSWER (verified via
+scripts/experiment_writelanding.py against verilogapple
+2026-08-14, maux branch feat/bankcopy): THE SELECTED BANK, on
+BOTH backends. src/test/writelanding.s: BANKSEL=5, then
+SET80STORE, PAGE2ON, then `lda #$42 / sta $0400`. Peeked
+afterward:
+  fast: main[$0400]=$A0 (untouched -- NOT the marker), aux bank
+    0[$0400]=$00 (untouched), aux bank 5[$0400]=$42 (THE MARKER) --
+    softswitches at halt: STORE80=true, PAGE2=true, ramworks_bank=5.
+  rtl:  IDENTICAL -- main=$A0, bank0=$00, bank5=$42, same softswitch
+    readback.
+Exactly one candidate location holds the marker on each backend,
+and it is the SAME one both times: the bank $C073 had selected,
+not bank 0 and not main. Confirms the "[likely selected bank]"
+guess in learning:01KW1GTYHGXMBZNR6DMQB2F712 and
+ARCHITECTURE.md's own open- questions list ("library marks this
+[likely selected bank], unverified"). INDEPENDENTLY CORROBORATED
+by this task's own check-bankcopy gate (see DEPOSIT CANDIDATES /
+commit history): a deliberate sanity-check mutation that
+disabled BankCopy's CLR80STORE bracket failed the gate on
+EXACTLY combos {80STORE=1,PAGE2=0} and passed
+{80STORE=1,PAGE2=1} -- the PAGE2=1 case only "accidentally"
+still works when broken BECAUSE the write lands in whatever bank
+BankCopy's own $C073 select left selected, matching this
+experiment's answer via a completely independent code path.
+
+CIRCULARITY CAVEAT (explicitly not sidestepped): this experiment
+characterizes THE RIG -- verilogapple's AuxCard model, both
+backends -- NOT hardware. Per HACKING.md's confidence discipline,
+"[likely]" claims a design depends on must be verified against a
+sanctioned fidelity verifier (rtl backend for facts it
+demonstrably models, MAME, AppleWin, or real hardware) before
+being load-bearing; this experiment used ONLY verilogapple's own
+two backends, which share the SAME underlying AuxCard peripheral
+object (per learning:01KWF4QBFJ8EJWK21JVP16VEM7: "Both engines
+share the same AuxCard + SmartPort peripheral objects").
+Agreement between fast and rtl is therefore NOT independent
+cross- verification -- it rules out a fast-vs-rtl MODELING
+divergence (useful, and worth having), but both could still
+share a mistaken model of what real RamWorks hardware does. This
+result is NOT promoted to [fact] here; it stays [likely, rig-
+consistent] until checked against MAME, AppleWin, or the AE
+RamWorks III manual's own text on 80STORE interaction (the
+manual excerpt already in hand, cited by
+learning:01KYYJ98T5R0M9K1AW2550M132, covers $C073 write-
+only/reset/ paddle-strobe facts but was not found to state the
+80STORE+PAGE2 landing-bank question directly during this task's
+search sweep -- a gap, not a contradiction). DEPOSIT CANDIDATE
+below records this precisely so the next consumer doesn't have
+to re-derive the caveat. maux's OWN correctness does not depend
+on this answer either way -- BankCopy sidesteps the whole
+question by keeping 80STORE off during every copy (above) --
+this experiment exists to retire the open question, not to
+unblock this file's own design.
+----------------------------------------------------------------
+(BANKSEL/CLR80STORE/SET80STORE/RD80STORE/RDPAGE2/RDHIRES come
+from the includer's own `use inc/memmap.equ`;
+K_CPY_PROC/K_CPY_MAIN/
+K_CPY_LEN/K_CPY_ERR/COPYIN_ENTRY/COPYOUT_ENTRY come from the
+includer's `put src/kernel/entry.s`, both BEFORE this file --
+see precondition note above. Not re-declared or re-included
+here.)
+----------------------------------------------------------------
+
+-- kind selector values (K_BC_SRCKIND/K_BC_DSTKIND) --

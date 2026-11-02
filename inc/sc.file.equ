@@ -1,0 +1,101 @@
+*---------------------------------------------------------------
+* sc.file.equ -- ProDOS-backed file-call numbers, REAL MLI
+* call numbers verbatim (ProDOS 8 TRM ch. 4). Split out of
+* inc/syscall.equ (task #8, docs/SELFHOST-CONVERSION.md
+* phase 1) -- reference-set scan shows liba/syscalls.s (the one
+* choke point every userland program links) and the kernel's
+* file-syscall delegate (procfd2.s/procfile.s) need this half;
+* see inc/sc.proc.equ for maux's own process-call
+* numbers, which have no MLI equivalent.
+*
+* `put`-only file (no code/org/dsk), same precondition
+* discipline as memmap.equ -- the top-level file must `put`
+* this directly.
+*---------------------------------------------------------------
+
+* -- FILE calls -- REAL ProDOS MLI numbers, verbatim (TRM ch.
+* 4). Every -- one of these routes through P8_DELEGATE at
+* the kernel dispatch -- level (entry.s), never a maux-invented
+* number. --
+*
+* -- ONE EXCEPTION, ruled 2026-08-27, docs/SYSCALL.md item 14:
+* -- SYS_GETPFX keeps its real number and parmlist but does NOT
+* -- always reach ProDOS. When the calling process has a
+* -- recorded working directory, PRC_GETPFX answers from the
+* -- per-pid table instead -- ProDOS keeps ONE machine-wide
+* -- prefix, and this syscall is the only join point where a
+* -- per-process answer reaches the 29 programs that resolve
+* -- `.`/`..` through liba's MKPATH. SET_PREFIX still delegates.
+* -- A second exception gets argued on its own merits, not by
+* -- pointing at this one.
+SYS_CREAT   equ   $C0    ;MLI CREATE
+SYS_UNLINK  equ   $C1    ;MLI DESTROY
+SYS_RENAME  equ   $C2    ;MLI RENAME (same directory only)
+* -- SET_FILE_INFO ($C3). Wired for chmod (task 2026-08-21):
+* -- read-modify-write only -- see PRC_SETFI (procfile3.s) for
+* -- the plain-delegate shape and src/bin/chmod.s for the
+* -- GET_FILE_INFO-then-SET_FILE_INFO caller.
+SYS_SFI     equ   $C3    ;MLI SET_FILE_INFO
+* -- GET_FILE_INFO ($C4). Wired 2026-08-19 (task: "wire
+* GET_FILE_ -- INFO into the kernel file-syscall broker and
+* liba") -- see -- docs/USERLAND.md's dated correction to the
+* old "cp cannot -- preserve file type" blocker note.
+SYS_GFI     equ   $C4    ;MLI GET_FILE_INFO
+* -- ON_LINE ($C5). Wired 2026-09-30 (docs/DEVFS.md) PER UNIT
+* -- ONLY -- unit_num 0 (the all-devices poll) is refused with
+* -- ERR_INVAL so no caller can trigger a 5.25" drive grind
+* -- just to list something (operator ruling, docs/DEVFS.md).
+* -- See PRC_ONLINE (procfile.s) for the parmlist shape.
+SYS_ONLINE  equ   $C5    ;MLI ON_LINE, unit_num != 0 only
+SYS_SETPFX  equ   $C6    ;MLI SET_PREFIX
+SYS_GETPFX  equ   $C7    ;MLI GET_PREFIX
+SYS_OPEN    equ   $C8    ;MLI OPEN
+* -- OPEN-RO: a parmlist whose param_count byte is OPEN_RO
+* -- instead of 3 declares READ intent. The kernel then shares
+* -- one ProDOS refnum among every such open of a path, each
+* -- keeping its own mark; WRITE and SET_EOF through it are
+* -- refused. Any other count is a no-intent open: it may
+* -- write. OPEN-RW-2: ONE no-intent open may join the group
+* -- (a reader then sees the writer's live EOF); a second
+* -- NO-INTENT one is $50. OAPPEND-1: any number of OPEN_APPEND
+* -- opens (below) join instead; one beside a no-intent writer
+* -- is still $50.
+OPEN_RO     equ   $83
+* -- OAPPEND-1: a parmlist whose param_count byte is OPEN_APPEND
+* -- (3 | $20) declares APPEND intent: every WRITE (and SET_EOF)
+* -- through the fd first seeks to the file's current EOF, as
+* -- O_APPEND does, so any number of appenders may share a
+* -- file and no write lands anywhere but the end. The kernel
+* -- tests for EXACTLY $23 and hands the MLI a 3, like OPEN_RO.
+* -- OPEN_RO_APP (read + append, $A3) is reserved and refused
+* -- ERR_INVAL. Only the DEFINED values 3 and $83 keep their
+* -- old behaviour; any other count was never valid ABI.
+OPEN_APPEND equ   $23
+OPEN_RO_APP equ   $A3
+SYS_READ    equ   $CA    ;MLI READ
+SYS_WRITE   equ   $CB    ;MLI WRITE
+SYS_CLOSE   equ   $CC    ;MLI CLOSE
+* -- SET_MARK/GET_MARK/SET_EOF/GET_EOF ($CE-$D1). Wired
+* -- 2026-08-20 (docs/FLEET.md "`>>` and the seek family",
+* -- docs/PROCIO.md sec 1): plain MLI delegates, same
+* -- SYS_GFI shape -- the kernel gains no Unix-shaped call.
+* -- liba's lseek(fd,offset,whence) composes these; sh's `>>`
+* -- is lseek(fd,0,SEEK_END) after the open. GET_EOF is
+* -- already used INTERNALLY by the spawn loader
+* -- (PML_GTF_PARMS/PMLI_GTF_CALL, process.s/procfd2.s) --
+* -- this exposes it, it does not add it.
+SYS_SET_MARK equ  $CE    ;MLI SET_MARK
+SYS_GET_MARK equ  $CF    ;MLI GET_MARK
+SYS_SET_EOF equ   $D0    ;MLI SET_EOF
+SYS_GET_EOF equ   $D1    ;MLI GET_EOF
+
+* -- readdir is NOT a separate call number -- it's the standard
+* MLI -- pattern (TRM ch. 4): OPEN the directory as a file, then
+* READ raw -- directory blocks/entries with the SAME
+* SYS_OPEN/SYS_READ numbers -- above. liba's SC_READDIR (a
+* future task's concern) becomes a thin -- wrapper over
+* SC_OPEN+SC_READ+SC_CLOSE, not a new kernel call. -- QUIT ($65)
+* exists in the MLI but is not part of maux's v1 syscall --
+* surface (no process calls QUIT in a bank-per-process design
+* where -- the whole bank IS the process -- exit() tears the
+* bank down instead).

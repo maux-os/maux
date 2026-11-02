@@ -1,0 +1,59 @@
+.\" cal.1 -- maux's cal(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as env.1. Rendered
+.\" at build time to build/man/CAL.TXT and staged on the play
+.\" image as /usr/man/CAL: `more /usr/man/CAL`.
+.TH CAL 1 "September 15, 2026" maux
+.SH NAME
+cal \- display a Gregorian calendar
+.SH SYNOPSIS
+.B cal
+[ [
+.I month
+]
+.I year
+]
+.SH DESCRIPTION
+With no operands,
+.I cal
+displays a calendar for the current month, read from the
+machine's own clock (see
+.BR date (1)
+for the same clock and its own refusal when none is present).
+.PP
+With one operand,
+.I year
+(1\-9999) alone selects that whole year: every month is
+printed, one per block, separated by a blank line.  This is a
+KNOWN GAP against BSD
+.IR cal (1),
+whose three\-column full\-year layout this build does not
+reproduce.
+.PP
+With two operands,
+.I month
+(1\-12) and
+.I year
+select a single month, rendered to match this project's BSD
+reference exactly: a centred title line, the
+.B "Su Mo Tu We Th Fr Sa"
+header, and six weekly rows (a wholly blank row where the month
+needs fewer), every line padded to 22 columns.
+.PP
+Leap years follow the ordinary Gregorian rule (divisible by 4,
+not by 100 unless also by 400).  The day of the week is found
+by Sakamoto's algorithm.  The 1752 Julian\-to\-Gregorian
+transition is a KNOWN GAP: every year is treated as proleptic
+Gregorian.
+.SH FILES
+/usr/man/CAL  this page
+.SH "SEE ALSO"
+date(1)
+.SH DIAGNOSTICS
+Exit status is 0; 1 if no operands were given and the machine
+has no valid clock reading; 2 for a usage error (a non\-numeric
+operand, a month outside 1\-12, a year outside 1\-9999, or more
+than two operands).
+.SH BUGS
+No three\-column full\-year layout (see above).  No support for
+the pre\-1752 Julian calendar.

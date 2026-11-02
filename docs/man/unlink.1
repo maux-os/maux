@@ -1,0 +1,17 @@
+.\" unlink.1 -- maux's stub for the POSIX unlink(1) utility, which
+.\" this tree does not provide. An original page (this project's own
+.\" text), so it carries no third-party notice -- MIT like the code,
+.\" same posture as env.1/man.1. Recorded in docs/POSIX-GAPS.md sec
+.\" 5 ("Not applicable, and why") so the omission is not re-
+.\" litigated. Rendered at build time to build/man/UNLINK.TXT and
+.\" staged on the play image as /usr/man/UNLINK.
+.TH UNLINK 1 "September 17, 2026" maux
+.SH NAME
+unlink \- call the unlink function
+.SH DESCRIPTION
+.I Unlink
+is not provided on maux.
+rm(1) already removes a directory entry the same way, so a
+separate unlink utility is not shipped.
+.SH "SEE ALSO"
+rm(1)

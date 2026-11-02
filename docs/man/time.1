@@ -1,0 +1,33 @@
+.\" Derived from Research UNIX V6 time(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/time.1
+.\" Retrieved 2026-09-19; archived response SHA256: 0cf185609fbdf64428605e5beead20723a8706019760646088917e29d9200579
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH TIME 1 "September 19, 2026" maux
+.SH NAME
+time \- time a command
+.SH SYNOPSIS
+.B time
+.I command
+.RI [ arg ...]
+.SH DESCRIPTION
+The given command is executed; after it is complete,
+.I time
+prints the elapsed time during the command.
+The time is printed on the diagnostic output stream, so redirecting the
+command's standard output does not put the report in that file.
+.PP
+Only real elapsed time is reported. There is no per-process accounting
+from which to report user or system CPU time.
+The command is found using PATH; an absolute path bypasses the search.
+A running interrupt tick source is required.
+.SH FILES
+/usr/man/TIME  this page
+.SH "SEE ALSO"
+sleep(1), sh(1), licenses(1)
+.SH DIAGNOSTICS
+Normally the exit status is the command's status. A usage, lookup, spawn or timing failure gives status 1.
+.SH BUGS
+There are at most sixteen child argv slots, including its command name. Intervals over 65535 seconds are refused. This is an external command, not a shell keyword; it cannot directly time a builtin or a whole pipeline.

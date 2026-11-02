@@ -1,0 +1,42 @@
+python3 scripts/build_play_image.py
+[build-play] carrier=/Users/mdj/src/maux/vendor/prodos-basic.po volname=BASIC
+[build-play] kept=[] removed=[]
+[build-play] wrote MAUX.SYSTEM (29509 bytes), echo (1244 bytes), cat (1670 bytes), ls (5723 bytes), cp (4680 bytes), rm (3664 bytes), sh (26338 bytes), ed (9700 bytes), ex (14396 bytes), grep (5668 bytes), wc (2376 bytes), mkdir (1918 bytes), mv (5192 bytes), pwd (1215 bytes), ps (1814 bytes), touch (2630 bytes), cmp (2674 bytes), sort (4090 bytes), uniq (2780 bytes), tr (2075 bytes), od (2559 bytes), file (1928 bytes), tail (2497 bytes), head (2174 bytes), nm (3010 bytes), find (7151 bytes), diff (5288 bytes), expr (3090 bytes), du (3640 bytes), tee (2721 bytes), comm (2356 bytes), sum (1980 bytes), date (2338 bytes), chmod (1834 bytes), df (2026 bytes), sed (10375 bytes), sleep (1951 bytes), time (3064 bytes), make (7667 bytes), chvt (1776 bytes), vidmode (2173 bytes), kill (2153 bytes), more (12316 bytes), stty (2006 bytes), reset (1466 bytes), true (123 bytes), false (123 bytes), vi (23205 bytes), tip (2208 bytes), cut (2797 bytes), xargs (4418 bytes), printf (3837 bytes), basename (1533 bytes), dirname (1463 bytes), env (3328 bytes), uuencode (2494 bytes), uudecode (3200 bytes), rmdir (1864 bytes), tty (1309 bytes), uname (1671 bytes), cksum (2078 bytes), paste (2642 bytes), fold (2347 bytes), nl (3503 bytes), expand (2211 bytes), unexpand (2570 bytes), man (2811 bytes), cal (3351 bytes), strings (2642 bytes), nohup (3405 bytes), timeout (4301 bytes), realpath (2458 bytes), tsort (2253 bytes), pr (3649 bytes), pathchk (2235 bytes), split (2937 bytes), csplit (6705 bytes), join (3739 bytes), patch (5235 bytes)
+[build-play] MAN pages: ADMIN, AR, AS, ASA, AT, BASENAME, BATCH, BPATCH, C17, CAL, CAT, CFLOW, CHGRP, CHMOD, CHOWN, CHVT, CKSUM, CMP, COMM, COMPRESS, CP, CRONTAB, CSPLIT, CTAGS, CUT, CXREF, DATE, DD, DELTA, DF, DIFF, DIRNAME, DU, ECHO, ED, ENV, EX, EXPAND, EXPR, FALSE, FILE, FIND, FOLD, FUSER, GENCAT, GET, GETCONF, GETTEXT, GREP, HEAD, ICONV, ID, IPCRM, IPCS, JOIN, KILL, LD, LEX, LICENSES, LINK, LN, LOCALE, LOCALEDEF, LOGGER, LOGNAME, LP, LS, MAILX, MAKE, MAN, MESG, MKDIR, MKFIFO, MORE, MSGFMT, MV, NAS, NEWGRP, NGETTEXT, NICE, NL, NM, NOHUP, OD, PASTE, PATCH, PATHCHK, PLASMA, PR, PRINTF, PROSHIM, PRS, PS, PWD, READLINK, REALPATH, RENICE, RESET, RM, RMDEL, RMDIR, SACT, SCCS, SED, SH, SLEEP, SORT, SPLIT, STRINGS, STRIP, STTY, SUM, TABS, TAIL, TALK, TEE, TIME, TIMEOUT, TIP, TOUCH, TPUT, TR, TRUE, TSORT, TTY, ULIMIT, UMASK, UNAME, UNCOMPRESS, UNEXPAND, UNGET, UNIQ, UNLINK, UUCP, UUDECODE, UUENCODE, UUSTAT, UUX, VAL, VI, VIDMODE, WC, WHAT, WHO, WRITE, XARGS, XGETTEXT, YACC, ZCAT
+[build-play] /Users/mdj/src/maux/build/play.po ready (4194304 bytes), 6635 of 8192 blocks free
+NAS_SELFMAKE=1 python3 scripts/build_nas_librel_image.py
+[build-nas-librel] cooked nas 34779 B -> heap 12069 B
+[build-nas-librel] play tree (288 entries) replayed onto a 32 MB /Users/mdj/src/maux/build/nas-selfmake.po
+[build-nas-librel] MAKEFILE: 86 rules written, 155 units inferred, 14 macros
+[build-nas-librel] MAKEFILE: 92 rules, 15884 B
+[build-nas-librel] /BASIC/LR holds 789 files; 461 nas lines + 118 ld links staged
+[build-nas-librel] utils staged: 85; kernels staged: 1; skipped 1: ['AS']
+[build-nas-librel] /Users/mdj/src/maux/build/nas-selfmake.po ready (plan: /Users/mdj/src/maux/build/nas-selfmake-plan.json)
+NAS_SELFMAKE=1 python3 scripts/check_nas_librel.py build/nas-selfmake.po
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[check-nas-librel] links: shell prompt reached
+[check-nas-librel] links: done in ~8,350,000,000 cycles
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[check-nas-librel] NASLOG: 328 nas lines, 0 ld lines
+[check-nas-librel] MK2OUT empty -- the second make run had nothing to do
+[check-nas-librel] byte-identical: 85 of 85 staged utils -- BASENAME BPATCH CAL CAT CHMOD CHVT CKSUM CMP COMM CP CSPLIT CUT DATE DD DF DIFF DIRNAME DU ECHO ED ENV EX EXPAND EXPR FALSE FILE FIND FOLD GREP HEAD JOIN KILL LD LS MAKE MAN MKDIR MORE MV NL NM NOHUP OD PASTE PATCH PATHCHK PLASMA PR PRINTF PROSHIM PROSHIMCR PROSHIMPG PS PWD REALPATH RESET RM RMDIR SED SH SLEEP SORT SPLIT STRINGS STTY SUM TAIL TEE TIME TIMEOUT TIP TOUCH TR TRUE TSORT TTY UNAME UNEXPAND UNIQ UUDECODE UUENCODE VI VIDMODE WC XARGS
+[check-nas-librel] MAUXPLAY.SYSTEM  (KERNEL, nas+ld -l k)  29509B  byte-identical
+[check-nas-librel] kernel images byte-identical: 1 of 1
+[check-nas-librel] not staged (1):
+    AS: pinned by ruling 2026-09-01: wraps the vendored Merlin core; nas is its replacement
+[check-nas-librel] PASS: every staged util is BYTE-IDENTICAL to merlin32's monolithic build via nas REL modules + ld, and every kernel image (1) links byte-identical from nas-assembled kernel modules via -l k
+python3 scripts/check_nas_grow_guest.py --image build/nas-selfmake.po
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+PASS: 7 allocation-exhaustion/wrap paths, no failed objects, warm 513-opcode and 16-EQU chain byte oracles; 17-EQU refusal
+SELFMAKE_EXIT=0

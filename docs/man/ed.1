@@ -1,0 +1,112 @@
+.\" Derived from Research UNIX V1 ed(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/ed
+.\" Retrieved 2026-09-19; archived response SHA256: 2a7b688b19f9af3d220b286113a937fc7e806c74045b885c196d20893af48a19
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH ED 1 "September 19, 2026" maux
+.SH NAME
+ed \- edit text by lines
+.SH SYNOPSIS
+.B ed
+.RI [ file ]
+.SH DESCRIPTION
+.I Ed
+is the standard text editor.
+If the optional argument is given, the file is read into ed's buffer so
+that it can be edited.
+Ed operates on a copy of any file it is editing; changes made in the copy
+have no effect on the file until an explicit write (w) command is given.
+The copy is held in process memory on maux.
+.PP
+Commands to ed have a simple and regular structure: zero or more
+addresses followed by a single character command, possibly followed by
+parameters to the command. These addresses specify lines in the buffer.
+Commands have default addresses, so the addresses can often be omitted.
+.PP
+While ed is accepting text, it is said to be in input mode.
+In this mode no commands are recognized; all input is merely collected.
+Input mode is left by typing a period (.) alone on a line.
+.PP
+.B Addresses.
+A decimal number addresses that line, . addresses the current line,
+and $ the last line. /pattern/ searches forward, wrapping around.
+An address may be followed by +number or -number.
+Two addresses separated by a comma form a range.
+A semicolon sets the current line before interpreting the second address.
+Bare , means 1,$ and bare ; means .,$.
+.PP
+.B Commands.
+In the following list, 'current' means the line most recently affected.
+.TP
+.B a, i, c
+Append after, insert before, or change addressed text.
+Accept input through a line containing only a period.
+The default is the current line; c can take a range.
+.TP
+.B d
+Delete the addressed lines; default current.
+.TP
+.B p, n
+Print addressed lines, without or with line numbers; default current.
+.TP
+.B r file
+Read a file after the addressed line; default end of buffer.
+.TP
+.B w file
+Write the addressed lines; default the whole buffer.
+An omitted file name reuses the remembered name.
+Writing replaces the destination contents, including shortening it.
+.TP
+.B s/pattern/replacement/[g|number][p]
+Substitute in the addressed lines; default current.
+Without a flag replace the first match; g replaces all matches;
+a number selects that occurrence. p prints the result.
+In replacement, & means the matched text; backslash quotes a delimiter.
+.TP
+.B g/pattern/commands, v/pattern/commands
+Run commands on lines matching, or not matching, the pattern.
+Default range is the whole buffer. A selected line becomes current.
+.TP
+.B m address, t address
+Move or copy the addressed range after address.
+.TP
+.B j
+Join addressed lines without a separator; default current and next.
+.TP
+.B =
+Print a line number; default the last line.
+.TP
+.B q
+Quit. There is no unsaved-change guard in ed.
+.PP
+.B Regular expressions.
+An ordinary character matches itself; . matches any character.
+^ at the start and $ at the end anchor a pattern to the line.
+[abc] matches a listed character, [a-z] a range, [^abc] a complement.
+* repeats the preceding item zero or more times.
+The shared matcher also supports \\( ... \\), backreferences \\1 through
+\\9, and repetition forms \\{n\\}, \\{n,\\}, \\{n,m\\}, \\+ and \\?.
+An empty pattern reuses the last pattern.
+This is a basic, not extended, regular-expression syntax.
+.PP
+For a small new file, type these lines to ed:
+.PP
+.B a
+.br
+hello
+.br
+\&.
+.br
+.B w hello
+.br
+.B q
+.SH FILES
+/usr/man/ED  this page
+.SH "SEE ALSO"
+ex(1), vi(1), grep(1), sed(1), licenses(1)
+.SH DIAGNOSTICS
+Command errors print ? and leave the session running. Exit status is 0 if there were no recorded errors, 1 after a command/file error, 2 if the initial working area cannot be established.
+.SH BUGS
+At most 1024 lines fit in the line table; text must fit in the process bank. Lines and command input are bounded (roughly 250 bytes); use short source lines. Global operations have at most 250 pending selected lines. This is not the full historical command set: use ex(1) for undo, backward search, marks, edit/reload and shell escapes.

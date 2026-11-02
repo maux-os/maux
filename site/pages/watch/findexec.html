@@ -1,0 +1,27 @@
+title: find -exec
+description: Walk a tree, match names with a glob, and run grep on every hit.
+demo: findexec
+---
+<div class="band demo">
+<h1>find -exec</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / findexec</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: docs/DEMOS.md; site/demos/findexec.py -->
+<p class="lead">About as canonically Unix as a command line gets. <code>find</code> walks the manual, a glob picks the pages whose names begin with S, and <code>-exec</code> runs <code>grep -l</code> on each of them, one process per page, to say which mention a word.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/findexec.py; docs/DEMOS-W1-NOTES.md -->
+<p>This film is made by <code>site/demos/findexec.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that <code>find</code> lists exactly the pages whose names begin with S, and that the <code>-exec</code> run names exactly the pages that mention the word. Both lists are computed on the host from the image. The checks themselves were tested: with <code>grep</code> replaced by a copy of <code>true</code> the demo fails at "only the pages that mention the word are named"; with <code>find</code> replaced by <code>true</code> it fails at "find lists every page".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

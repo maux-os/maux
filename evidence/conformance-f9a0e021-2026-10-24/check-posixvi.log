@@ -1,0 +1,296 @@
+python3 scripts/check_carrier.py
+[check-carrier] PASS: vendor/prodos-basic.po matches the lock
+python3 scripts/check_carrier.py --selftest
+[check-carrier] self-test: planted mismatch and missing carrier both refused: PASS
+python3 scripts/build_play_image.py
+[build-play] carrier=/Users/mdj/src/maux/.claude/worktrees/agent-a15b80f33a9019ed3/vendor/prodos-basic.po volname=MAUX
+[build-play] kept=[] removed=[]
+[build-play] wrote MAUX.SYSTEM (30912 bytes), echo (1244 bytes), cat (1751 bytes), ls (6872 bytes), cp (5278 bytes), rm (4266 bytes), sh (36587 bytes), ed (9699 bytes), ex (15055 bytes), grep (6216 bytes), wc (2395 bytes), mkdir (1971 bytes), mv (5790 bytes), pwd (1215 bytes), ps (1847 bytes), touch (2680 bytes), cmp (2677 bytes), sort (4315 bytes), uniq (2795 bytes), tr (2700 bytes), od (4024 bytes), file (1927 bytes), tail (3279 bytes), head (2204 bytes), nm (3013 bytes), find (8093 bytes), diff (8354 bytes), expr (6571 bytes), du (4186 bytes), tee (2757 bytes), comm (2367 bytes), sum (1979 bytes), date (2371 bytes), chmod (1833 bytes), df (3817 bytes), sed (10446 bytes), sleep (1936 bytes), time (3082 bytes), make (8342 bytes), chvt (1807 bytes), vidmode (2206 bytes), kill (2186 bytes), more (12353 bytes), stty (2039 bytes), reset (1499 bytes), true (123 bytes), false (123 bytes), vi (25683 bytes), tip (2241 bytes), cut (2835 bytes), xargs (4855 bytes), printf (3837 bytes), basename (1533 bytes), dirname (1463 bytes), env (3350 bytes), uuencode (2497 bytes), uudecode (3203 bytes), rmdir (1867 bytes), tty (1309 bytes), uname (1675 bytes), cksum (2077 bytes), paste (2649 bytes), fold (2354 bytes), nl (6455 bytes), expand (2226 bytes), unexpand (2573 bytes), man (2827 bytes), cal (3384 bytes), strings (2645 bytes), nohup (3423 bytes), timeout (4410 bytes), realpath (2471 bytes), tsort (2276 bytes), pr (6410 bytes), pathchk (2238 bytes), split (2940 bytes), csplit (6708 bytes), join (3764 bytes), patch (5238 bytes), shutdown (1628 bytes), chtyp (2418 bytes), nulib2 (11525 bytes), mount (3734 bytes), umount (2447 bytes), bye (2950 bytes)
+[build-play] MAN pages: ADMIN, AR, AS, ASA, AT, BASENAME, BATCH, BPATCH, BYE, C17, CAL, CAT, CFLOW, CHGRP, CHMOD, CHOWN, CHTYP, CHVT, CKSUM, CMP, COMM, COMPRESS, CP, CRONTAB, CSPLIT, CTAGS, CUT, CXREF, DATE, DD, DELTA, DF, DIFF, DIRNAME, DU, ECHO, ED, ENV, EX, EXPAND, EXPR, FALSE, FILE, FIND, FOLD, FUSER, GENCAT, GET, GETCONF, GETTEXT, GREP, HEAD, ICONV, ID, IPCRM, IPCS, JOIN, KILL, LD, LEX, LICENSES, LINK, LN, LOCALE, LOCALEDEF, LOGGER, LOGNAME, LP, LS, MAILX, MAKE, MAN, MESG, MKDIR, MKFIFO, MORE, MOUNT, MSGFMT, MV, NAS, NEWGRP, NGETTEXT, NICE, NL, NM, NOHUP, NULIB2, OD, PASTE, PATCH, PATHCHK, PLASM, PLASMA, PR, PRINTF, PROSHIM, PRS, PS, PWD, READLINK, REALPATH, RENICE, RESET, RM, RMDEL, RMDIR, SACT, SCCS, SED, SH, SHUTDOWN, SLEEP, SORT, SPLIT, STRINGS, STRIP, STTY, SUM, TABS, TAIL, TALK, TEE, TIME, TIMEOUT, TIP, TOUCH, TPUT, TR, TRUE, TSORT, TTY, ULIMIT, UMASK, UMOUNT, UNAME, UNCOMPRESS, UNEXPAND, UNGET, UNIQ, UNLINK, UUCP, UUDECODE, UUENCODE, UUSTAT, UUX, VAL, VI, VIDMODE, WC, WHAT, WHO, WRITE, XARGS, XGETTEXT, YACC, ZCAT
+[build-play] /Users/mdj/src/maux/.claude/worktrees/agent-a15b80f33a9019ed3/build/play.po ready (4194304 bytes), 6333 of 8192 blocks free
+python3 scripts/check_posixvi.py build/play.po
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[check-posixvi] 71 byte-exact cases, 24 boot groups
+[check-posixvi] group 1/24 (3 cases)
+[check-posixvi] group 2/24 (3 cases)
+[check-posixvi] group 3/24 (3 cases)
+[check-posixvi] group 4/24 (3 cases)
+[check-posixvi] group 5/24 (3 cases)
+[check-posixvi] group 6/24 (3 cases)
+[check-posixvi] group 7/24 (3 cases)
+[check-posixvi] group 8/24 (3 cases)
+[check-posixvi] group 9/24 (3 cases)
+[check-posixvi] group 10/24 (3 cases)
+[check-posixvi] group 11/24 (3 cases)
+[check-posixvi] group 12/24 (3 cases)
+[check-posixvi] group 13/24 (3 cases)
+[check-posixvi] group 14/24 (3 cases)
+[check-posixvi] group 15/24 (3 cases)
+[check-posixvi] group 16/24 (3 cases)
+[check-posixvi] group 17/24 (3 cases)
+[check-posixvi] group 18/24 (3 cases)
+[check-posixvi] group 19/24 (3 cases)
+[check-posixvi] group 20/24 (3 cases)
+[check-posixvi] group 21/24 (3 cases)
+[check-posixvi] group 22/24 (3 cases)
+[check-posixvi] group 23/24 (3 cases)
+[check-posixvi] group 24/24 (2 cases)
+[check-posixvi] special: :q! discard (structural, not byte-exact)
+
+== change (7 cases) ==
+  PASS cc changes the whole line  keys='ccNEW\x1b'
+  PASS cw on the LAST word  keys='0wwcwX\x1b'
+  PASS ce to word end  keys='0ceNEW\x1b'
+  PASS cG to EOF  keys='2GcGNEW\x1b'
+  PASS . dot-repeat  keys='1G0xj0.'
+  PASS "a named register  keys='1G"ayyG"ap'
+  PASS multi-line charwise yank  keys='1G0y/Y\rG$p'
+== ex (10 cases) ==
+  PASS :s substitutes on the current line  keys=':s/OLD/NEW/\r'
+  PASS :s with a /g flag substitutes every match  keys=':s/aa/bb/g\r'
+  PASS :w persists the buffer with no edits  keys=''
+  PASS :cxyz is refused and vi stays in command mode  keys='1G:cxyz\rIX\x1b'
+  PASS :dxyz is refused, no line is deleted  keys='1G:dxyz\rIX\x1b'
+  PASS :axyz is refused, not run as :append  keys='1G:axyz\rIX\x1b'
+  PASS :wxyz is refused (it is not :w)  keys='1G:wxyz\rIX\x1b'
+  PASS :2delete runs as :2d  keys=':2delete\r'
+  PASS :1,2dele runs as :1,2d (any prefix down to d)  keys=':1,2dele\r'
+  PASS :q! discards unsaved edits (named file, structural)  keys=':wq / 1Gdd / :q! / reopen'
+== insert (7 cases) ==
+  PASS i inserts before the cursor  keys='iHELLO\x1b'
+  PASS a appends after the cursor  keys='0aZ\x1b'
+  PASS A appends at end of line  keys='AXYZ\x1b'
+  PASS I inserts at first non-blank  keys='$IX\x1b'
+  PASS o opens a line below  keys='1GoBBB\x1b'
+  PASS O opens a line above  keys='1GOZZZ\x1b'
+  PASS CR in insert mode splits the line  keys='iAAA\rBBB\x1b'
+== motion (19 cases) ==
+  PASS h / l  keys='0llrZhhrQ'
+  PASS j / k  keys='1GjrZkrQ'
+  PASS 0 / $  keys='$x0x'
+  PASS ^ first non-blank  keys='$^rZ'
+  PASS w stops at punctuation  keys='0wrZ'
+  PASS W skips punctuation  keys='0WrZ'
+  PASS b word back  keys='04lbrZ'
+  PASS B WORD back  keys='04lBrZ'
+  PASS e word end  keys='0erZ'
+  PASS E WORD end  keys='0ErZ'
+  PASS f find char forward  keys='0fdrZ'
+  PASS F find char backward  keys='$FcrZ'
+  PASS t till char forward  keys='0tdrZ'
+  PASS T till char backward  keys='$TdrZ'
+  PASS ; repeats last find  keys='0fx;rZ'
+  PASS , reverses last find  keys='$FxFx,rZ'
+  PASS count (3l)  keys='03lrZ'
+  PASS G / 1G  keys='1GxGx'
+  PASS 2G to a line number  keys='2GrZ'
+== operator (16 cases) ==
+  PASS dd deletes the line  keys='1Gdd'
+  PASS 2dd counted  keys='1G2dd'
+  PASS D deletes to EOL  keys='0lD'
+  PASS d$ operator+motion  keys='0lld$'
+  PASS d0 to column 0  keys='$d0'
+  PASS dw deletes a word  keys='0dw'
+  PASS dw on the LAST word  keys='0wwdw'
+  PASS dw on a last word never joins  keys='1Gwdw'
+  PASS dw on a one-word line  keys='1Gdw'
+  PASS 2dw across a line boundary  keys='1Gw2dw'
+  PASS d2w two words  keys='0d2w'
+  PASS dG to EOF  keys='2GdG'
+  PASS dt as an operator  keys='0dtd'
+  PASS df as an operator  keys='0dfd'
+  PASS yy + p paste below  keys='1Gyyp'
+  PASS Y + P paste above  keys='1GYP'
+== search (3 cases) ==
+  PASS / searches forward  keys='1G/bar\rx'
+  PASS ? searches backward  keys='G?bar\rrZ'
+  PASS n / N repeat the last search  keys='1G/x\rnrZNrQ'
+== shortcut (8 cases) ==
+  PASS x deletes under the cursor  keys='0x'
+  PASS X deletes before the cursor  keys='$X'
+  PASS C changes to EOL  keys='0llCxx\x1b'
+  PASS S changes the whole line  keys='SNEW\x1b'
+  PASS s substitutes a char  keys='0sZ\x1b'
+  PASS r replaces one char  keys='0rZ'
+  PASS ~ toggles case  keys='0~~~'
+  PASS J joins two lines  keys='1GJ'
+== undo (2 cases) ==
+  PASS u undoes the last change  keys='0xu'
+  PASS u is single-level  keys='0xxu'
+
+[check-posixvi] 72/72 cases passed, 0 FAILED
+[check-posixvi] PASS -- 72 POSIX vi conformance cases green

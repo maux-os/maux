@@ -1,0 +1,53 @@
+.\" rmdir.1 -- maux's rmdir(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic rmdir(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as env.1. Rendered at build
+.\" time to build/man/RMDIR.TXT and staged on the play image as
+.\" /usr/man/RMDIR: `more /usr/man/RMDIR`.
+.TH RMDIR 1 "September 14, 2026" maux
+.SH NAME
+rmdir \- remove empty directories
+.SH SYNOPSIS
+.B rmdir
+[
+.B \-p
+]
+.I dir
+...
+.SH DESCRIPTION
+.I Rmdir
+removes the directory entry named by each
+.I dir
+operand, in order. Each one must already be empty; ProDOS's own
+DESTROY call refuses a non-empty directory. A
+.I dir
+that cannot be removed is reported and skipped;
+.I rmdir
+continues with the remaining operands.
+.TP
+.B \-p
+Also remove each pathname component of
+.I dir
+from the right, in turn, as long as each removal succeeds --
+so
+.B "rmdir \-p a/b/c"
+removes
+.BR c ,
+then
+.BR b ,
+then
+.BR a .
+Stripping stops at the volume name (never attempted) or at the
+first component that is not empty, whichever comes first; that
+stop is reported and counts as a failure like any other.
+.SH FILES
+/usr/man/RMDIR  this page
+.SH "SEE ALSO"
+mkdir(1), rm(1)
+.SH DIAGNOSTICS
+Exit status is 0 if every
+.I dir
+was removed, 1 if any operand failed, 2 on a usage error (no
+operand given, or an unrecognised option).
+.SH BUGS
+None known.

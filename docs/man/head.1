@@ -1,0 +1,64 @@
+.\" head.1 -- maux's head(1), in the V7 man(1) shape. An original
+.\" page (V7 had no head; it is a BSD addition), so it carries no
+.\" third-party notice -- MIT like the code, same posture as
+.\" more.1. Rendered at build time to build/man/HEAD.TXT and
+.\" staged on the play image as /usr/man/HEAD: `more
+.\" /usr/man/HEAD`.
+.TH HEAD 1 "September 13, 2026" maux
+.SH NAME
+head \- print the first few lines of a file
+.SH SYNOPSIS
+.B head
+[
+.BI \-n " number"
+|
+.BI \- number
+] [ file ] ...
+.SH DESCRIPTION
+.I Head
+copies the first
+.I number
+lines of each
+.I file
+(standard input default) to the standard output.
+.I Number
+defaults to 10.
+.BI \-n " number"
+and the older
+.BI \- number
+form are equivalent.
+.PP
+With more than one
+.I file
+argument, the output of each is preceded by a header of the
+form
+.IP
+.B "==>" " name" " <=="
+.PP
+with one blank line before each header but the first.
+Exactly one operand, or none, never gets a header.
+.PP
+.I Head
+is a straight prefix copy: it stops the moment
+.I number
+lines have gone by, so a file's own missing final newline is
+carried through unchanged rather than supplied.
+A
+.I number
+larger than a file's line count copies the whole file; this is
+not an error.
+.SH FILES
+/usr/man/HEAD  this page
+.SH "SEE ALSO"
+tail(1), cat(1), more(1)
+.SH DIAGNOSTICS
+Exit status is 0, or 1 when a file named on the command line
+could not be opened -- that file is skipped, a diagnostic
+naming it is written to standard error, and the remaining
+operands are still processed.
+.SH BUGS
+.BI \- number
+and
+.BI \-n " number"
+accept only decimal digits; anything else is a usage error, exit
+2.

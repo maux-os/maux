@@ -1,0 +1,32 @@
+.\" Derived from Research UNIX V6 file(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/file.1
+.\" Retrieved 2026-09-19; archived response SHA256: be0bca9c81b83dc3429af30792461b4d20a4200d87b2567b07329317ac042ade
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH FILE 1 "September 19, 2026" maux
+.SH NAME
+file \- determine file type
+.SH SYNOPSIS
+.B file
+.I name ...
+.SH DESCRIPTION
+.I File
+classifies each argument and prints its name and description.
+The test on maux is the ProDOS storage type and file-type byte only;
+it does not examine the contents or guess a programming language.
+.PP
+Directories are identified before the type-byte lookup.
+Known types include text, binary, system program, Applesoft and Integer
+BASIC programs, Applesoft variables, relocatable object, Pascal area,
+AppleTalk file and GS/OS application.
+An unrecognized type is printed as a hexadecimal byte.
+.SH FILES
+/usr/man/FILE  this page
+.SH "SEE ALSO"
+ls(1), nm(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if all files were described, 1 if any cannot be examined, 2 if no operands were supplied.
+.SH BUGS
+Type labels are metadata, not content validation. In particular the REL label in this tool's table is type $FE; a NAS $F8 REL object currently prints as an unknown type.

@@ -1,0 +1,34 @@
+title: Learn
+description: The example ladder from hello, world in the shell to a ProDOS SYSTEM program built on maux and tested with bye.
+---
+<h1>Learn</h1>
+
+<!-- src: docs/SITE.md sec 5 -->
+<p class="lead">A ladder of small programs, from your first commands to a
+ProDOS 8 program you build on maux and test on the bare machine with
+<code>bye</code>.</p>
+
+<!-- src: docs/EXAMPLES.md; scripts/check_examples.py -->
+<p>A lesson is on this site only because <code>check-examples</code> has typed it on
+the machine, a key at a time, the way you will, and asserted what the screen shows.
+The session on each page is the one that passed; the code on each page is the file
+that was typed. Run the same lessons yourself on the release disk: every file is in
+<code>/usr/src/examples</code>.</p>
+
+<h2>The ladder</h2>
+{{gen:ladder}}
+
+<!-- src: docs/SITE.md sec 5; examples/hello/hello.s; examples/hellosys/hello.s -->
+<p>The sources live in the tree under <code>examples/</code> and are staged on the
+release disk under <code>/usr/src/examples</code>, so you can read them on the
+machine. All lesson sources follow the house assembler dialect: 64-character
+lines, 13-character labels, ASCII, no macros.</p>
+
+<!-- src: docs/EXAMPLES-NOTES.md sec 3; docs/man/sh.1 -->
+<p>Typing the lessons found things that do not work yet, in the shell. They are
+reported to the release and not yet fixed; the pages that meet them say so, plainly,
+and the lessons are written to avoid them. The L4 page, on shell scripting, has the
+list.</p>
+
+<p>Meanwhile: <a href="/watch/">watch a demo</a>, <a href="/man/">read the manual</a>,
+or see the <a href="/dev/">developer notes</a>.</p>

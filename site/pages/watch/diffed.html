@@ -1,0 +1,27 @@
+title: The diff is the program
+description: diff -e writes a script for ed. Feed it to ed and one file becomes the other; cmp says nothing.
+demo: diffed
+---
+<div class="band demo">
+<h1>The diff is the program</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / diffed</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: docs/DEMOS.md; site/demos/diffed.py -->
+<p class="lead"><code>diff -e</code> does not describe a change, it <em>is</em> the change: a script of <code>ed</code> commands, last line first. The demo makes a changed copy of a manual page, writes the edit script, hands it to <code>ed</code>, and shows that <code>cmp</code> &mdash; which said the files differ a moment ago &mdash; now says nothing. This is how changes were distributed before there was a <code>patch</code>.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/diffed.py; docs/DEMOS-W1-NOTES.md -->
+<p>This film is made by <code>site/demos/diffed.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that the host finds exactly four changed lines between the two files; that <code>cmp</code> first says they differ; that the script holds exactly one command per changed line, bottom-up, at the line numbers the host computes from the same bytes; and that after <code>ed</code> both <code>cmp</code> and <code>diff</code> say nothing. The checks themselves were tested: with <code>ed</code> replaced by a copy of <code>true</code> the demo fails at "cmp says nothing"; with <code>cmp</code> replaced by <code>true</code> it fails at "cmp says A and B differ"; with <code>diff</code> replaced by <code>cat</code> it fails at "the script went to the file".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

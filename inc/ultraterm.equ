@@ -1,0 +1,95 @@
+*---------------------------------------------------------------
+* ultraterm.equ -- UltraTerminal shared constants
+*---------------------------------------------------------------
+
+UT_COLS        equ   80
+
+* -- UT_ROWS: hoisted here from src/kernel/ultraterm.s
+* -- (2026-08-29): uttest.s compares against it in an immediate
+* -- operand before that module is put, which real Merlin-8
+* -- refuses as a forward reference.
+UT_ROWS        equ   24
+
+* -- UT_PAGE_CTL / UT_VTEMU: hoisted here 2026-09-03 (VIDMODE
+* -- V2.0): tty7.s's TTY_HW_SET drops VIDSEL when a motherboard
+* -- console takes the glass on a machine with a card, and a
+* -- cross-module EQUATE cannot be exported under REL
+* -- (check-librel). Documented at the card's register block in
+* -- src/kernel/ultraterm.s.
+UT_PAGE_CTL    equ   $C0B2        ;b7 MEMSEL, b6 VIDSEL, b4
+                                  ;VTEMU, bits3-0 VRAM page
+UT_MEMSEL      equ   $80          ;bit7: window reads card ROM
+UT_VTEMU       equ   $10          ;bit4: NATIVE UltraTerm mode
+*-- $C0B3 is the CHARACTER ATTRIBUTE REGISTER (Videx manual ch.
+*-- 8; MAME CT2_*): bit7 = 1 hands the attributes to the DIP
+*-- switches; with it CLEAR, bits 5/4 = inverse/highlight for
+*-- cells with bit 7 SET, bits 1/0 the same for plain cells,
+*-- bit 2 the font (clear = the dense HQ set). A cell's bit 7
+*-- therefore picks one of TWO attribute sets per screen. maux
+*-- programs it explicitly (never the switches) as one of:
+UT_ATTR_INV    equ   $20         ;plain lowlight normal; bit-7
+                                 ;cells lowlight INVERSE -- the
+                                 ;factory look, the default
+UT_ATTR_HL     equ   $10         ;bit-7 cells lowlight-normal
+                                 ;-> HIGHLIGHT (bright): bold
+
+* -- The UltraTerm card/CRTC constants, hoisted here from
+* -- src/kernel/ultraterm.s (2026-09-13) when that module was
+* -- split at UT_CLAIM into ultraterm.s + ultraterm2.s for real
+* -- Merlin's 41,215 B source buffer (KULT was 713 B over): both
+* -- halves use
+* -- them and a REL module cannot export an equate. Byte-neutral
+* -- (check-bytes), same rule as UT_ROWS above.
+UT_CRTC_ADDR   equ   $C0B0        ;CRTC register select; read =
+                                  ;status
+UT_CRTC_DATA   equ   $C0B1        ;CRTC data for the selected Rn
+UT_MODE_CTL    equ   $C0B3        ;mode latch. bit2 is the char-
+                                  ;gen ROM's A11, INVERTED: SET
+                                  ;= set0 (standard font),
+                                  ;CLEAR =
+                                  ;set1 (the dense "high
+                                  ;quality" font). HQ 80x24 =
+                                  ;$80.
+UT_SIG         equ   $C30C        ;slot-3 firmware signature
+                                  ;byte = $87. Reading it also
+                                  ;CLAIMS $C800 for slot 3,
+                                  ;which is why UT_CLAIM reads
+                                  ;it.
+UT_WIN         equ   $CC00        ;512-byte VRAM window. The
+                                  ;$CC00 and $CD00 halves are
+                                  ;MIRRORS -- both index the
+                                  ;page-selected 256-byte block
+                                  ;by their low byte, so only
+                                  ;$CC00,y is ever used.
+UT_VIDSEL      equ   $40          ;OR'd into every UT_PAGE_CTL
+                                  ;write -- the page select and
+                                  ;"card owns the monitor" live
+                                  ;in the SAME register, so
+                                  ;writing a bare page number
+                                  ;blanks the display
+UT_VRAM_MASK   equ   $0FFF        ;4 KB ring. 4096 is NOT a
+                                  ;multiple of 80, so scrolled
+                                  ;rows straddle the wrap -- see
+                                  ;docs/CONSOLE.md 10a. Masking
+                                  ;with this is DOCUMENTARY: the
+                                  ;4-bit page nibble plus the
+                                  ;8-bit window offset already
+                                  ;wrap to the same 12 bits.
+UT_R_COLS      equ   1            ;R1  horizontal displayed
+UT_R_ROWS      equ   6            ;R6  vertical displayed
+UT_R_MAXSCAN   equ   9            ;R9  max scan line = cell
+                                  ;height - 1
+UT_R_CRSR_ST   equ   10           ;R10 cursor start + blink ctl
+UT_R_CRSR_END  equ   11           ;R11 cursor end
+UT_R_START_HI  equ   12           ;R12 display start, high 6
+                                  ;bits
+UT_R_START_LO  equ   13           ;R13 display start, low
+UT_R_CRSR_HI   equ   14           ;R14 cursor address, high 6
+                                  ;bits
+UT_R_CRSR_LO   equ   15           ;R15 cursor address, low
+UT_FMT4_ROM    equ   $CF55        ;the card's own CRTC entry,
+                                  ;video format 4 (80x24 HQ):
+                                  ;R0-R15, 16 bytes. The cell
+                                  ;height is its R9 (and R8
+                                  ;interlace), NOT a constant:
+                                  ;v3 = 9 lines, v1 = 16

@@ -1,0 +1,62 @@
+string.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+STRING ENCODING (liba-wide rule, see docs/USERLAND.md for the
+full rationale): every liba string is HIGH-BIT-SET, NUL-
+terminated. High-bit- set because that's what merlin32's `asc
+"..."` literals already emit
+(learning:01KW1GTYGZ9TE2ZGCDG0V2CNE0) AND what the Apple II text
+page's "normal" (uninverted, non-flashing) character encoding
+requires AND what a polled keyboard read returns (malisp's
+OWN_RDKEY: "poll keyboard, return high-bit-set char in A") --
+three independent sources agree, so liba strings match the wire
+format at every boundary that currently exists (literals in,
+screen out, keyboard in) with ZERO runtime conversion on the
+common path. NUL-termination is safe under this scheme precisely
+BECAUSE every valid liba string byte has bit 7 set -- $00 can
+never appear as data, only as the terminator, so there's no
+ambiguity a length-prefixed scheme would otherwise buy you.
+
+The one place conversion IS needed: byte arithmetic that
+produces a value from computation rather than from a
+literal/keyboard/screen source -- classically, decimal digit
+conversion (num.s), where "digit + '0'" naturally lands in the
+LOW-bit ASCII range ($30-$39) and must be pushed high before
+it's a valid liba string byte. MAKEHI/STRIPHI below are that
+boundary; num.s uses the equivalent `ora #$B0` idiom directly
+(also straight from the merlin32-gotchas learning) rather than
+calling MAKEHI.
+
+STRIPHI is now ALSO load-bearing for a second, confirmed
+boundary: src/liba/mli.s's MKPATH uses it (inlined) to convert
+liba strings into ProDOS MLI pathnames, which the TRM confirms
+are 7-bit-clean ("ProDOS clears this high bit" -- TRM ch. 2) --
+not a hypothetical future need, the actual reason every file-
+call util (cat/cp/rm/ls) needs this conversion today. See
+docs/USERLAND.md "ABI RESOLUTIONS" (liba conventions: text
+encoding) for the full ruling.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+STRLEN -- length of a NUL-terminated liba string.
+IN:  PTR0/PTR0+1 = string pointer
+OUT: A = length, 0-255 (v1 caps strings at 255 bytes -- a string
+that
+     doesn't terminate within 255 bytes is treated as length 255 and
+     STRLEN returns without ever finding the NUL; V6-minimal, no runtime
+     guard rail beyond that)
+CLOBBERS: A, Y. PRESERVES: X.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+STRCPY -- copy a NUL-terminated liba
+----------------------------------------------------------------
+----------------------------------------------------------------
+STRCPY -- copy a NUL-terminated liba string, NUL included.
+IN:  PTR0/PTR0+1 = source, PTR1/PTR1+1 = dest (caller-owned, must be big
+     enough -- no bounds checking, V6-minimal)
+OUT: A = length copied, excluding the NUL (same 255-byte cap as
+STRLEN) CLOBBERS: A, Y. PRESERVES: X.
+----------------------------------------------------------------

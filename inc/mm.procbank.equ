@@ -1,0 +1,44 @@
+*---------------------------------------------------------------
+* mm.procbank.equ -- process-bank entry constants: the load
+* address and the argv header/pointer-array addresses every
+* spawned program's own liba startup code reads. Split out of
+* inc/memmap.equ (docs/SELFHOST-CONVERSION.md phase 1) as
+* its OWN file, smaller than the rest of docs/MEMMAP.md #3,
+* because these three symbols are the only ones nearly every
+* compilation unit needs -- every src/bin/*.s program PUTs this
+* file (via inc/startup.equ's ARGC/ARGV derivation) whether
+* or not it ever touches argv, spawn, or the $BF00 overlay.
+* inc/mm.procbnk2.equ holds the rest of docs/MEMMAP.md
+* #3 (heap top, overlay, LC storage, the $FFxx page) and PUTs
+* AFTER this file wherever both are needed, since its own
+* derivations (SB_WINDOW, ARG_MAX) reference LOAD_BASE below.
+* Full design notes: I.MEMMAPE.TXT (docs/a2/), docs/MEMMAP.md #3
+*---------------------------------------------------------------
+
+* See I.MEMMAPE.TXT: "3. Canonical process-bank layout (docs/ME"
+
+LOAD_BASE       equ   $0800       ;exec entry point / process
+                                  ;image load addr
+
+* -- The argv block a spawn() stages into the child, inside
+* -- PRC_LOWFREE (docs/MEMMAP.md #3.2, docs/SYSCALL.md ruling
+* -- 13, inc/startup.equ's ARGC/ARGV). Named HERE, once:
+* -- src/kernel/process.s used to declare its own copies of
+* -- these three addresses while startup.equ derived ARGC/ARGV
+* -- from PRC_LOWFREE separately, which is how two layers came
+* -- to disagree about the same layout (docs/LIMITS.md).
+* -- THE ENVIRONMENT SHARES THE BLOCK (docs/SYSCALL.md item 13c,
+* -- 2026-08-22), Unix-style: envc and envp's pointer array
+* -- follow argv's inside PRC_ARGV_PTRS, and envp's strings
+* -- follow argv's inside PRC_ARGV_STR. Only argc's own address
+* -- is fixed; envc sits at PRC_ARGV_PTRS+2*argc, which is why
+* -- src/liba/env.s computes it at runtime instead of naming it
+* -- here.
+PRC_ARGV_HDR   equ   $0200       ;argc, 1 byte (== PRC_LOWFREE)
+PRC_ARGV_PTRS  equ   $0201       ;pointer arrays: argc*2 bytes,
+                                  ;then envc, then envc*2 bytes
+
+* -- PRC_LC_TOP: the first byte a process's language card does
+* -- NOT own -- the kernel's $FFxx syscall door. An LC-resident
+* -- table ends with `err */PRC_LC_TOP` (ex.s, vi.s, nulib2.s).
+PRC_LC_TOP  equ   $FF00

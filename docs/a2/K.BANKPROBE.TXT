@@ -1,0 +1,257 @@
+bankprobe.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+docs/TASKS.md #5. Meant to be PUT-included (merlin32/Merlin
+`put`, cribbed from ~/src/malisp/src/boot.s's `put apple2.s`
+etc. -- confirmed real directive, not merlin32-only cross- build
+sugar) into a boot image that provides the org/dsk chrome; this
+file emits no ORG/DSK of its own and is otherwise dependency-
+free (no calls into kernel code that doesn't exist yet -- see
+docs/TASKS.md #2/#3, both still in flight).
+
+Library handles fetched for this task (HACKING.md's notebook loop):
+  learning:01KYYJ98T5R0M9K1AW2550M132 -- the bank tables (48 banks on a
+    fully-expanded II/III: $00-$17,$30-$37,$50-$57,$70-$77; the different
+    RamWorks-*basic* interleave map is a separate table in the same
+    learning), $C073 write-only / zeroed-at-power-up-not-reset / trips
+    the paddle strobe, video scanner hard-wired to bank 0.
+  learning:01KYYPR1CB9H9JK88W5QF56QWQ -- $C07x is CONTESTED: MultiRam
+    decodes the whole $C070-$C07F range as bank select (any write in
+    that window can silently reselect the bank), TransWarp takes $C074
+    for speed control and collides with MultiRam's decode. This is
+    exactly why the probe below writes ONLY the literal address $C073
+    within $C07x, never $C070-$C072/$C074-$C07F -- on a RamWorks card
+    that's the only address that does anything; on a whole-range
+    decoder, touching neighboring addresses would be an unrelated
+    accidental bank reselect the probe has no business causing.
+
+ARCHITECTURE.md cross-checks:
+  - "$C073: write-only... the selection is UNKNOWN at every entry" --
+    this module never trusts a prior selection; every probed bank number
+    is written before it is read back, every time.
+  - "$C000-$CFFF... always main... no //e switch ever steers it to aux
+    RAM" -- $C073 itself is I/O space, not RAM, so writing it is safe
+    from ANY code location regardless of RAMRD/RAMWRT/ALTZP state; only
+    the aux DATA access (the signature byte itself) needs the RAMRD
+    instruction-fetch discipline below.
+  - 80STORE bracket rule (learning:01KW1GTYHGXMBZNR6DMQB2F712): needed
+    only when the signature address falls in $0400-$0BFF or the hires
+    apertures. PROBEADDR below is $9000 -- outside the video apertures on
+    every bank, main or aux -- so this module has NO 80STORE dependency
+    at all and never touches $C000/$C001. Stated per the task contract's
+    "or simply choose signature addresses outside the video ranges and
+    say so."
+  - "each bank must self-identify" (per-bank identity byte, since $C073
+    can't be read back): OUT OF SCOPE for this module on purpose. The
+    probe's own signature write (step 2 below) happens to leave each
+    live bank momentarily holding its own number at PROBEADDR, so the
+    mechanism is compatible with a future identity-byte convention, but
+    stamping a PERSISTENT identity byte into every allocated bank (as
+    part of the per-bank $FFxx page / PCB the real kernel will own) is
+    task #3's ($FFxx page) and #6's (PCB) job, not discovery-time
+    probing -- this module hands back a free-list of bank NUMBERS only,
+    and does not write anything into a bank that survives past the
+    probe loop's next iteration.
+
+RAMRD-vs-instruction-fetch discipline
+(learning:01KW1GTYGVYAPQRGS5P7J66RWD, confirmed in production by
+~/src/malisp/src/bank.s's RDAUX_SRC/BANKINIT): RAMRD governs ALL
+reads in $0200-$BFFF, including the CPU's OWN OPCODE FETCHES --
+not just explicit LDA operands. Code that flips RAMRD on while
+its own PC is sitting in $0200-$BFFF (which this module's PC is,
+once PUT into a $0800-based boot image) will have its very next
+opcode fetch redirected into aux memory and crash. The fix
+(malisp's, reused verbatim here): the single-byte aux-read stub
+is position-independent, assembled inline as RDAUX_SRC below,
+and copied ONCE to a fixed page-1 destination (AUXRD, $0180)
+before probing starts -- page 1 is ALTZP-governed, not RAMRD-
+governed, so code executing FROM there is immune to the RAMRD
+flip it performs. AUXRD sits at the low end of page 1 (malisp's
+own reasoning: "lower addresses = safer... maximise clearance
+before a deep stack overruns them") -- this module's call depth
+is at most two JSRs (caller -> BankProbe -> AUXRD), a handful of
+stack bytes below $01FF, nowhere near $0180.
+
+The WRITE side needs no such relocation: RAMWRT governs writes
+only, not instruction fetch, so the signature write executes
+safely straight from main $0800+ code (same shortcut bank.s's
+WRAUX takes, and its own comment confirms why).
+
+----------------------------------------------------------------
+----------- ALGORITHM -- two-phase signature write/readback with
+built-in alias dedupe ------------------------------------------
+--------------------------------- TWO EXPLICIT PHASES over bank
+number N = 0 .. PROBEMAX-1 (all 128 values the 7-bit-plus-a-
+guard register can express -- "probe all 128 bank numbers" per
+the task). This is deliberately NOT a single combined write-
+then-immediately-read-back loop -- see the correctness note
+below for why that shape looks plausible but does not dedupe
+anything.
+
+  PHASE 1 (ascending N = 0..127): select bank N, write N ITSELF as the
+    signature byte at PROBEADDR (RAMWRT bracket). No reads at all in
+    this phase.
+  PHASE 2 (ascending N = 0..127, after phase 1 is FULLY done): select
+    bank N, read PROBEADDR back (RAMRD bracket, via AUXRD). If the byte
+    read back != N, this bank number is not a live, distinct 64K of
+    storage -- skip it (see "why this dedupes aliases" below). If it
+    matches, the bank is live and distinct: reserve bank 0
+    unconditionally (never added to the free list, even though it
+    always passes its own self-check on RamWorks-family hardware -- see
+    the alias/reserve note above); every other passing N is appended to
+    FREELIST and FREECOUNT is incremented.
+
+CORRECTNESS NOTE (why this MUST be two passes, not one): an
+earlier version of this module folded phase 1 and phase 2 into a
+single loop -- select N, write N, immediately JSR AUXRD,
+compare. Walk an alias pair A<B through THAT shape: iteration A
+writes A into the shared cell and reads A stright back --
+PASSES. Iteration B (later) writes B and reads B back -- PASSES
+too. Both alias members land on the free list; the collapse
+described below never happens, because the read for A happens
+BEFORE B ever gets a chance to clobber the shared cell -- there
+is no "after all writes are done" moment inside a single
+combined pass. The dense verilogapple rig (below) cannot catch
+this class of bug: it has no aliases to collapse, so a single-
+pass and a two-pass version produce identical (correct-looking)
+output on it. Caught only by re-deriving the alias argument
+against the actual code, not the emulator gate -- exactly the
+untestable-path trap the task brief warned about.
+
+WHY THE TWO-PHASE VERSION DEDUPES ALIASES WITHOUT AN O(N^2)
+CROSS-COMPARE: Two bank numbers A < B that are electrical
+aliases of the SAME physical 64K (a MultiRam-style incomplete
+decode, or a period RamWorks card's unbuilt-slot floating bits
+-- see learning:01KYYJ98T5R0M9K1AW2550M132's "the bank bits ARE
+the select lines" section) share one physical cell at PROBEADDR.
+Because phase 1 writes signatures in STRICTLY ASCENDING N order
+and phase 2 does not begin until phase 1 has written EVERY bank
+number, by the start of phase 2 that shared cell holds whichever
+of {A, B} was written LAST -- which is always B, since B > A and
+phase 1 is ascending. So in phase 2: selecting A and reading
+back gets B's value (B != A) -- FAILS, excluded. Selecting B and
+reading back gets B's own value -- PASSES, included. The alias
+group collapses to exactly one free-list entry (its HIGHEST-
+numbered member) with no pairwise comparison, because "did I get
+clobbered by a later write" and "am I an alias of a later bank"
+are the same question once ALL writes precede ANY read. An
+unpopulated bank number (real hardware: floating bus / no card
+there; this task's fast- backend rig: AuxRamWorks returns open-
+bus $FF for any bank >= the configured aux_banks, per
+sim/aux/aux_ramworks.h) fails the same self-check for a
+different reason (readback is $FF, which can only equal N when
+N=$FF -- outside PROBEMAX's 0..127 range, so it never false-
+passes) -- one check handles both failure modes.
+
+BONUS the two-phase split buys for real hardware (not exercised
+by either verilogapple backend, noted for completeness): a
+single combined write-then-immediately-read on an UNPOPULATED
+bank risks a floating-bus echo -- the just- written value
+lingering on the data bus from capacitance and reading back as
+if it stuck, producing a false pass that has nothing to do with
+aliasing. By the time phase 2 re-reads any given bank, 127 other
+bus operations (phase 1's remaining writes, or phase 2's own
+preceding reads) have intervened and scrubbed that capacitive
+echo. verilogapple's clean, deterministic $FF-on-unpopulated
+read is the OPTIMISTIC case for this failure mode, not a
+guarantee real iron shares -- another reason the alias/floating-
+bus path stays "verified by argument, not by test" until a
+sparse or physical rig is available (see the acceptance-split
+note below).
+
+WHAT THIS CANNOT TEST HERE (the acceptance-split, docs/TASKS.md
+#5 post-review amendment, "cold-read Q2-2"): PLAINLY STATED --
+alias collapse is verified by the argument above, NOT by test,
+until an aliasing card model exists. The two-phase restructure
+fixes a real correctness bug an architect review caught by re-
+deriving the argument against the code (not by running anything
+-- see the correctness note above); nothing in this repo's test
+rig can independently confirm it until that model lands, so this
+stays an argument-level guarantee, not an emulator-verified one.
+The alias-dedupe CODE PATH itself is real and will fire
+correctly against a genuine sparse/aliased decode, but NEITHER
+verilogapple backend currently models one --
+sim/aux/aux_ramworks.h's AuxRamWorks is dense-only (contiguous
+banks 0..bank_count_-1, everything else silently open-bus, never
+aliased to an already-populated bank). A period RamWorks II/III
+card, fully expanded, would present exactly the sparse map
+documented in learning:01KYYJ98T5R0M9K1AW2550M132 -- banks
+$00-$17, $30-$37, $50-$57, $70-$77 live, everything else in
+0-127 either unpopulated (open bus, same as the dense model) or
+-- on a MultiRam-class whole-$C07x-decode card, NOT modeled by
+either verilogapple backend at all -- aliased onto one of those
+live banks (the case this module's dedupe logic exists for).
+Exercising the alias branch therefore needs a sparse aux model;
+one exists on the unmerged verilogapple `feat/sparse-ramworks`
+branch tracked as verilogapple issue #13(b) (`docs/TASKS.md`
+#9(b)) but is NOT available to this task -- per the operator's
+cold-read amendment, this is out of scope here, not silently
+skipped. `make check-probe` (see src/test/probetest.s and the
+Makefile) therefore only exercises the DENSE/no-alias path
+(allocator BEHAVIOR: correct count, correct membership, bank 0
+reserved) on the fast backend, which the amendment explicitly
+sanctions ("allocator BEHAVIOR tests... are fine on fast per the
+operator's always-write-$C073 ruling"). Sparse-map handling and
+reset-persistence fidelity both remain untested until #9(b)/#13
+lands or MAME/real hardware time is available -- not claimed
+here.
+
+RECONCILED WITH inc/memmap.equ (task #2 merged,
+docs/MEMMAP.md). This file previously carried its own
+provisional C073/RAMRDOFF/RAMRDON/ RAMWRTOFF/RAMWRTON equates
+(marked "reconcile when task #2 merges"). It now refers to the
+register by memmap.equ's canonical names instead -- BANKSEL,
+RAMRDMAIN/RAMRDAUX, RAMWRTMAIN/RAMWRTAUX. memmap.equ's own
+comment on BANKSEL ("WRITE-ONLY, UNKNOWN at every entry; always
+written, never read for meaning") is the same discipline this
+module already followed -- nothing about the probe's behavior
+changes, only which file owns the register- address constants.
+
+PRECONDITION ON THE INCLUDER, NOT A `use`/`put` HERE (merlin32
+dialect gotcha, found building this reconcile -- deposit-
+worthy, see docs/TOOLCHAIN.md): merlin32's source-file discovery
+only recurses ONE level of `put`/`use` from the file actually
+handed to the assembler. src/check.memmap.s (the TOP- LEVEL file
+merlin32 is invoked on) can `use ../inc/memmap.equ` directly
+and it works; this file CANNOT -- bankprobe.s only ever reaches
+the assembler by being `put` into probetest.s, so a `use`/`put`
+written HERE, one level further down, is silently never loaded
+(confirmed empirically: `merlin32`'s "Loading Sources files"
+pre-pass lists only the top-level file's own direct `put`
+targets; a second-level `use ../../inc/memmap.equ` added
+inside this file produced "Can't find format for element
+'BANKSEL'" -- not a missing- file error, a "this directive was
+never seen" error). CONSEQUENCE: whatever file PUTs this module
+in must itself `use ../inc/memmap.equ` (or `put` it) BEFORE
+the `put .../bankprobe.s` line, so
+BANKSEL/RAMRDMAIN/RAMRDAUX/RAMWRTMAIN/ RAMWRTAUX already exist
+by the time this file's code references them.
+src/test/probetest.s does this; any future includer must too.
+
+WHAT STAYS MODULE-LOCAL, AND WHY (not silently kept alongside a
+memmap.equ equivalent -- there isn't one at a fixed address
+yet): memmap.equ reserves K_BANKTBL_SIZE = 256 bytes inside
+K_CODE_C ("free-list/allocator table, 1B x 128 banks") for
+exactly this table in the REAL kernel -- and this module's
+actual footprint (FREECOUNT 1B + FREELIST up to 127B + BANKTMP
+1B = 129B) fits comfortably inside that 256-byte budget,
+confirming task #2 sized it correctly for this design. But
+K_CODE_C's internal layout is explicitly "sizes only... exact
+placement is link-order, not a fixed address" (memmap.equ's own
+comment) -- there is no K_BANKTBL *address* symbol to reconcile
+against yet, because no linker/link-order step exists until task
+#7/#8's REL/LNK work. So
+PROBEADDR/AUXRD/FREECOUNT/FREELIST/BANKTMP below stay this
+STANDALONE TEST MODULE's own explicit $9xxx/$0180 addresses
+(chosen inside K_CODE_C's $6000-$BFFF span, so they're at least
+in the right general region) rather than a placeholder alias for
+a symbol that doesn't exist. When the real kernel build links
+this table into its K_CODE_C allocation, FREELIST/FREECOUNT get
+re-pointed then -- that's a task #7/#8-scoped change, not one
+this module can anticipate correctly by guessing an address now.
+----------------------------------------------------------------
+(BANKSEL/RAMRDMAIN/RAMRDAUX/RAMWRTMAIN/RAMWRTAUX come from the
+includer's own `use inc/memmap.equ` -- see the precondition
+note above. Not re-declared or re-included here.)

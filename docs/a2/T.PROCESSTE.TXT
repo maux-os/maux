@@ -1,0 +1,17 @@
+processtest.s -- design notes
+================================================================
+
+
+----------------------------------------------------------------
+processtest.s -- task #12 acceptance image
+----------------------------------------------------------------
+----------------------------------------------------------------
+processtest.s -- task #12 acceptance image.
+
+The boot kernel starts one parent process in bank 1. That parent
+exercises the public syscall surface only:
+  - spawn("E", argv, NULL), wait() round-trips status 7
+  - pipe(), spawn reader/writer with fdactions dup/close, parent closes its
+    copies, then wait() reaps statuses $42 and $24
+Results live in bank 1 at $0980+ for scripts/check_process.py.
+----------------------------------------------------------------

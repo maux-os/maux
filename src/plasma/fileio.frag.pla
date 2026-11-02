@@ -1,0 +1,37 @@
+//
+// fileio.frag.pla -- the plasm-only inc/ -> /usr/inc fallback, in four
+// pieces that scripts/splice_fileio.py puts at the //@INCFB markers of
+// fileio.pla (see its header, change 5). Not a PLASMA source by itself.
+//
+//@@ EXPECT
+// marker counts fileio.pla must have; splice_fileio.py refuses any other
+DECL=1
+LOCALS=1
+BLOCK=1
+STOP=2
+//@@ DECL
+byte nofb               // set once plasm destroys/creates a file
+//@@ LOCALS
+    byte alt[65]
+    byte first
+//@@ BLOCK
+    //
+    // (change 5) plasm only, read only. 5 = strlen("/usr/"), 63 = the
+    // longest MLI pathname. Off once a destroy/create has been tried.
+    //
+    if perr and not nofb and ^path > 4 and ^path < 59 and ^(path + 4) == '/'
+        if (^(path + 1) | $20) == 'i' and (^(path + 2) | $20) == 'n' and (^(path + 3) | $20) == 'c'
+            first = perr
+            strcpy(@alt, "/usr/")
+            strcat(@alt, path)
+            params.0 = $83
+            params:1 = @alt
+            params.5 = 0
+            perr     = syscall($C8, @params)
+            if perr
+                perr = first
+            fin
+        fin
+    fin
+//@@ STOP
+    nofb = 1

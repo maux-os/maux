@@ -1,0 +1,280 @@
+Subject: ProDOS File Types 2.0
+From: jon_relay@hotmail.com (Mr.I'mAnOutOfControlLisaSimpsonFannnn)
+Newsgroups: comp.emulators.apple2
+Message-ID: <jon_relay-2808992212570001@nn-157-22-180-232.napanet.net>
+Lines: 263
+Date: Sun, 29 Aug 1999 05:10:23 GMT
+NNTP-Posting-Host: 157.22.180.232
+NNTP-Posting-Date: Sun, 29 Aug 1999 01:10:23 EDT
+Organization: NapaNet (napanet.net)
+
+
+
+HX TYPE  AUXTYPE   DEFINITION                         DOS 3.3 EQUIV
+
+00 UNK             Unknown
+01 BAD             Bad Block File
+02 PCD             Apple /// Pascal Code
+03 PTX             Apple /// Pascal Text
+04 TXT   LenOfRcd  Text File                           T 00/80
+05 PDA             Apple /// Pascal Data
+06 BIN   LoadAddr  Binary File                         B 04/84
+07 FNT             Apple /// Font
+08 FOT   4000      Packed HiRes
+08 FOT   4001      Packed Double HiRes
+08 FOT   8001      Printographer Packed HiRes
+08 FOT   8002      Printographer Packed Double HiRes
+09 BA3             Apple /// BASIC Program
+0A DA3             Apple /// BASIC Data
+0B WPF             Word Processor File
+0C SOS             Apple /// SOS System File
+0F DIR             Directory
+10 RPD             Apple /// RPS Data
+11 RPI             Apple /// RPS Index
+12 AFD             Apple /// AppleFile Discard
+13 AFM             Apple /// AppleFile Model
+14 AFR             Apple /// AppleFile Report
+15 SCL             Apple /// Screen Library
+16 PFS             PFS Document
+16 PFS   0001      PFS File
+16 PFS   0002      PFS Word Processing
+16 PFS   0003      PFS Graphing
+16 PFS   0004      PFS Planning
+16 PFS   0016      PFS Internal Data
+19 ADB   UprLwr    AppleWorks Database
+1A AWP   UprLwr    AppleWorks Word Processing
+1B ASP   UprLwr    AppleWorks Spreadsheet
+20 TDM             Desktop Manager File
+21 IPS             Instant Pascal Source
+22 UPV             UCSD Pascal Volume
+29 3SD             Apple /// SOS Dictionary
+2A 8SC             Source Code
+2B 8OB             Object Code
+2B 8OB   8001      GBBS Pro Object Code
+2C 8IC             Interpreted Code
+2C 8IC   8003      APEX Program File
+2D 8LD             Language Data
+2E P8C             ProDOS 8 Code Module
+2E P8C   8001      Davex 8 Command
+2E PTP   8002      Point-To-Point Driver
+2E PTP   8003      Point-To-Point Code
+41 OCR             OCR Data
+41 OCR   8001      InWords Font Table
+42 FTD   SrchOrdr  File Type Definitions
+50 GWP             Apple IIGS Word Processor
+50 GWP   5445      TeachText File
+50 GWP   8001      DeluxeWrite File
+50 GWP   8010      AppleWorks GS
+51 GSS             Apple IIGS Spreadsheet
+51 GSS   8010      AppleWorks GS
+52 GDB             Apple IIGS Database
+52 GDB   8001      GTV
+52 GDB   8010      AppleWorks GS
+52 GDB   8011      AppleWorks GS Template
+52 GDB   8013      GSAS
+53 DRW             Drawing File
+53 DRW   8002      Graphic Disk Labeler
+53 DRW   8010      AppleWorks GS
+54 GDP             Apple IIGS Desktop Publishing
+54 GDP   8002      GraphicWriter
+54 GDP   8010      AppleWorks GS
+54 GDP   DD3E      Medley
+55 HMD             HyperMedia
+55 HMD   0001      HyperCard GS
+55 HMD   8001      Tutor-Tech
+55 HMD   8002      HyperStudio
+55 HMD   8003      Nexus
+56 EDU             Educational Data
+56 EDU   8001      Tutor-Tech Scores
+57 STN             Stationery
+57 STN   8003      Music Writer
+58 HLP             Help File
+58 HLP   8002      Davex 8 Help
+59 COM             Communications
+59 COM   8010      AppleWorks GS
+5A CFG             Configuration File
+5A CFG   0002      Battery RAM
+5A CFG   0003      AutoLaunch
+5A CFG   0005      GSBug
+5A CFG   8001      Master Tracks Jr.
+5A CFG   8002      GraphicWriter
+5A CFG   8003      Z-Link
+5A CFG   8004      JumpStart
+5A CFG   8005      Davex 8
+5A CFG   8006      Nifty List
+5A CFG   8007      GTV Videodisc
+5A CFG   8008      GTV Workshop
+5A PTP   8009      Point-To-Point
+5A CFG   800A      ORCA Disassembler
+5A CFG   800B      SnowTerm
+5A CFG   800C      My Word!
+5A CFG   800D      Chipmunk
+5A CFG   8010      AppleWorks GS
+5A CFG   8011      SDE Shell
+5A CFG   8012      SDE Editor
+5A CFG   8013      SDE Ruler
+5A CFG   8014      Nexus
+5A CFG   8015      DesignMaster
+5A CFG   801C      Platinum Paint
+5A CFG   801E      Allison
+5A CFG   8021      GSAS Accounting
+5B ANM             Animation File
+5B ANM   8001      Cartooners Movie
+5B ANM   8002      Cartooners Actors
+5B ANM   8005      Arcade King Super
+5C MUM             MultiMedia
+5C MUM   8001      GTV Playlist
+5D ENT             Entertainment
+5D ENT   8001      Solitaire
+5D ENT   8002      BattleFront Scene
+5D ENT   8003      BattleFront Game
+5D ENT   8006      Blackjack Tutor
+5E DVU             Development Utility Document
+5E DVU   0001      Resource File
+5E DVU   8001      ORCA Disassembler Template
+5E DVU   8003      DesignMaster
+60 PRE             PC Pre-Boot
+6B BIO             PC BIOS
+6D DVR/TDR         PC Driver
+6E PRE             PC Pre-Boot
+6F HDV             PC Volume
+A0 WP_             WordPerfect
+AB GSB             Apple IIGS BASIC Program File
+AC TDF             Apple IIGS BASIC TDF
+AD BDF             Apple IIGS BASIC Data
+B0 SRC             Apple IIGS Source Code
+B0 SRC   0001      APW Text
+B0 SRC   0003      APW 65816 Assembly Source
+B0 SRC   0005      ORCA Pascal Source
+B0 SRC   0006      APW Command File
+B0 SRC   0008      ORCA C Source
+B0 SRC   0009      APW Linker Command File
+B0 SRC   000A      APW C Source
+B0 SRC   000C      ARCA Desktop Command File
+B0 SRC   0015      APW Rez Source
+B0 SRC   001E      TML Pascal Source
+B0 SRC   0116      ORCA Disassembler Script
+B0 SRC   0503      SDE Assembler Source
+B0 SRC   0506      SDE Command Script
+B0 SRC   0719      PostScript
+B1 OBJ             Apple IIGS Object Code
+B2 LIB             Apple IIGS Library
+B3 S16             Apple IIGS Program
+B4 RTL             Apple IIGS Runtime Library
+B5 EXE             Apple IIGS Shell
+B6 STR/PIF XifB16  Perminent Initialization File
+B7 TSF/TIF XifB16  Temporary Initialization File
+B8 NDA   XifB16    New Desk Accessory
+B9 CDA   XifB16    Classic Desk Accessory
+BA TOL             Tool
+BB DRV/DVR XifB16  Device Driver
+BB DRV/DVR  7F01   GTV Videodisc Serial Driver
+BB DRV/DVR  7F02   GTV Videodisc Game Port Driver
+BC LDF             Generic Load File
+BC LDF   4001      Nifty List Module
+BC LDF   4002      Super Info Mudule
+BC LDF   4004      Twilight File
+BD FST             Apple IIGS File System Translator
+BF DOC             Apple IIGS General Document
+C0 PNT             Apple IIGS Packed Super HiRes Graphics
+C0 PNT   0000      PaintWorks Packed Picture
+C0 PNT   0001      Packed Super HiRes Graphics
+C0 PNT   0002      Preferred Format Picture
+C0 PNT   0003      Packed QuickDraw II PICT File
+C0 PNT   8001      GTV Background Image
+C1 PIC             Apple IIGS Super HiRes Graphics
+C1 PIC   0000      Super HiRes Screen
+C1 PIC   0001      QuickDraw PICT File
+C1 PIC   0002      Super HiRes 3200 Colors
+C1 PIC   8001      Allison Raw Image
+C1 PIC   8002      ThunderScan Image
+C2 ANI             PaintWorks Animation
+C3 PAL             PaintWorks Palette
+C5 OOG             Object-Oriented Graphics
+C5 OOG   8000      Draw Plus
+C5 OOG   C000      DYOH Architecture
+C5 OOG   C001      DYOH Predrawn
+C5 OOG   C002      DYOH Custom
+C5 OOG   C003      DYOH Clipboard
+C5 OOG   C004      Reserved
+C5 OOG   C005      Reserved
+C5 OOG   C006      DYOH Landscape
+C6 SCR             Script
+C6 SCR   8001      Davex 8
+C7 CDV   XifB16    Control Panel
+C8 FON             QuickDraw Font
+C8 FON   0000      QuickDraw II Font
+C9 FND             Finder Data
+CA ICN             Icons
+D5 MUS             Music File
+D5 MUS   0000      Music Construction Set
+D5 MUS   0001      MIDI Synth
+D5 MUS   0007      SoundSmith
+D5 MUS   8002      Diversi-Tune
+D5 MUS   8003      Master Tracks Jr.
+D5 MUS   8004      Music Writer
+D5 MUS   8005      Arcade King Super
+D6 INS             Instrument File
+D6 INS   0000      Music Construction Set
+D6 INS   0001      MIDI Synth
+D6 INS   8002      Diversi-Tune
+D7 MDI             MIDI File
+D7 MDI   0000      MIDI Standard
+D8 SND             Sound File
+D8 SND   0000      AIFF Sound
+D8 SND   0001      AIFF-C Sound
+D8 SND   0002      ASIF Instrument
+D8 SND   0003      Sound Resource
+D8 SND   0004      MIDI Synth Wave Data
+D8 SND   8001      HyperStudio Sound
+D8 SND   8002      Arcade King Super
+DB DBM   0001      DB Master Document
+E0 LBR             Archived Files
+E0 LBR   0000      ALU
+E0 LBR   0001      AppleSingle
+E0 LBR   0002      AppleDouble Header
+E0 LBR   0003      AppleDouble Data
+E0 LBR   8000      Binary II
+E0 LBR   8001      AppleLink ACU
+E0 LBR   8002      ShrinkIt
+E0 LBR   8004      Davex Archived Volume
+E0 LBR   8006      EZ Backup Saveset
+E0 LBR   8007      ELS DOS 3.3 Volume
+E2 DTS/ATK         AppleTalk Data
+EE R16             EDASM 816 Relocatable Code
+EF PAS             Pascal Area
+F0 CMD             ProDOS Command File
+F1 OVL             User Defined 1
+F2 UD2             User Defined 2
+F3 UD3             User Defined 3
+F4 UD4             User Defined 4
+F5 BAT             User Defined 5
+F6 UD6             User Defined 6
+F7 UD7             User Defined 7
+F8 PRG             User Defined 8
+F9 P16             Apple IIGS System File
+FA INT             Integer BASIC Program File         I 01/81
+FB IVR             Integer BASIC Variable File
+FC BAS             Applesoft BASIC Program File       A 02/82
+FD VAR             Applesoft BASIC Variable File
+FE REL             EDASM Relocatable Code             R 10/90
+FF SYS             ProDOS System File
+
+      LenOfRcd Length of record
+      LoadAddr Load address
+      UprLwr   Uppercase/lowercase in filename
+      SrchOrdr Search order
+      XifB16   Don't load if most-significant bit is 1
+
+-- 
+jonrelay@napanet.net  jrelay.cjb.net
+An Apple II fanatic since 1998!
+
+Syntax Error: an error on a criminal's tax record.
+Bad Subscript: a criminal reading a book on a subway.
+Unimplemented Trap: when a bear trap isn't set up properly and thus does not work.
+
+
+
+
+

@@ -1,0 +1,36 @@
+.\" Derived from Research UNIX V1 mkdir(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/mkdir
+.\" Retrieved 2026-09-19; archived response SHA256: be779c076b5a4f6f14cb5bd3b3ab0d2de2aa2a902d904e734874e260b66d5943
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH MKDIR 1 "September 19, 2026" maux
+.SH NAME
+mkdir \- make directories
+.SH SYNOPSIS
+.B mkdir
+.RB [ \-p ]
+.I directory ...
+.SH DESCRIPTION
+.I Mkdir
+creates each named directory.
+Without
+.BR \-p ,
+an existing name is an error.
+.TP
+.B \-p
+Make missing intermediate directories as well, and accept an existing
+directory as success.
+.PP
+A failed operand is reported; the remaining operands are attempted.
+Directories use ProDOS names and attributes, not Unix ownership or modes.
+For example:
+.PP
+.B mkdir \-p work/src
+.SH FILES
+/usr/man/MKDIR  this page
+.SH "SEE ALSO"
+rmdir(1), ls(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if all operands succeed, 1 if any cannot be created, 2 for usage errors.

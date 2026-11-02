@@ -1,0 +1,63 @@
+title: vi hands its text to other programs
+description: On a new file, vi reads in a pipeline, sorts the whole buffer, lower-cases a range, numbers the lines and pipes the buffer out to wc, then writes the file and cat shows the disk.
+demo: vi
+---
+<div class="band demo">
+<h1>vi hands its text to other programs</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / vi</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/vi.py; docs/DEMO-VIBANG-NOTES.md -->
+<p class="lead">A real <code>vi</code>, at 80 columns, on a new file in
+<code>/tmp</code>. Its <code>!</code> commands pass text to the rest of the
+system: <code>:r !ls /usr/man | head -8</code> reads a pipeline's output into
+the buffer, <code>:%!sort -r</code> hands the whole buffer to
+<code>sort</code> and takes the answer back, <code>:2,4!tr A-Z a-z</code> sends
+only lines 2 to 4 through <code>tr</code>, and <code>:%!nl</code> numbers every
+line. Then the file is written, <code>:!wc -l notes</code> runs
+<code>wc</code> on it through a shell escape, and <code>cat</code> shows what
+is on the disk.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/vi.py; docs/DEMO-VIBANG-NOTES.md -->
+<p>This film is made by <code>site/demos/vi.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. After every editing step it
+reads the 23 rows of the editing window and requires the buffer's lines, in
+order, with a <code>~</code> on every row below them; the bottom status row is
+not read. Every cell must match exactly except one: the cell under the cursor,
+which the Apple paints as a different glyph for a lower-case letter, and the
+gate accepts only that glyph, at the cursor's position. The expected rows are
+computed on the host from the bytes of the image (the names in
+<code>/usr/man</code>) and what <code>sort</code>, <code>tr</code> and
+<code>nl</code> do to them; nothing about a result is typed into the demo. It
+requires that the held output of <code>:!wc -l notes</code> says 8 lines for
+the file just written, that <code>cat</code> on the file shows the numbered
+list in order, that <code>cksum</code> equals the host's checksum of the bytes
+the file must hold, and that no editor temporary file is left in the
+directory. The checks themselves were tested: with <code>sort</code> or <code>tr</code>
+replaced by a script that changes one letter of one line, with
+<code>sort</code>, <code>tr</code>, <code>head</code> or <code>wc</code>
+replaced by a copy of <code>cat</code>, and with <code>nl</code>,
+<code>wc</code>, <code>ls</code> or <code>sh</code> replaced by
+<code>true</code>, the demo fails at the row that uses it.</p>
+
+<h2>What this <code>vi</code> does not do yet</h2>
+<!-- src: docs/DEMO-VIBANG-NOTES.md; docs/man/vi.1 (BUGS); docs/POSIX-GAPS.md -->
+<p>The filter commands are the colon forms, which <code>vi</code> hands to its
+<code>ex</code> engine. The classic normal-mode forms <code>!!</code> and
+<code>!}</code> are not implemented: <code>!</code> in command mode is
+ignored (listed under BUGS in vi(1)), so the film uses the colon forms only.
+Also, <code>:w !cmd</code>, which pipes the buffer out to a command, does not
+yet hold the command's output on the screen as POSIX vi does, so the film does
+not show it.</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

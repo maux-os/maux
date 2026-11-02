@@ -1,0 +1,12 @@
+//
+// hello2.pla -- the check-plasma M2 fixture. A NORMAL PLASMA module:
+// it imports cmdsys (the runtime's exported standard library) and
+// prints with puts. Running it proves the loader resolved a dependency
+// by name (CMDSYS), bound an imported symbol (PUTS) through the ESD,
+// relocated the module onto the heap above rt, and that rt's console
+// lands on fd 1.
+//
+include "inc/cmdsys.plh"
+
+puts("HELLO VIA CMDSYS\n")
+done

@@ -1,0 +1,206 @@
+.\" printf.1 -- maux's printf(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic printf(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as xargs.1/cut.1. Rendered at
+.\" build time to build/man/PRINTF.TXT and staged on the play
+.\" image as /usr/man/PRINTF: `more /usr/man/PRINTF`.
+.TH PRINTF 1 "September 14, 2026" maux
+.SH NAME
+printf \- write formatted output
+.SH SYNOPSIS
+.B printf
+.I format
+[
+.I argument
+] ...
+.SH DESCRIPTION
+.I Printf
+writes
+.I format
+to standard output, taking successive
+.I argument
+operands to satisfy the conversions
+.I format
+contains.
+.I Format
+is reused as often as necessary to satisfy every
+.IR argument ,
+but only while it contains at least one argument-consuming
+conversion; a
+.I format
+with none is written exactly once regardless of how many
+.I argument
+words follow it.
+An
+.I argument
+.I printf
+runs out of before
+.I format
+does is treated as an empty string or the value 0, whichever
+the conversion consuming it wants.
+.PP
+Within
+.IR format ,
+an unescaped
+.B %
+introduces a conversion and a backslash introduces one of the
+escapes below; every other byte is copied through unchanged.
+.SH ESCAPES
+.TP
+.B \e\e
+a literal backslash.
+.TP
+.BR \ea " " \eb " " \ef " " \en " " \er " " \et " " \ev
+alert, backspace, form feed, newline, carriage return, tab,
+vertical tab. On this machine
+.B \en
+and
+.B \er
+are the SAME byte (CR, $8D) -- there is no separate linefeed to
+preserve.
+.TP
+.I \ennn
+a byte whose value is the 1-, 2- or 3-digit
+.B octal
+number
+.IR nnn ,
+taken directly after the backslash (no leading 0 required).
+.PP
+Every escaped byte, and every digit/sign/prefix a conversion
+below manufactures itself, carries bit 7 set -- this machine's
+own text convention -- so
+.B \e101
+prints as a plain
+.B A
+rather than an inverse-video byte.
+.I Argument
+text passed through by
+.BR %s / %c / %b
+is never touched this way: it already carries that convention
+from the shell.
+.SH CONVERSIONS
+Each is
+.BR % ,
+zero or more flags
+.RB ( \- " " + " (space) " # " " 0 ),
+an optional decimal field width, an optional
+.BI . precision
+and one of the letters below.
+.TP
+.BR d " or " i
+the argument, parsed as a (16-bit) signed decimal integer.
+.TP
+.B u
+the argument, parsed and printed as unsigned decimal.
+.TP
+.B o
+unsigned octal;
+.B #
+forces a leading 0 if the digits don't already have one.
+.TP
+.BR x " or " X
+unsigned hex, lower or upper case;
+.B #
+prepends
+.BR 0x / 0X ,
+unless the value is 0.
+.TP
+.B c
+the first character of the argument (nothing, for an empty or
+missing argument).
+.TP
+.B s
+the argument, truncated to
+.I precision
+characters if given.
+.TP
+.B %
+a literal
+.BR % ;
+consumes no argument.
+.TP
+.B b
+the argument, with ITS OWN backslash escapes interpreted (the
+same set as above, plus
+.I \e0nnn
+for an octal byte, and
+.BR \ec ,
+which stops
+.I all
+further output -- this argument, any later
+.IR argument s,
+and any of
+.I format
+still to come).
+.PP
+.B \-
+left-justifies within the field width (the default is right-
+justified);
+.B 0
+zero-pads a right-justified numeric field, but is ignored once a
+precision is given;
+.B +
+forces a leading sign on
+.BR d / i ;
+a leading space does the same but with a blank instead of
+.BR + ,
+and is itself ignored when
+.B +
+is also given. A precision of 0 on a value of 0 prints
+.I no
+digits at all for
+.BR d/i/o/u/x/X .
+.SH "16-BIT ARGUMENTS"
+This machine's only integer size is 16 bits.
+.BR d / i / o / u / x / X
+each parse their argument into ONE 16-bit register --
+.BR d / i
+then display that register's bit pattern SIGNED,
+.BR o / u / x / X
+display the SAME bits UNSIGNED -- so
+.B "printf %x 40000"
+prints that value's hex bit pattern, and
+.B "printf %d 40000"
+prints the identical bits as a negative decimal number, the same
+int16_t/uint16_t pun a real machine would make. A magnitude that
+fits neither encoding at all (over 65535, or over 32768 behind a
+leading
+.BR \- ),
+or an argument that is not a decimal integer, is diagnosed: a
+message to standard error, the value 0 is used in its place, and
+.I printf's
+own exit status is 1 -- but conversion of the rest of
+.I format
+and the remaining
+.I argument
+operands continues regardless. A leading
+.B \(aqc
+or
+.B \(dqc
+argument is accepted (POSIX's own extension): it takes
+.IR c 's
+own value, low 7 bits, and is never a failure.
+.SH DIAGNOSTICS
+0 if every conversion succeeded; 1 if
+.I printf
+was called with no
+.I format
+at all, or if any conversion failed as described above (a
+diagnostic to standard error, the value 0 used, and the run
+continues to completion regardless).
+.SH FILES
+/usr/man/PRINTF  this page
+.SH "SEE ALSO"
+echo(1), sh(1)
+.SH BUGS
+No floating-point conversions
+.RB ( a / A / e / E / f / F / g / G )
+-- this machine has no floating point. No
+.BR %n$ -style
+numbered arguments. A
+.I format
+with NO argument-consuming conversion, given MORE
+.I argument
+operands than it needs, is written exactly once (this build's
+own reading of an unspecified corner -- some historic
+implementations diagnose it instead).

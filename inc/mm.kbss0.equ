@@ -1,0 +1,6 @@
+*---------------------------------------------------------------
+* mm.kbss0.equ -- KBSS for the REL/native build only, where
+* kernel modules are assembled apart from any manifest. Must
+* equal the $2000-org manifests' own `KBSS equ` (check-kbss).
+*---------------------------------------------------------------
+KBSS        equ   $0A00

@@ -1,0 +1,25 @@
+*---------------------------------------------------------------
+* mli.const.equ -- MLI shared constants (task #11)
+*---------------------------------------------------------------
+
+MLIACTV     equ   $BF9B
+
+* -- ProDOS MLI error $46, "file not found". Named here because
+* -- the /DEV namespace (PRC_DEVOPEN, procfile3.s) has to raise
+* -- it WITHOUT the MLI: an unrecognised device name must reach
+* -- userland indistinguishable from a missing file.
+MLIE_NOFILE equ   $46
+MLIE_NOVOL  equ   $45            ;volume not found (VR_MNTCK)
+MLIE_FILOPEN equ  $50            ;file is open (TRM error table)
+MLIE_DUPFILE equ  $47            ;duplicate filename
+MLIE_ACCESS equ   $4E            ;access error (/dev)
+MLIE_RANGE  equ   $4D            ;position out of range
+                                 ;(SET_MARK past EOF)
+
+* -- ProDOS MLI error $27, "I/O error" (TRM error table).
+* -- Named for PRC_BLK_WR's own past-end refusal (kdevblk.s):
+* -- a write whose target block is at or past a block
+* -- device's own cached total_blocks is refused with the
+* -- SAME code a real driver returns for an out-of-range
+* -- access, not a new maux-specific one.
+MLIE_IOERROR equ  $27

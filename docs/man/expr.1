@@ -1,0 +1,69 @@
+.\" Derived from Research UNIX V7 expr(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/man/man1/expr.1
+.\" Retrieved 2026-09-19; archived response SHA256: 56c6a422d151dd2d7b8e94cc12d5e3c8c6d579fb61714595a34087ee6ea4725e
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" 2026-10-08: the : operator (maux text).
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH EXPR 1 "October 8, 2026" maux
+.SH NAME
+expr \- evaluate arguments as an expression
+.SH SYNOPSIS
+.B expr
+.I arg ...
+.SH DESCRIPTION
+The arguments are taken as an expression.
+After evaluation, the result is written on the standard output.
+Each token of the expression is a separate argument.
+.PP
+The operators are listed in order of increasing precedence, with
+equal precedence operators grouped:
+.TP
+.B |
+Yields the first operand if it is neither null nor 0, otherwise the second.
+.TP
+.B &
+Yields the first operand if neither is null or 0, otherwise 0.
+.TP
+.B < <= = != >= >
+Yield 1 if the comparison is true, 0 if false.
+Comparison is numeric if both operands are numbers, otherwise lexical.
+.TP
+.B + \-
+Addition or subtraction.
+.TP
+.B * / %
+Multiplication, integer division, or remainder.
+.TP
+.B :
+The matching operator compares the first argument with the second,
+which must be a basic regular expression, as in
+.IR ed (1).
+The match is anchored at the start of the first argument.
+Normally the matching operator returns the number of characters
+matched (0 on failure).
+Alternatively, if the expression contains a
+.B \e(...\e)
+group, the operator returns the text of the first group (the null
+string on failure or if the group took no part in the match).
+A group that is a plain decimal integer may be used as a number.
+A malformed regular expression matches nothing.
+.PP
+Shell metacharacters must be quoted. For example:
+.PP
+.B expr 2 + 3 '*' 4
+.PP
+prints 14, and
+.PP
+.B expr /usr/src/expr.s : '.*/\e(.*\e)\e.s'
+.PP
+prints expr, the part of the name after the last slash.
+.SH FILES
+/usr/man/EXPR  this page
+.SH "SEE ALSO"
+sh(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if the result is neither null nor 0; 1 if it is null or 0; 2 for syntax, type or range errors; 3 for division or remainder by zero.
+.SH BUGS
+Arithmetic is unsigned 16-bit (0 through 65535). Negative results and overflow are errors. The string functions (match, substr, index, length) are not implemented. A regular expression of 255 bytes or more is an error (status 2).

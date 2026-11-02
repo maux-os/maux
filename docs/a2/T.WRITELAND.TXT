@@ -1,0 +1,20 @@
+writelanding.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+Single SmartPort block, no chain-loader (same minimal shape as
+src/bootblock.s -- task #1's own hello-world, no SP_INIT needed
+for a plain block-0 autostart load). Driven by
+scripts/experiment_writelanding.py on BOTH the fast and rtl
+backends; see src/kernel/bankcopy.s's header "[likely]-GRADE
+EXPERIMENT" section for the recorded answer, the circularity
+caveat, and the deposit candidate text.
+
+WHAT THIS PROGRAM DOES: selects aux bank WLBANK (nonzero), sets
+80STORE and PAGE2 ON, writes a marker byte to $0400, then halts.
+scripts/experiment_writelanding.py peeks THREE locations
+afterward: main $0400, aux bank 0 $0400, aux bank WLBANK $0400
+-- exactly one of the three should hold the marker byte; that's
+the answer.
+----------------------------------------------------------------

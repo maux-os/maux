@@ -1,0 +1,44 @@
+.\" Original maux page, MIT, 2026-09-19.
+.\" Historical-source decision: House binary-patch specification, unrelated to historical text patch(1).
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH BPATCH 1 "September 19, 2026" maux
+.SH NAME
+bpatch \- patch a binary from a checked specification
+.SH SYNOPSIS
+.B bpatch
+.I spec target
+.SH DESCRIPTION
+Read a specification and an existing target file, apply the edits in
+memory, then write the target back without changing its length.
+All offsets and byte values are hexadecimal, without a radix prefix.
+The specification accepts high-bit maux text or low-ASCII text.
+Blank lines and lines beginning with # are ignored.
+.TP
+.B set offset byte ...
+Replace successive bytes starting at offset.
+.TP
+.B expect offset byte
+Require the byte at offset to have this value. This observes earlier edits
+in the same specification.
+.TP
+.B flip-lc
+Scan for absolute LDA, BIT and STA instructions whose operand is $C081 or
+$C082, and change the low operand byte to $83 or $80 respectively.
+This is a specialised language-card patch for compatible proshim tenants.
+.PP
+For example, a specification containing:
+.PP
+.B expect 0010 EA
+.br
+.B set 0010 60
+.PP
+replaces a checked NOP byte by RTS.
+Keep an unmodified copy of the target.
+.SH FILES
+/usr/man/BPATCH  this page
+.SH "SEE ALSO"
+dd(1), proshim(1), patch(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for a specification, range, expectation or I/O failure, 2 for usage errors.
+.SH BUGS
+The target is limited to 28672 bytes and the specification to 4096 bytes. Parse/expect failures occur before writing; a write failure may leave partial changes. flip-lc is a byte-pattern scan, not a disassembler, and can also alter data matching the pattern. Available on its development image.

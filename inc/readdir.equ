@@ -1,0 +1,36 @@
+*---------------------------------------------------------------
+* readdir.equ -- the RD_* record offsets, split out of
+* readdir.s so they can be `put` BEFORE the code that uses them.
+*
+* Real Merlin-8 refuses a unit that references an `equ` in an
+* immediate operand before the `equ` is assembled ("Illegal
+* forward reference", reported against the definition line);
+* merlin32 iterates to a fixed point and accepts it silently.
+* du.s, find.s and ls.s all index this record with `ldy #RD_*`
+* hundreds of lines before they `put` readdir.s, so the offsets
+* have to arrive first. The RECORD LAYOUT itself is documented
+* in readdir.s's own header, which is still where it belongs --
+* only the five equates move.
+*
+* An `equ` emits nothing, so this split is byte-neutral by
+* construction; the objects were compared to prove it.
+*---------------------------------------------------------------
+
+RD_LEN      equ   0         ;1  name length
+RD_NAME     equ   1         ;16 name + NUL, case-decoded
+RD_FTYPE    equ   17        ;1  file_type
+RD_STYPE    equ   18        ;1  storage_type
+RD_EOF      equ   20        ;3  EOF, little-endian, RAW
+RD_MDATE    equ   23        ;2  mod_date, little-endian, RAW
+RD_MTIME    equ   25        ;2  mod_time, little-endian, RAW
+RD_BLOCKS   equ   27        ;2  blocks_used, appended in old pad
+RD_SIZE     equ   32
+
+* -- docs/DEVFS.md, 2026-09-30: RD_STYPE_BLK/RD_STYPE_CHR moved
+* -- here for the SAME reason as the five offsets above --
+* -- lsprint.s/lstop.s (ls.s's own front/print halves) `put`
+* -- BEFORE readdir.s in ls.s's expansion order, and need them
+* -- too. Still readdir.s's layout to own; only the two equates
+* -- move.
+RD_STYPE_CHR equ  $0A       ;a character device (ttys, null)
+RD_STYPE_BLK equ  $0B       ;a block device (/dev/sNdM)

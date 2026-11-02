@@ -1,0 +1,139 @@
+process.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+PUT-included module. Preconditions:
+  - inc/memmap.equ, inc/errno.equ, inc/syscall.equ are already
+    used by the top-level test/kernel file.
+  - entry.s, ffpage.s, sched.s, and bankcopy.s have already been put.
+  - the includer provides memory-embedded image labels:
+      K_BUILTIN_COUNT / K_BUILTIN_TAG / K_BUILTIN_SRC_LO / K_BUILTIN_SRC_HI
+      / K_BUILTIN_LEN_LO / K_BUILTIN_LEN_HI -- the builtin-image table
+      (may be COUNT=0; see PROC_SPAWN)
+
+The task #12 raw gate still uses the three memory-embedded E/R/W
+images. Any other spawn path is treated as a liba high- bit,
+NUL-terminated path, converted to a ProDOS MLI pathname, and
+loaded from a real ProDOS file.
+----------------------------------------------------------------
+
+-- process.s zero page. Chosen below sched.s ($E0-$EE) and
+entry.s -- ($F3-$FC); syscall entry has already selected main ZP
+before this module -- runs, so these are kernel-private cells.
+
+----------------------------------------------------------------
+TTYINVERSEA -- A in ASCII $20-$7F
+----------------------------------------------------------------
+TTY_INVERSE_A -- A in: ASCII $20-$7F, or a NORMAL display code
+($A0-$FF); both carry the glyph in the low 7 bits, so one
+mapping serves the SGR path and the cursor path. A out: the
+ALTCHRSET inverse display code.
+
+Verified on verilogapple (fast backend, ALTCHARSET on,
+2026-08-15) by poking display codes to $0400 and rendering: $02
+-> inverse 'B', $61 -> inverse 'a', $21 -> inverse '!', $20 ->
+inverse space. The alternate set puts inverse lowercase at
+$60-$7F and inverse uppercase/symbols at $00-$3F, so the fold is
+range-dependent:
+  ASCII $60-$7F (lowercase) -> $60-$7F   (and #$7F alone)
+  ASCII $20-$5F             -> $00-$3F   (fold again with and #$3F)
+The pre-fix code used a bare `and #$7F` for everything, which
+put uppercase in $40-$5F -- MouseText under ALTCHRSET, the
+flashing block without it. Never inverse. See docs/CONSOLE.md
+section 6.
+
+----------------------------------------------------------------
+OFT_COUNT/OFT_FREE/OFT_PIPE_R/OFT_PIPE_W/
+----------------------------------------------------------------
+OFT_COUNT/OFT_FREE/OFT_PIPE_R/OFT_PIPE_W/OFT_FILE moved to
+inc/memmap.equ (task #13, code review C3) --
+they're the budget/tag constants for the open-file-table
+object graph docs/MEMMAP.md sec 2.2a now documents, so they
+belong alongside PCB_STATE's own enum values there rather than
+living only in this module. This file's own `use
+inc/memmap.equ` precondition (this module's header)
+already guarantees they're in scope by the time this line
+assembles.
+
+----------------------------------------------------------------
+-- Builtin-image lookup. The kernel used
+----------------------------------------------------------------
+-- Builtin-image lookup. The kernel used to hardcode three
+magic path -- characters ('E'/'R'/'W') pointing at SIMG_*
+symbols that only test -- harnesses defined -- test
+scaffolding welded into a syscall, and the -- reason this
+module could not be assembled standalone. The image now --
+supplies a table instead (same shape as K_DISP_*), so
+adding a -- builtin no longer means editing the kernel.
+K_BLTN_COUNT = 0 is -- legal and means "every path is a
+real file".
+
+----------------------------------------------------------------
+PRC_RENAME -- MLI RENAME ($C2). The only
+----------------------------------------------------------------
+---------------------------------------------------------------
+PRC_RENAME -- MLI RENAME ($C2). The only delegate call with
+TWO pathnames, so both are copied into kernel memory and
+BOTH pointers rewritten before the MLI sees the parmlist.
+
+ProDOS restricts this to a rename WITHIN one directory: the
+two paths must be identical but for the rightmost name (P8
+TRM: /EGG/ROLL to /EGG/PLANT, not /JELLY/ROLL). The kernel
+does NOT enforce it. The MLI rejects it and the error
+propagates -- which is exactly what userland's mv relies on
+to decide it must fall back to copy-and-unlink.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+PRC_SETPFX / PRC_GETPFX -- the working
+----------------------------------------------------------------
+---------------------------------------------------------------
+PRC_SETPFX / PRC_GETPFX -- the working directory, which ProDOS
+calls the PREFIX.
+
+NOTE THE SEMANTIC GAP, it is deliberate and temporary: ProDOS
+keeps ONE prefix for the whole machine, so this is a global
+working directory, not a per-process one. Unix semantics want
+it in the PCB, with the kernel re-issuing SET_PREFIX before
+each delegated call. That is real work and it is not needed
+while there is one shell; when a second interactive process
+exists, this becomes wrong rather than merely simplified.
+---------------------------------------------------------------
+
+----------------------------------------------------------------
+-- Capture ProDOS's prefix on the FIRST
+----------------------------------------------------------------
+-- Capture ProDOS's prefix on the FIRST chdir -- the boot
+-- volume, since nothing has moved it. Not at PRC_INIT: images
+-- never wire ProDOS run that path too, and an MLI call there
+-- hangs them (check-process, found the hard way).
+--
+-- After this the global prefix is HELD CONSTANT: chdir records
+-- into the per-process table and puts this back. Letting the
+-- global follow chdir would let ProDOS resolve relative paths
+-- correctly even with a broken table, masking the exact bug
+-- the table can have. Pinned, a regression fails an open.
+
+----------------------------------------------------------------
+PRC_PSTAT -- read one process-table slot.
+----------------------------------------------------------------
+---------------------------------------------------------------
+PRC_PSTAT -- read one process-table slot.
+
+The PCB array lives in the annex, so userland cannot read it
+at all: a process sees its own bank and nothing else. This is
+the window, and it is deliberately narrow -- one slot per
+call, six bytes out, no pointers into kernel structures.
+
+IN  (parmlist): slot index, buffer pointer (no count byte
+                -- process calls do not carry one)
+OUT (6 bytes) : PID, STATE, WCHAN, BANK, PARENT, EXITSTAT
+
+An unused slot returns STATE = PCB_UNUSED and the caller skips
+it; that is cheaper than having the kernel compact the list,
+and it keeps slot index == pid, which is what makes the table
+readable.
+
+Two PCB reads because K_PCB_SCRATCH is four bytes wide.
+---------------------------------------------------------------

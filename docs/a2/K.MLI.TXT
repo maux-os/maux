@@ -1,0 +1,61 @@
+mli.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+Self-contained: declares its own small set of MLI global-page /
+LC softswitch equates rather than `use`ing inc/memmap.equ.
+Deliberate, two reasons: (1) this module runs entirely in MAIN
+context with NO per-process ALTZP/RAMRD dance -- ProDOS
+residency is a main-only concern for v1 (docs/ARCHITECTURE.md's
+Filesystem/I-O section) -- so it needs none of memmap.equ's
+process-bank symbols; (2) the one-level `put`/`use` nesting
+gotcha (docs/TOOLCHAIN.md) means a `use` written INSIDE this
+file would be silently dropped whenever an includer PUTs this
+file in via its own one level of indirection
+(src/test/prodos.spike.s does exactly that). The LC softswitch
+values below are copied from inc/memmap.equ's existing
+LCBANK2_* table (task #2) -- same values, independent copy, to
+respect the isolation-branch instruction not to add cross-file
+`use` coupling into work another agent may be editing
+concurrently.
+
+MLI/global-page facts below are from the ProDOS 8 TRM (ch. 4/5,
+artifact d82965d865557730323115a79ec150c5449f13a335c25827
+3dcb0171fa692ff8, fetched live via
+learning:01KW1GTYGP8MHN9YAE5JTSP62Z) and TN #8's refinement
+(learning:01KW1GTYH4NRG0F8M7AAT6EG9Z) for the /RAM disconnect
+protocol -- RAM_DISCONNECT below adapts (not transcribes) the
+TRM's own ch. 5.2.2.2 "RAMOUT" sample routine to maux
+naming/structure.
+----------------------------------------------------------------
+
+-- ProDOS system global page (fixed since ProDOS 1.0, TRM ch.
+5.2.3) -- MLI ($BF00) and LCBANK2_STORE/LCBANK2_RAM
+($C088/$C08B) are declared once in inc/memmap.equ (task #8a)
+-- this module no longer re-declares them, so it can be linked
+beside others.
+
+----------------------------------------------------------------
+RAMDISCONNECT -- the A7 lifecycles HADRAM
+----------------------------------------------------------------
+----------------------------------------------------------------
+RAM_DISCONNECT -- the A7 lifecycle's HAD_RAM step (learning:
+01KW1GTYH4NRG0F8M7AAT6EG9Z). Checks MACHID bits 4-5 for 128K (no
+128K => no /RAM possible), scans DEVLST for a device number in
+the /RAM family ($B3/$B7/$BB/$BF, tested via AND #$F3 / CMP #$B3
+-- the TRM's own pattern), removes it from DEVLST, replaces its
+driver vector (RAMSLOT) with NODEV's, decrements DEVCNT. Sets
+MLI_HAD_RAM (owned by this module) to 1 iff a device was found
+and disconnected. Never reinstalled by this module -- this spike
+never QUITs back to ProDOS (docs/PRODOS-SPIKE.md records the
+reconnect path as specified-not-exercised).
+
+TN #8 fix: after disconnect, ON_LINE ($C5) unit $B0 (slot 3
+drive 2, the MLI unit_num FORMAT -- distinct from DEVLST's
+device-NUMBER format above, see docs/PRODOS-SPIKE.md's note on
+the two encodings) is issued and expected to return error $28
+(Device not connected) -- this clears the stale VCB the bare
+pre-TN#8 disconnect leaves behind. MLI_ONLINE_ERR (includer-
+declared) captures the returned error for the check script.
+----------------------------------------------------------------

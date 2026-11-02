@@ -1,0 +1,217 @@
+*** CORRECTION 2026-08-20 -- THIS FILE'S SCOPE STATEMENT WAS WRONG ***
+
+The header below used to exclude LINKER.S on the grounds that `as.s` does
+not embed it. IT DOES. MACASS.S:237-241 is `ORG $D000 / PUT LINKER / PUT
+ASS.BNK1` -- both land in the SAME bank-1 object (build/ascore-*-bank1.obj)
+that as.s copies to $D000. LINKER.S carried 9 RAMRD/RAMWRT switch
+instructions in 5 brackets (LINKER.S:90,151,177,179,320,322,325,390,395),
+NONE of which appeared in the 33-touch table this banner used to sit above,
+so neither P1 nor P10 had swept them.
+
+Consequence at the time: P10's claim "P1 union P10 leaves zero RAMRD/RAMWRT
+touches in the embedded chain" was FALSE as written. The exposure was
+DORMANT -- nothing in `as` reaches LINK, so the sites could not fire -- but
+they were bug-4-shaped (a switch flip that selects kernel vs process bank).
+Tracked in docs/LD-DESIGN.md section 4, which RULED: extend P10 to
+LINKER.S before any `ld` work begins.
+
+Found by the 2026-08-20 linker reconnaissance (docs/LD-RECON.txt), not by
+the audit itself -- a scope statement asserted from an assumption about the
+build rather than read out of the build.
+
+*** FOLLOW-UP 2026-08-20 -- THE RULING EXECUTED, AND THE FILE LIST ITSELF
+    RE-DERIVED FROM THE PUT CHAIN (not from this file's own prior belief) ***
+
+`src/merlin/patches.py`'s P10_BANK_AGNOSTIC_CORE now carries LINKER.S's own
+9 switch instructions in 5 brackets (verified against vendor/merlin/
+LINKER.S by decode_lines(), not copied from the correction banner above on
+faith -- see the patch table's own comment for the per-bracket structure,
+including the two-opens/one-shared-close shape at 90/151/325). The table
+below is regenerated to include them.
+
+Re-deriving the file list from MACASS.S's own PUT chain (grepping every
+`PUT `-prefixed line across vendor/merlin/**/*.S, then checking each
+candidate's ORG/DUM context and each hit's actual token, filtering out
+lines where PUT/USE is a LABEL rather than a directive -- e.g. ASS.BNK1.S:
+1338 `PUT PHP` is the label PUT followed by the instruction PHP, not a
+file-inclusion directive) surfaced TWO further corrections beyond LINKER.S,
+both folded into this pass:
+
+  - COMMANDS.S REMOVED from the embedded-chain file list. It was never
+    reached by MACASS.S's own PUT chain -- only `PUT COMMANDS`
+    (MACED.S:493) references it, and MACED.S is not embedded in `as`
+    (docs/AS-DESIGN.md's own P4 ruling). Its presence in this file's
+    original scope statement (and in src/bin/as.s's own "embedded chain"
+    comment, which still lists it -- out of this file's ownership to fix)
+    was itself an assumption, the same shape of error LINKER.S's omission
+    was, just in the opposite direction (over- rather than under-inclusion).
+  - MLI/CODES.S and MERLIN.GP.S ADDED as PUT'd-but-checked. MACASS.S:47
+    `PUT MLI/CODES` and MACASS.S:60-62 `DUM $BE00 / PUT MERLIN.GP / DEND`
+    are both genuine PUT directives reached before `ORG $D000` even runs --
+    but MLI/CODES.S is pure MLI-call-code EQUATES (zero instructions, zero
+    object bytes, ever) and MERLIN.GP.S is PUT inside a DUM/DEND dummy
+    section (Merlin computes addresses there without emitting real bytes).
+    Neither can contribute a switch touch to the assembled object regardless
+    of content, but both were swept anyway rather than excluded by
+    assumption -- zero touches in each, confirmed.
+  - LIB/PRDEC.S ADDED as a genuine embedded-object file. MACASS.S:263
+    `PUT LIB/PRDEC` sits inside the SECOND `SAV`'d section (`ORG $E5F0`
+    ... `SAV ASMOBJ/AS`, MACASS.S:254-411) alongside ASSMAIN.S/BRACKET.S/
+    MSGS.S/OPCODES.S/GETLINE.S/SYMPRINT.S/PRINTENT.S -- its bytes are
+    genuinely part of ASMOBJ/AS, the object `as.s` embeds, and it was
+    simply missing from the original 10-file list. Zero touches.
+  - LIB/ASSMACROS.S (MACASS.S:235 `USE LIB/ASSMACROS`) checked for
+    completeness even though USE, unlike PUT, does not itself emit object
+    bytes at the use site: a macro invoked in a genuinely-PUT'd file (e.g.
+    `INCD DICPNT`) shows only the macro's NAME in that file's own decoded
+    source text, not its expansion -- so a switch hidden inside a macro
+    BODY would be invisible to a literal-text grep of the file that merely
+    invokes it. Checked directly: zero READ.AUX/READ.MAIN/WRITE.AUX/
+    WRITE.MAIN touches in any of ASSMACROS.S's 9 macro definitions.
+
+Re-verified end to end: applying the full PROCESS-variant patch set
+(`patches.build_all_patches(exclude=patches.exclude_for_variant('process'))`,
+i.e. P1+P4+P5+P7+P10+P11, nothing excluded) to fresh vendor/merlin/ copies
+of all 11 real-object-byte files below and re-running this same decode-
+and-grep sweep against the patched output finds ZERO remaining READ.AUX/
+READ.MAIN/WRITE.AUX/WRITE.MAIN lines anywhere -- LINKER.S included. The
+original text (now corrected in place rather than left to bit-rot under a
+banner) follows.
+
+task #8 phase C (extended 2026-08-20, docs/LD-DESIGN.md section 4) --
+RAMRD/RAMWRT touch enumeration, EMBEDDED CHAIN ONLY. Scope is DERIVED from
+MACASS.S's own PUT chain (see the follow-up note above for method), not
+asserted:
+
+  REAL OBJECT BYTES (land in ASMOBJ/PROASM.BANK1 or ASMOBJ/AS, the two
+  objects as.s copies to $D000 -- these are the files that can carry a
+  switch touch that actually executes):
+    MACASS.S (root file; PUTs everything below)
+    ASS.BNK1.S, LINKER.S                    -- PUT'd into ASMOBJ/PROASM.BANK1
+    ASSMAIN.S, BRACKET.S, MSGS.S, OPCODES.S,
+    GETLINE.S, SYMPRINT.S, PRINTENT.S,
+    LIB/PRDEC.S                             -- PUT'd into ASMOBJ/AS
+
+  PUT'D BUT ZERO OBJECT BYTES (checked anyway, not excluded by assumption):
+    MLI/CODES.S   -- pure MLI-call-code equates, no instructions
+    MERLIN.GP.S   -- PUT inside a DUM/DEND dummy section, no bytes emitted
+
+  USE'D MACRO LIBRARY (checked because macro bodies don't show up in an
+  invoking file's own literal text):
+    LIB/ASSMACROS.S
+
+  NOT embedded, NOT `as.s`'s own chain (confirmed by absence from
+  MACASS.S's PUT graph -- MACED.S/MACEXEC.S/INTERPRETER.S are separate
+  STEPBYSTEP primaries that never PUT their own content into MACASS.S's
+  two SAV'd objects): MACED.S, MACEXEC.S, INTERPRETER.S, and everything
+  ONLY reachable through them (COMMANDS.S via MACED.S:493, PAGINATOR.S via
+  MACED.S:226, LIB/SENDMSG.S via MACEXEC.S:486).
+
+Referenced by docs/AS-DESIGN.md sections 13/14/17 and
+src/merlin/patches.py's P10_BANK_AGNOSTIC_CORE.
+
+Method: decode every file with src/merlin/patches.py's own decode_lines()
+(high-bit ASCII, $8D line terminators) and list every line whose CODE
+portion (text before any `;` comment) contains READ.AUX / READ.MAIN /
+WRITE.AUX / WRITE.MAIN. Comment-only occurrences are excluded (e.g.
+LINKER.S:104's `JSR BUMPDIC ;Turns on WRITE.MAIN` is a comment describing
+BUMPDIC's effect, not a switch instruction itself -- left as a stale
+cosmetic residual by the P10 patch, see patches.py's own note). Lines
+where PUT/USE is a LABEL rather than a directive are excluded from the
+file-list derivation (ASS.BNK1.S:1338's `PUT PHP` and :1337's `USE DEY`
+are both label-plus-instruction, not file inclusion -- PHP and DEY are
+both real 6502/65C02 mnemonics, neither is a Merlin file path). Confirmed
+these READ.AUX/READ.MAIN/WRITE.AUX/WRITE.MAIN tokens are the ONLY RAMRD/
+RAMWRT touches in vendor/merlin/: the raw $C002-$C005 addresses appear
+nowhere else, only as the READ/WRITE base equates (MACASS.S:220-221
+`READ = $C002` / `WRITE = $C004`, MAIN=0/AUX=1 at 222-223) plus MACED.S/
+MACEXEC.S's own copies of the same four equates -- both files un-embedded,
+so their copies don't matter here.
+
+FILE            LINE  SWITCH        BRACKET (pair)                 GROUP
+ASS.BNK1.S      232   WRITE.AUX     PUTBYT (232/234)                P10
+ASS.BNK1.S      234   WRITE.MAIN    PUTBYT (232/234)                P10
+ASS.BNK1.S      423   WRITE.AUX     PUTLAB :SM (423/444)            P1
+ASS.BNK1.S      444   WRITE.MAIN    PUTLAB :SM (423/444)            P1
+ASS.BNK1.S      495   WRITE.AUX     "used" flag (495/497)           P1
+ASS.BNK1.S      497   WRITE.MAIN    "used" flag (495/497)           P1
+ASS.BNK1.S      537   READ.AUX      FINDLAB0/CMPR (537/539)         P1
+ASS.BNK1.S      539   READ.MAIN     FINDLAB0/CMPR (537/539)         P1
+ASS.BNK1.S      550   READ.AUX      FINDLAB0/LBV (550/552)          P1
+ASS.BNK1.S      552   READ.MAIN     FINDLAB0/LBV (550/552)          P1
+ASS.BNK1.S      1090  WRITE.AUX     PTADR (1090/1094)               P1
+ASS.BNK1.S      1094  WRITE.MAIN    PTADR (1090/1094)               P1
+ASS.BNK1.S      1192  READ.AUX      macro-flag read (1192/1194)     P1
+ASS.BNK1.S      1194  READ.MAIN     macro-flag read (1192/1194)     P1
+ASS.BNK1.S      1197  WRITE.AUX     macro-flag write (1197/1199)    P1
+ASS.BNK1.S      1199  WRITE.MAIN    macro-flag write (1197/1199)    P1
+ASS.BNK1.S      1399  READ.AUX      GETSYM0 (1399/1401)             P1
+ASS.BNK1.S      1401  READ.MAIN     GETSYM0 (1399/1401)             P1
+ASSMAIN.S       11    WRITE.AUX     ASM entry zero (11/13)          P1
+ASSMAIN.S       13    WRITE.MAIN    ASM entry zero (11/13)          P1
+ASSMAIN.S       647   READ.AUX      REL empty-guard (647/649)       P1
+ASSMAIN.S       649   READ.MAIN     REL empty-guard (647/649)       P1
+ASSMAIN.S       782   WRITE.AUX     ADDREL dict-entry (782/804)     P10
+ASSMAIN.S       794   READ.AUX      ADDREL ext-sym read (794/801)   P10
+ASSMAIN.S       801   READ.MAIN     ADDREL ext-sym read (794/801)   P10
+ASSMAIN.S       804   WRITE.MAIN    ADDREL dict-entry (782/804)     P10
+ASSMAIN.S       825   READ.AUX      NXDE ]LOOP dict-send (825/827)  P10
+ASSMAIN.S       827   READ.MAIN     NXDE ]LOOP dict-send (825/827)  P10
+SYMPRINT.S      57    READ.AUX      numeric-scan open (closed 149)  P1
+SYMPRINT.S      96    READ.AUX      alpha-scan open (closed 149)    P1
+SYMPRINT.S      146   WRITE.AUX     done-flag write (146/148)       P1
+SYMPRINT.S      148   WRITE.MAIN    done-flag write (146/148)       P1
+SYMPRINT.S      149   READ.MAIN     closes 57's/96's open read      P1
+LINKER.S        90    WRITE.AUX     ADD dict-addr (open, 90/325)    P10
+LINKER.S        151   WRITE.AUX     PUTDIC EXT-entry (open,151/325) P10
+LINKER.S        177   WRITE.AUX     LOADEE (177/179)                P10
+LINKER.S        179   WRITE.MAIN    LOADEE (177/179)                P10
+LINKER.S        320   READ.AUX      GETPL :SAUX (320/322)           P10
+LINKER.S        322   READ.MAIN     GETPL :SAUX (320/322)           P10
+LINKER.S        325   WRITE.MAIN    BUMPDIC, shared close (90/151)  P10
+LINKER.S        390   WRITE.AUX     FIXEXT end-marker (390/395)     P10
+LINKER.S        395   WRITE.MAIN    FIXEXT end-marker (390/395)     P10
+
+GETLINE.S, MACASS.S, PRINTENT.S, BRACKET.S, OPCODES.S, MSGS.S, LIB/PRDEC.S,
+MLI/CODES.S, MERLIN.GP.S, LIB/ASSMACROS.S: ZERO RAMRD/RAMWRT touches
+(checked by the same decode-and-grep sweep; the last three are PUT'd/USE'd
+but never emit or expand to a switch instruction -- see the follow-up note
+above for why each is structurally incapable of one).
+
+Totals: 42 touches. Original 33, unchanged by this pass (ASS.BNK1.S 18 =
+9 balanced pairs; ASSMAIN.S 10 = 5 balanced pairs; SYMPRINT.S 5 = 1
+balanced pair (146/148) + 1 asymmetric open-twice/close-once triple
+(57/96->149), already balanced by P1's own design -- see patches.py) +
+LINKER.S's 9 (5 brackets: 3 balanced pairs -- LOADEE 177/179, GETPL:SAUX
+320/322, FIXEXT 390/395 -- + 1 two-opens/one-shared-close triple -- ADD's
+open 90 and PUTDIC's open 151, both closed by BUMPDIC's single WRITE.MAIN
+at 325 -- the SAME shape as SYMPRINT.S's own 57/96->149 pattern). P1
+(phase B, docs/AS-DESIGN.md section 7): 25 touches -- ASS.BNK1.S 16,
+ASSMAIN.S 4, SYMPRINT.S 5, ALL of them, unchanged by this pass. P10 (phase
+C section 13/14, extended section 17 for LINKER.S): 17 touches --
+ASS.BNK1.S's PUTBYT (2, bug 4's exact site), ASSMAIN.S's ADDREL/DICPNT
+REL-dictionary code (6, dead in every current v1 test source, reachable
+the moment a module carries a `REL` directive; DICPNT's own address is
+left untouched, same treatment P1 gave FENCE), and LINKER.S in full (9,
+dormant -- nothing in `as` reaches LINK yet, docs/LD-DESIGN.md section 4).
+
+Verified empirically (2026-08-20, extended for LINKER.S): applying
+P1+P10 together (`patches.build_all_patches(exclude=patches.
+exclude_for_variant('process'))`) to fresh vendor/merlin/ASSMAIN.S,
+ASS.BNK1.S, SYMPRINT.S, MACASS.S, and LINKER.S, and re-running this same
+decode-and-grep sweep against the PATCHED output finds ZERO remaining
+READ.AUX/READ.MAIN/WRITE.AUX/WRITE.MAIN lines in any of the five patched
+files, and zero in the six untouched-but-verified-clean real-object files
+(GETLINE.S, PRINTENT.S, BRACKET.S, OPCODES.S, MSGS.S, LIB/PRDEC.S) -- the
+PROCESS core's entire embedded chain touches RAMRD/RAMWRT nowhere at all.
+
+NOT proven by this sweep (static, source-level only): LINKER.S is dormant,
+so no behavioural gate exercises these 9 sites the way check-ascore-
+process's rebuild/divergence-audit exercises P1's and the original P10
+pair's sites end to end. The static sweep proves the SOURCE TEXT is clean
+and the byte-neutral padding is correct (cross-checked against real
+merlin32, not just addressing-mode arithmetic); it does not prove a
+RUNNING `LINK` produces a correct object under a maux process, because
+nothing can call LINK yet. That proof is future work -- a `check-ld` gate,
+once `ld` exists (docs/LD-DESIGN.md's own subject) -- tracked there, not
+here.

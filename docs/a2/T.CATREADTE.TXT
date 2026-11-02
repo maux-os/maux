@@ -1,0 +1,25 @@
+catreadtest.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+Proves userland SC_READ end-to-end through a REAL binary
+(build/cat.bin) with BOTH fd 0 and fd 1 redirected to real
+ProDOS files: boots as MAUXCATREAD.SYSTEM, installs the maux
+syscall/scheduler machinery (identical skeleton to
+fileproctest.s -- same puts, same boot helpers), starts one
+parent process that:
+  - OPENs /BASIC/CATSRC (O_RDONLY) and CREATE+OPENs /BASIC/CATOUT
+  - SPAWNs /BASIC/CAT (argv = ["CAT"], no FILE args -- cat.s's own
+    documented "no args: copy stdin to stdout" contract) with
+    fdactions redirecting the CHILD's fd 0 -> CATSRC, fd 1 -> CATOUT
+  - waits for cat to exit, closes its OWN copies of both fds (so the
+    write is fully flushed through MLI CLOSE before readback -- same
+    discipline fileproctest.s's own ECHO test already uses)
+  - re-OPENs CATOUT and READs it back
+
+scripts/check_catread.py asserts byte-identical content between
+the known CATSRC payload (embedded in
+scripts/build_catread_image.py) and what was read back from
+CATOUT, plus cat's exit status == 0.
+----------------------------------------------------------------

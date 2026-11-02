@@ -1,0 +1,38 @@
+.\" Derived from Research UNIX V6 comm(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/comm.1
+.\" Retrieved 2026-09-19; archived response SHA256: 6a830a7b239ee0b5c55a55e8051f90643a4a186f5d477ccfc154c78d6620942f
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH COMM 1 "September 19, 2026" maux
+.SH NAME
+comm \- print lines common to two files
+.SH SYNOPSIS
+.B comm
+.RB [ \-123 ]
+.I file1 file2
+.SH DESCRIPTION
+.I Comm
+reads file1 and file2, which should be in sort, and produces a
+three-column output: lines only in file1; lines only in file2;
+and lines in both files.
+.PP
+Flags 1, 2, or 3 suppress printing of the corresponding column.
+Thus
+.B comm \-12
+prints only the lines common to the two files;
+.B comm \-23
+prints only lines in the first file but not in the second;
+.B comm \-123
+prints nothing.
+Remaining columns are separated by tabs.
+.SH FILES
+/usr/man/COMM  this page
+.SH "SEE ALSO"
+sort(1), cmp(1), diff(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 2 for input-open or usage errors.
+.SH BUGS
+Both operands must be file names; '-' is not a standard-input alias. Sorted order is assumed, not checked.
+Lines longer than 255 bytes are treated as several logical lines.

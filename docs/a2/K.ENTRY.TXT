@@ -1,0 +1,171 @@
+entry.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+PUT-included module (no ORG/DSK -- same convention as
+bankprobe.s). Receives both $FFxx doors' JMPs (KERNEL_ENTRY from
+SYSCALL_ENTRY, KERNEL_IRQ_ENTRY from IRQ_ENTRY) and implements:
+  - the TSX / ALTZP->main / load-kernel-SP entry discipline (the
+    entry-side hazard: no push before the kernel SP is loaded -- see
+    docs/SYSCALL.md's per-window argument for exactly why)
+  - call-number dispatch via an EXTERNAL table the includer supplies
+    (K_DISPATCH_LO/K_DISPATCH_HI/K_DISPATCH_COUNT -- this file has no
+    opinion on what calls exist; the real kernel and this task's test
+    harness both define their own tables against the SAME mechanism)
+  - BRK-vs-IRQ discrimination via the stacked B flag
+  - the exit path: $C073=target (SKIPPED when target==caller, see note
+    below), ALTZP->aux, no pushes until TXS, JMP EXIT_TAIL
+  - copyin/copyout, low-main-stack-page resident (fetch-immune to RAMRD)
+    per
+    docs/ARCHITECTURE.md's review finding A2 ruling
+
+SCOPE NOTE ($C073 on exit): task #3's entry/exit machinery
+always resumes the SAME bank that entered (no scheduler exists
+yet -- that's task #6). $C073 is write-only and was never
+touched since the door stub ran, so re-selecting "the same bank"
+is a genuine no-op -- this file's exit path does NOT write
+BANKSEL at all. A context-switching exit (task #6) adds exactly
+one `LDA K_TARGETBANK / STA BANKSEL` at the marked point in
+KERNEL_EXIT and KERNEL_IRQ_SERVICE; nothing else in this file
+changes.
+
+TASK #6 LANDING (docs/SCHED.md): the promised insertion has been
+made. K_SWITCH/K_TARGETBANK/K_TARGETSP are declared HERE (not by
+src/kernel/ sched.s) precisely so this file keeps working
+unmodified for any includer that never touches the scheduler
+(src/test/syscalltest.s, task #3's own gate) -- K_SWITCH simply
+stays zero for the life of such a build (INSTALL_COPY zeroes it
+once, below), and KERNEL_EXIT/ KERNEL_IRQ_SERVICE fall through
+their existing same-bank path exactly as before, byte-for-byte.
+src/kernel/sched.s (task #6) is the only module that ever sets
+K_SWITCH nonzero. docs/SCHED.md carries the extended per-window
+interrupt-safety argument for the new window this adds -- an
+IRQ/syscall exit that resumes a DIFFERENT bank than it entered
+from.
+
+PRECONDITION ON THE INCLUDER (put/use one-level-nesting gotcha,
+docs/TOOLCHAIN.md): the includer must, in this order, before
+`put`ting this file in:
+  1. `use inc/memmap.equ`   (RAMRDMAIN/RAMRDAUX/RAMWRTMAIN/RAMWRTAUX,
+                                  ALTZPMAIN/ALTZPAUX, LCBANK2_RAM)
+  2. `use inc/errno.equ`    (ERR_NOSYS, for the bad-call-number path)
+  3. define K_DISPATCH_LO / K_DISPATCH_HI / K_DISPATCH_COUNT (a call#
+     dispatch table, 1-based, parallel low/high address byte arrays)
+  4. define K_IRQ_HOOK as a 2-byte address (JMP-indirect target the
+     timer/device driver of the day points at -- see KERNEL_IRQ_SERVICE)
+
+TRAPFRAME OFFSETS: immediately after TSX, X holds the process's
+SP as of the LAST push (Y, per both doors' push order). Every
+frame field is then reachable via absolute,X using these base+X
+addresses -- see docs/SYSCALL.md's per- window argument for the
+derivation (both doors produce the identical push order
+PCH,PCL,P,A,X,Y, so the SAME offsets apply regardless of which
+door was used).
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+kernel-owned zero page (mains own ZP
+----------------------------------------------------------------
+-- kernel-owned zero page (main's own ZP; ALTZP=main is the
+kernel's -- entire operating posture except the two bracketed
+windows below). -- Arbitrary window, chosen away from $00-$1F
+(ROM/monitor convention) -- and unrelated to any process's OWN
+zp (different physical memory -- whenever ALTZP=aux, so there is
+no collision to reconcile).
+
+CORRECTNESS FIX (found by testing, this round): zero page is
+ALTZP-governed -- NOT just $0000-$01FF conceptually, the WHOLE
+$00-$FF range. Any cell written WHILE ALTZP=aux (i.e. before
+KERNEL_ENTRY's own `STA ALTZPMAIN`) and read back AFTER the flip
+lands in two DIFFERENT physical bytes (the process's aux zero
+page for the write, main's for the read) -- always reading
+stale/zero data, never what was just stored. This affects
+exactly the handful of cells that carry a value ACROSS the flip:
+the captured SP, the call number, the parms pointer, and (IRQ
+door) the B-flag test result. Every OTHER cell below is only
+ever touched AFTER the flip (dispatch, copyin/copyout, the frame
+patch) and stays in zero page, where it belongs (fast
+addressing, correctly single-bank since ALTZP never moves again
+until exit). The cross-flip cells move to ordinary (non-ZP) main
+memory instead -- RAMRD/RAMWRT-governed, not ALTZP-governed, and
+RAMRD/RAMWRT are ALREADY main by the time either door's stub
+JMPs into this file (the stub's own `STA RAMRDMAIN`/`STA
+RAMWRTMAIN`) -- so a write to a non-ZP address at this point
+lands correctly in main memory regardless of ALTZP, and stays
+correctly readable after the flip too. --
+
+----------------------------------------------------------------
+MLIRANGELO the lowest real MLI call
+----------------------------------------------------------------
+MLI_RANGE_LO: the lowest real MLI call number this kernel ever
+routes to PRODOS_DELEGATE. $65 (QUIT) is the lowest MLI call
+number that exists at all (TRM ch. 4) -- using it as the
+boundary means EVERY MLI number ($65, $80-$81 block-driver,
+$C0-$D3 file calls) correctly routes to the delegate, while
+maux's own process calls (1-5, comfortably below $65) never
+collide with it. A gap ($06-$64) is deliberately left unassigned
+on the process side -- room to grow without renegotiating this
+boundary.
+
+----------------------------------------------------------------
+copyin/copyout -- resident below the active
+----------------------------------------------------------------
+----------------------------------------------------------------
+copyin/copyout -- resident below the active top of MAIN page 1
+(fetch-immune to RAMRD/RAMWRT because ALTZP stays main). The
+original task #3 landing put these in MAIN LC, but the ProDOS
+ruling makes that page resident-MLI territory; using the low
+stack page preserves the fetch-immunity property without
+corrupting ProDOS's language-card code. $0200-$BFFF path only
+(the generic "user-buffer" case every syscall argument marshals
+through); $C000-$CFFF is refused; the $D000-$FEFF ALTZP-aware
+path is SPECIFIED in docs/SYSCALL.md (self-modified-operand
+technique, since a ZP-indirect pointer can't survive the ALTZP
+flip that path needs) but not wired into this dispatch -- no v1
+syscall argument needs it yet (process LC is not part of any v1
+call's parameter shape).
+
+INSTALL_COPY (called once, main-side boot/init, BEFORE any
+syscall can arrive) copies COPYIN_LC/COPYOUT_LC to their page-1
+homes. Both routines are written position-independent (no
+internal absolute self-reference -- only PC-relative branches
+and externally-fixed addresses) so the copy is a plain verbatim
+byte transfer, same technique as $FFxx's own template (ffpage.s)
+and src/kernel/bankprobe.s's RDAUX_SRC stub.
+
+CONTRACT: caller sets K_CPY_PROC/K_CPY_MAIN/K_CPY_LEN, then `jsr
+COPYIN_ENTRY` or `jsr COPYOUT_ENTRY` (the page-1 addresses
+INSTALL_COPY placed them at -- NOT the source labels below,
+which are the wrong, pre-relocation addresses). K_CPY_ERR: 0 on
+success; 1 if the process address fell in the refused
+$C000-$CFFF window ("forbidden forever" -- that window is never
+process memory, ever, per the one-page invariant); 2 if the
+address fell in $D000-$FEFF (the ALTZP-aware LC path is
+SPECIFIED but not wired into this dispatch yet -- "not wired
+yet," a DISTINCT code from 1 so a caller can tell the two apart,
+per the architect review that found the range check falling
+through into the $D000+ half of the routine like it was ordinary
+$0200-$BFFF flat memory -- see below).
+
+KERNEL-DATA-READ DISCIPLINE (architect review, docs/SYSCALL.md's
+"RAMRD data-read corollary"): inside a `RAMRD=aux` bracket, this
+routine's own reads of KERNEL state (not process memory) are
+limited to REGISTERS and ZERO PAGE (ALTZP-governed, immune to
+RAMRD) -- never an absolute read of anything in $0200-$BFFF,
+which RAMRD=aux would silently redirect to the PROCESS's bank
+instead of the kernel's own data. The loop bound is therefore
+hoisted into X BEFORE the RAMRD flip (a register survives the
+flip trivially) and the loop counts down (`INY`/`DEX`/`BNE`)
+rather than comparing Y against a remembered count in memory --
+zero memory reads of kernel state inside the bracket at all, not
+just zero-page- safe ones, since register-only is strictly
+simpler to audit than "zero page is safe, absolute isn't."
+COPYOUT's own loop bound doesn't strictly need this (RAMWRT
+gates writes only, never reads, so a read of kernel state stays
+kernel-side regardless of RAMWRT's setting) but uses the
+identical pattern anyway for uniformity and because "the loop
+bound never touches memory inside either bracket" is a simpler
+invariant to state and audit than "safe in one routine, merely
+unnecessary in the other."
+----------------------------------------------------------------

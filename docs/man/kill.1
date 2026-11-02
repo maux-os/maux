@@ -1,0 +1,41 @@
+.\" Derived from Research UNIX V6 kill(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/kill.1
+.\" Retrieved 2026-09-19; archived response SHA256: 843983587c17e80ba70a4205f54b7a45998e0d63fc63a0caead0a592fd5c5b4c
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH KILL 1 "September 19, 2026" maux
+.SH NAME
+kill \- signal processes
+.SH SYNOPSIS
+.B kill
+.RB [ \-signo " | " \-s " name" ]
+.I pid ...
+.br
+.B kill \-l
+.SH DESCRIPTION
+Signals the specified processes.
+Process numbers can be found by using ps(1).
+The default signal is TERM (15).
+A signal number preceded by - selects another signal;
+-s accepts a symbolic name, without regard to case.
+.PP
+The names are HUP (1), INT (2), QUIT (3), KILL (9) and TERM (15).
+The -l form lists these names.
+Signal 0 probes whether the process is alive without signalling it.
+.PP
+Normally a nonzero signal terminates its target.
+A process may ignore a signal or arrange to receive it at a safe point;
+the shell's trap command uses this facility.
+KILL cannot be caught or ignored.
+A successful send does not imply that a caught or ignored signal killed
+the process.
+.SH FILES
+/usr/man/KILL  this page
+.SH "SEE ALSO"
+ps(1), sh(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if all operations succeed, 1 if any target cannot be signalled, 2 for usage errors.
+.SH BUGS
+This is a positive-PID interface, not Unix process-group signalling. Root-tier processes (init and the idle process) cannot be killed through this command. An interactive shell ignores TERM, as in V7 (see sh(1)); kill -9 kills the console shell, and init then starts a new one.

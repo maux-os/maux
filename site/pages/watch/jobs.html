@@ -1,0 +1,27 @@
+title: ^C, ^Z, jobs and fg
+description: A long pipeline is killed with ^C. An editor is suspended with ^Z, listed with jobs, and brought back with fg.
+demo: jobs
+---
+<div class="band demo">
+<h1>^C, ^Z, jobs and fg</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / jobs</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/jobs.py -->
+<p class="lead">Process control on a 6502. A long pipeline is killed with <code>^C</code> and the shell is back at once; <code>ps</code> shows the same processes as before, so nothing is left behind. Then <code>vi</code> is suspended with <code>^Z</code>, <code>jobs</code> names it, and <code>fg</code> puts it back with its text intact.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/jobs.py; docs/DEMOS-W1-NOTES.md -->
+<p>This film is made by <code>site/demos/jobs.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests. It requires that <code>ps</code> lists exactly two more processes, children of the shell, once the pipeline is started; that the pipeline is in the foreground, with no prompt, after <code>fg</code>; that after <code>^C</code> <code>ps</code> lists exactly the processes it listed at the start; that the shell reports the editor Stopped and <code>jobs</code> names it; that the buffer is back on the screen after <code>fg</code>; and that the text survived into the saved file. The checks themselves were tested: with <code>sleep</code> replaced by a copy of <code>true</code> the demo fails at "ps now lists two more processes"; with <code>vi</code> replaced by <code>true</code> it fails at "vi is up".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

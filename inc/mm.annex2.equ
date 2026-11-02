@@ -1,0 +1,219 @@
+*---------------------------------------------------------------
+* mm.annex2.equ -- aux bank 0 (the kernel annex), PART 2:
+* the PCB annex-entry shape and the OFT/pipe object graph
+* (docs/MEMMAP.md #2.2, #2.2a).
+*
+* Split from mm.annex.equ on 2026-08-30 to lower the LARGEST
+* SINGLE PUT, which is what real Merlin-8's 41,215 B source
+* budget actually charges -- see part 1's header for the formula
+* and for what the old "one file, not several" note got
+* backwards.
+*
+* PUT THIS IMMEDIATELY AFTER mm.annex.equ. It references
+* names defined there, and real Merlin resolves an `equ` only if
+* it was defined before its first reference.
+* Full design notes: I.MEMMAPE.TXT (docs/a2/), docs/MEMMAP.md #2
+*---------------------------------------------------------------
+* -- PCB annex-entry shape (offsets, not addresses -- index by
+* entry#) --
+*
+* TASK #6 RATIFICATION (docs/SCHED.md, docs/TASKS.md #6): task
+* #2's PCB_ENTRY was an explicit size RESERVATION, not a real
+* field list ("Task #6 (scheduler) owns the real field list --
+* treat this as a size reservation, not a struct definition" --
+* docs/MEMMAP.md #2.2's original text). The operator's two-
+* queue-scheduler ruling requires a PCB_STATE byte AND a
+* SEPARATE PCB_WCHAN (wait-channel) byte -- the "everyone else
+* is a SET, not a queue" design's whole physical representation
+* -- which task #2's placeholder (STATE only, no WCHAN) didn't
+* budget for. Ratified here: PCB_ENT_SIZE STAYS 16 (no MEMMAP
+* renegotiation needed -- found a fit), by re-scoping
+* PCB_CWDINO from a 2-byte raw pointer to a 1-byte INDEX into
+* the inode cache (INODE_COUNT=32 fits comfortably in a byte;
+* task #11's fs spike owns turning this into a real
+* pointer/lookup if a flat index turns out insufficient) -- that
+* freed byte is exactly what PCB_WCHAN needed. Keeping the entry
+* at a power-of-two size matters mechanically, not just
+* aesthetically: sched.s's PCB_PTR_FOR computes PCB_ARRY_ADDR +
+* pid*PCB_ENT_SIZE with four ASL/ROL pairs (pid<<4) -- the
+* 6502 has no MUL, so a non-power-of-two size would need a real
+* shift-and-add multiply on every PCB access (SCH_SWITCH,
+* SCH_SLEEP, the SCH_WAKEUP scan's every iteration), not
+* just this one boot-time ratification call.
+PCB_ENTRY       dum   $0
+PCB_PID         ds    1
+PCB_STATE       ds    1           ;run-state -- see
+                                  ;PCB_UNUSED/PCB_RUNNABLE/ PCB_
+                                  ;RUNNING/PCB_BLOCKED/PCB_ZOMBI
+                                  ;E below
+PCB_WCHAN       ds    1           ;wait channel (task #6
+                                  ;ratification) -- 0 = not
+                                  ;waiting; meaningful only when
+                                  ;PCB_STATE = PCB_BLOCKED.
+                                  ;Physically, this byte +
+                                  ;PCB_STATE above ARE the
+                                  ;"everyone else" set the
+                                  ;operator's scheduler ruling
+                                  ;describes -- not a separate
+                                  ;structure
+PCB_BANK        ds    1           ;physical aux bank number for
+                                  ;this process
+PCB_PARENT      ds    1           ;parent pid
+PCB_SAVEDSP     ds    1           ;saved kernel-side SP at last
+                                  ;context switch (the annex
+                                  ;half of the PCB split -- the
+                                  ;per-bank half is BANK_ID +
+                                  ;FFXX_SCRATCH in the $FFxx
+                                  ;page, docs/MEMMAP.md #3.3;
+                                  ;task #6 does not add a second
+                                  ;copy there)
+PCB_EXITSTAT  ds    1
+* -- 2026-08-22: the byte that was PCB_SPARE (and PCB_CWDINO
+* -- before that -- an index into the V6 inode cache the ProDOS
+* -- ruling deleted; a ProDOS cwd is a PATH and lives in the
+* -- annex at CWD_TBL_ADDR, by pid) is now the process BREAK.
+* --
+* -- PCB_BRK holds the break as a PAGE NUMBER, not an address:
+* -- the break is `PCB_BRK * 256`, and the process heap is the
+* -- half-open interval [LOAD_BASE, PCB_BRK*256). One byte is
+* -- all there was -- PCB_ENT_SIZE must stay 16 so PCB_PTR_FOR
+* -- can index with pid<<4 (four ASL/ROL pairs) instead of a
+* -- multiply -- and one byte is enough, because a bank copy is
+* -- page-granular anyway and $08..$BF spans the whole window.
+* -- src/kernel/process.s PRC_BRK rounds every request UP to a
+* -- page, so a program never gets LESS than it asked for.
+* --
+* -- ZERO MEANS "NO BREAK ESTABLISHED", not "an empty heap":
+* -- the kernel cannot know where a program's uncleared `dum`
+* -- region ends, so the program declares its own initial break
+* -- (see docs/MEMMAP.md #3.2b). SCH_CREATE already zeroes this
+* -- byte for every new process, so a reused pid can never
+* -- inherit the previous occupant's break.
+* --
+* -- WHY IT IS IN THE PCB and not a main-memory kernel array:
+* -- a future fork() copies a LIVE bank, and without a break it
+* -- must copy the whole 46848-byte window (~1.83M cycles at
+* -- the measured 39.07 cyc/byte, ~1.8s at 1MHz). With one it
+* -- copies [LOAD_BASE, PCB_BRK*256) and stops. That read wants
+* -- to ride along on the PCB_RD_FIELDS call the spawn path
+* -- already makes, in the record that already describes the
+* -- process -- not in a second parallel table.
+PCB_BRK         ds    1           ;break PAGE (0 = unset)
+PCB_FDTABLE     ds    8           ;8 fds/process (HARD LIMIT) --
+                                  ;each byte is an OFT_COUNT-
+                                  ;range INDEX into the single
+                                  ;global Open File Table (OFT)
+                                  ;below, 0 = unused slot (never
+                                  ;a valid OFT index -- OFT
+                                  ;entry 0 is likewise never
+                                  ;allocated, see OFT_COUNT
+                                  ;below). Task #13 amendment
+                                  ;(code review C3):
+                                  ;see the OFT object-graph
+                                  ;block below this PCB_ENTRY
+                                  ;dum for the full, now-
+                                  ;implemented model (fd -> OFT
+                                  ;index -> pipe slot or ProDOS
+                                  ;refnum+iobuf) -- this comment
+                                  ;previously just said "index
+                                  ;into the global open-file
+                                  ;table" with no further
+                                  ;detail, docs/MEMMAP.md had
+                                  ;none either, and the kernel's
+                                  ;real object model had already
+                                  ;grown past that one-line
+                                  ;description
+PCB_ENTRY_LEN   equ   *
+            dend
+* PCB_ENTRY_LEN must equal PCB_ENT_SIZE above -- both are 16.
+
+* -- PCB_STATE values (task #6 ratification, docs/SCHED.md) --
+PCB_UNUSED      equ   0           ;slot never allocated, or
+                                  ;freed after reap
+PCB_RUNNABLE    equ   1           ;on the run queue, not
+                                  ;currently executing
+PCB_RUNNING     equ   2           ;currently executing (curbank
+                                  ;== PCB_BANK); at most one PCB
+                                  ;is ever RUNNING at a time
+PCB_BLOCKED     equ   3           ;sleeping on PCB_WCHAN
+                                  ;(sched.s SCH_SLEEP/
+                                  ;SCH_WAKEUP) -- part of the
+                                  ;"everyone else" SET, not the
+                                  ;run queue
+PCB_ZOMBIE      equ   4           ;exited, awaiting wait() reap
+                                  ;-- process- call surface
+                                  ;(task #3 scope), not consumed
+                                  ;by sched.s's own
+                                  ;switch/wakeup logic beyond
+                                  ;never scheduling it again
+* -- PCB_STOPPED (docs/JOB-CONTROL.md Increment B, 2026-09-08):
+* -- suspended by the ^Z sweep (procspawn2.s PRC_STOP_SWP). Not
+* -- schedulable, not dead: bank intact, fds open, resumable by
+* -- SYS_CONT (STOPPED -> RUNNABLE + RUNQ_PUSH). ITS OWN VALUE,
+* -- not "BLOCKED on a magic channel": SCH_WAKEUP matches
+* -- PCB_BLOCKED only, so no channel wakeup can ever un-stop a
+* -- job. Every PCB_STATE reader weighs it -- sched.s :statechk
+* -- (never RUNQ_PUSH a stopped pid: it would be popped and
+* -- skipped forever), PRC_WAIT (counts, is not reaped; a
+* -- stopped-only child set never blocks), PRC_KILL (alive --
+* -- kill -9 works), both sweeps (skipped), and the orphan
+* -- adoption (process2.s PRC_ADOPT: a stopped child of a dead
+* -- parent can never be continued by it, so init adopts it and
+* -- it gets SIGHUP then SIGCONT, ORPHAN-1).
+PCB_STOPPED     equ   5
+
+* Inode-cache entry shape REMOVED (task #11 amendment -- see the
+* INODE_* removal note above this file's PCB_ENTRY block).
+
+* -- pipe metadata shape (offsets; the 256B ring itself is a
+* flat buffer,
+*    addressed separately from this fixed-size header) --
+* TASK #13 AMENDMENT (code review C3): the `PIPE_META`
+* dum block below is SUPERSEDED and commented out (not deleted,
+* per this codebase's own INODE_*-removal precedent above) --
+* task #12's implementation (`src/kernel/process.s`) does not
+* use an array-of-8-byte-structs shape at all. See "2.2a Open
+* File Table (OFT) object graph" immediately below for what
+* actually replaced it, kept assembling as plain comments so a
+* reader who remembers the OLD design can find the pointer to
+* the new one rather than the block silently vanishing with no
+* trail.
+*   PIPE_META       dum   $0
+*   PIPE_RDPTR      ds    1
+*   PIPE_WRPTR      ds    1
+*   PIPE_READER_PID ds    1
+*   PIPE_WRITER_PID ds    1
+*   PIPE_FLAGS      ds    1
+*   PIPE_PAD        ds    3
+*   PIPE_META_LEN   equ   *
+*               dend
+* PIPE_META_LEN must equal PIPE_MT_SIZE above -- both are 8.
+* (this comparison is dead along with the struct it checked)
+
+* See I.MEMMAPE.TXT: "2.2a Open File Table (OFT) object"
+OFT_COUNT   equ   16               ;HARD LIMIT -- global Open
+                                   ;File Table entry count
+                                   ;(index 0 never allocated)
+OFT_FREE    equ   0                ;OFT_TYPE tag: slot unused
+OFT_PIPE_R  equ   1                ;OFT_TYPE tag: pipe read end
+OFT_PIPE_W  equ   2                ;OFT_TYPE tag: pipe write end
+OFT_FILE    equ   3                ;OFT_TYPE tag: ProDOS-backed
+                                   ;file
+OFT_BLK     equ   4                ;OFT_TYPE tag: /dev/sNdM
+                                   ;block device -- docs/KSEG.md
+                                   ;"Cells and equates"
+* -- OPEN-RO (docs/OPEN-RO-2-NOTES.md): for an OFT_FILE entry
+* -- OFT_PIPE (a pipe index for a pipe end, else unused) holds
+* -- four flag bits.
+OFTF_RO     equ   $80              ;opened with read intent: may
+                                   ;join a peer; WRITE refused
+OFTF_MG     equ   $40              ;a member of a shared group:
+                                   ;its mark lives in the slot
+                                   ;store
+OFTF_AP     equ   $20              ;opened with append intent:
+                                   ;every WRITE/SET_EOF seeks
+                                   ;to EOF first (OAPPEND-1)
+OFTF_PIN    equ   $10              ;opened by a RELATIVE path:
+                                   ;never a park victim itself
+                                   ;(its group may park through
+                                   ;an unpinned member)

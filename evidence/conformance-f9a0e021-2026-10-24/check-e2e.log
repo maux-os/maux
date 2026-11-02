@@ -1,0 +1,641 @@
+python3 scripts/e2e_selftest.py
+[e2e-selftest] 329 cases: 329 correct answers accepted, 1282 mutants rejected, 30 divergence entries
+[e2e-selftest] PASS: every comparator accepts a correct answer and rejects every mutation of it
+merlin32 -v1 src/test/e2etest.s
+merlin32 v1.1.10, (c) Brutal Deluxe 2011-2015
+  + Assemble project files...
+    o Loading Sources files...
+        - e2etest.s
+        - ../../inc/mm.kbss.equ
+        - ../../inc/mm.procbank.equ
+        - ../../inc/mm.procbnk2.equ
+        - ../../inc/mm.hw.equ
+        - ../../inc/mm.mli.equ
+        - ../../inc/mm.mlibuf.equ
+        - ../../inc/mm.annex.equ
+        - ../../inc/mm.annex2.equ
+        - ../../inc/sc.proc.equ
+        - ../../inc/sc.status.equ
+        - ../../inc/sc.file.equ
+        - ../../inc/sc.fd.equ
+        - ../../inc/sc.devfd.equ
+        - ../../inc/sc.fdact.equ
+        - ../../inc/errno.krn.equ
+        - ../../inc/errno.spawn.equ
+        - ../../inc/bankcopy.equ
+        - ../../inc/entry.frame.equ
+        - ../../inc/sched.equ
+        - ../../inc/kdisp.equ
+        - ../../inc/sched.zp.equ
+        - ../../inc/bankprobe.equ
+        - ../../inc/mli.const.equ
+        - ../../inc/proc.const.equ
+        - ../../inc/ultraterm.equ
+        - ../../inc/tty.equ
+        - ../kernel/kdisp.s
+        - ../kernel/entry.s
+        - ../kernel/entry2.s
+        - ../kernel/ffpage.s
+        - ../kernel/sched.s
+        - ../kernel/sched2.s
+        - ../kernel/bankcopy.s
+        - ../kernel/process.s
+        - ../kernel/process2.s
+        - ../kernel/procfile.s
+        - ../kernel/procfile4.s
+        - ../kernel/procfile2.s
+        - ../kernel/procfile3.s
+        - ../kernel/procfile5.s
+        - ../kernel/procdevs.s
+        - ../kernel/vroot.s
+        - ../kernel/ultraterm.s
+        - ../kernel/ultraterm2.s
+        - ../kernel/tty.s
+        - ../kernel/tty3.s
+        - ../kernel/tty2.s
+        - ../kernel/tty4.s
+        - ../kernel/tty5.s
+        - ../kernel/tty6.s
+        - ../kernel/tty7.s
+        - ../kernel/tty8.s
+        - ../kernel/tty9.s
+        - ../kernel/procspawn.s
+        - ../kernel/spawnpl.s
+        - ../kernel/procspawn3.s
+        - ../kernel/procspawn2.s
+        - ../kernel/procsig.s
+        - ../kernel/procsig2.s
+        - ../kernel/procfd.s
+        - ../kernel/procfd2.s
+        - ../kernel/procmli.s
+        - ../kernel/procmli3.s
+        - ../kernel/ser.s
+        - ../kernel/procmli2.s
+        - ../kernel/lazyfree.s
+        - ../kernel/procfork.s
+        - e2etestb.s
+    o Loading Macro files...
+    o Check for duplicated Macros...
+    o Decoding lines types...
+    o Process local Labels...
+    o Process variable Labels...
+    o Process Asterisk lines...
+    o Build External table...
+    o Build Equivalence table...
+    o Build Variable table...
+    o Process Equivalence values...
+    o Replace Macros with Code...
+    o Replace Lup with code...
+    o Process MX directives...
+    o Process Conditional directives...
+    o Build Label table...
+    o Check for duplicated Labels...
+    o Check for unknown Source lines...
+    o Check for Dum lines...
+    + Building Code Lines:
+      Pass 1...
+      o Compute Operand Code size...
+      o Compute Operand Data size...
+      o Compute Line address...
+      o Build Code Line...
+      o Compact Code for Direct Page Lines...
+      Pass 2...
+      o Compute Operand Code size...
+      o Compute Operand Data size...
+      o Compute Line address...
+      o Build Code Line...
+      o Compact Code for Direct Page Lines...
+      Done
+    o Check for Err lines...
+    o Check for Direct Page Lines...
+    o Build Data Line...
+    o Build Object Code...
+  + Link project files...
+    o Build Binary output file...
+     => Creating Object file 'src/test/../../build/MAUXE2E.SYSTEM'
+  + Create Output Text file...
+     => Creating Output file 'src/test/../../build/MAUXE2E.SYSTEM_Output.txt'
+python3 scripts/build_e2e_image.py
+[build-e2e] mirror: push FBIN#040000 -> FBIN (256 bytes)
+[build-e2e] mirror: push FBIN2#040000 -> FBIN2 (256 bytes)
+[build-e2e] mirror: push FBLK1#040000 -> FBLK1 (512 bytes)
+[build-e2e] mirror: push FBLK2#040000 -> FBLK2 (513 bytes)
+[build-e2e] mirror: push FBLK511#040000 -> FBLK511 (511 bytes)
+[build-e2e] mirror: push FBUF#040000 -> FBUF (255 bytes)
+[build-e2e] mirror: push FBUF2#040000 -> FBUF2 (256 bytes)
+[build-e2e] mirror: push FBUFMIN#040000 -> FBUFMIN (254 bytes)
+[build-e2e] mirror: push FCKONE#040000 -> FCKONE (1 bytes)
+[build-e2e] mirror: push FCKTXT#040000 -> FCKTXT (86 bytes)
+[build-e2e] mirror: push FCMPL1#040000 -> FCMPL1 (12 bytes)
+[build-e2e] mirror: push FCMPL2#040000 -> FCMPL2 (12 bytes)
+[build-e2e] mirror: push FCMPL3#040000 -> FCMPL3 (12 bytes)
+[build-e2e] mirror: push FCSPLITIN#040000 -> FCSPLITIN (24 bytes)
+[build-e2e] mirror: push FCTRL#040000 -> FCTRL (512 bytes)
+[build-e2e] mirror: push FCTRLCP#040000 -> FCTRLCP (512 bytes)
+[build-e2e] mirror: push FCUTCOLON#040000 -> FCUTCOLON (29 bytes)
+[build-e2e] mirror: push FCUTMIX#040000 -> FCUTMIX (24 bytes)
+[build-e2e] mirror: push FCUTTAB#040000 -> FCUTTAB (24 bytes)
+[build-e2e] mirror: push FDA#040000 -> FDA (24 bytes)
+[build-e2e] mirror: push FDACOPY#040000 -> FDACOPY (24 bytes)
+[build-e2e] mirror: push FDAPRE#040000 -> FDAPRE (8 bytes)
+[build-e2e] mirror: push FDB#040000 -> FDB (28 bytes)
+[build-e2e] mirror: push FDC#040000 -> FDC (22 bytes)
+[build-e2e] mirror: push FDUP#040000 -> FDUP (500 bytes)
+[build-e2e] mirror: push FDUP2#040000 -> FDUP2 (36 bytes)
+[build-e2e] mirror: push FEMPTY#040000 -> FEMPTY (0 bytes)
+[build-e2e] mirror: push FEXPBS#040000 -> FEXPBS (8 bytes)
+[build-e2e] mirror: push FEXPPAST#040000 -> FEXPPAST (10 bytes)
+[build-e2e] mirror: push FEXPPLAIN#040000 -> FEXPPLAIN (20 bytes)
+[build-e2e] mirror: push FEXPTAB0#040000 -> FEXPTAB0 (5 bytes)
+[build-e2e] mirror: push FEXPTABMID#040000 -> FEXPTABMID (5 bytes)
+[build-e2e] mirror: push FFOLDBLANKLN#040000 -> FFOLDBLANKLN (1 bytes)
+[build-e2e] mirror: push FFOLDEXACT#040000 -> FFOLDEXACT (11 bytes)
+[build-e2e] mirror: push FFOLDLONG#040000 -> FFOLDLONG (96 bytes)
+[build-e2e] mirror: push FFOLDTAB#040000 -> FFOLDTAB (14 bytes)
+[build-e2e] mirror: push FFOLDWORDS#040000 -> FFOLDWORDS (41 bytes)
+[build-e2e] mirror: push FGBIN#040000 -> FGBIN (14 bytes)
+[build-e2e] mirror: push FGLONG#040000 -> FGLONG (768 bytes)
+[build-e2e] mirror: push FGREP#040000 -> FGREP (38 bytes)
+[build-e2e] mirror: push FGREP2#040000 -> FGREP2 (35 bytes)
+[build-e2e] mirror: push FGRPBACK#040000 -> FGRPBACK (42 bytes)
+[build-e2e] mirror: push FGRPSTAR#040000 -> FGRPSTAR (25 bytes)
+[build-e2e] mirror: push FINTV#040000 -> FINTV (40 bytes)
+[build-e2e] mirror: push FINTV2#040000 -> FINTV2 (36 bytes)
+[build-e2e] mirror: push FIOB#040000 -> FIOB (1024 bytes)
+[build-e2e] mirror: push FJOIN1#040000 -> FJOIN1 (12 bytes)
+[build-e2e] mirror: push FJOIN2#040000 -> FJOIN2 (12 bytes)
+[build-e2e] mirror: push FLONG#040000 -> FLONG (773 bytes)
+[build-e2e] mirror: push FLONG2#040000 -> FLONG2 (260 bytes)
+[build-e2e] mirror: push FMIX#040000 -> FMIX (83 bytes)
+[build-e2e] mirror: push FNLBLANK#040000 -> FNLBLANK (11 bytes)
+[build-e2e] mirror: push FNLPAGE#040000 -> FNLPAGE (41 bytes)
+[build-e2e] mirror: push FNLPAGE2#040000 -> FNLPAGE2 (39 bytes)
+[build-e2e] mirror: push FNLPLAIN#040000 -> FNLPLAIN (14 bytes)
+[build-e2e] mirror: push FNOEOL#040000 -> FNOEOL (3 bytes)
+[build-e2e] mirror: push FODC#040000 -> FODC (28 bytes)
+[build-e2e] mirror: push FONE#040000 -> FONE (2 bytes)
+[build-e2e] mirror: push FPASTE1#040000 -> FPASTE1 (6 bytes)
+[build-e2e] mirror: push FPASTE2#040000 -> FPASTE2 (4 bytes)
+[build-e2e] mirror: push FPASTE3#040000 -> FPASTE3 (8 bytes)
+[build-e2e] mirror: push FPWEXACT#040000 -> FPWEXACT (46848 bytes)
+[build-e2e] mirror: push FPWMIN#040000 -> FPWMIN (46847 bytes)
+[build-e2e] mirror: push FPWPLUS#040000 -> FPWPLUS (46849 bytes)
+[build-e2e] mirror: push FRAW1#040000 -> FRAW1 (1 bytes)
+[build-e2e] mirror: push FSA#040000 -> FSA (29 bytes)
+[build-e2e] mirror: push FSACOPY#040000 -> FSACOPY (29 bytes)
+[build-e2e] mirror: push FSB#040000 -> FSB (28 bytes)
+[build-e2e] mirror: push FSEDALN#040000 -> FSEDALN (2045 bytes)
+[build-e2e] mirror: push FSEDBIG#040000 -> FSEDBIG (2464 bytes)
+[build-e2e] mirror: push FSELF#040000 -> FSELF (8 bytes)
+[build-e2e] mirror: push FSELF2#040000 -> FSELF2 (8 bytes)
+[build-e2e] mirror: push FSORTK#040000 -> FSORTK (30 bytes)
+[build-e2e] mirror: push FSORTN#040000 -> FSORTN (77 bytes)
+[build-e2e] mirror: push FSPLITIN#040000 -> FSPLITIN (24 bytes)
+[build-e2e] mirror: push FSTR1#040000 -> FSTR1 (18 bytes)
+[build-e2e] mirror: push FSTRM1#040000 -> FSTRM1 (11 bytes)
+[build-e2e] mirror: push FSTRM2#040000 -> FSTRM2 (11 bytes)
+[build-e2e] mirror: push FSTROFS#040000 -> FSTROFS (16 bytes)
+[build-e2e] mirror: push FTAIL#040000 -> FTAIL (48 bytes)
+[build-e2e] mirror: push FTSORT#040000 -> FTSORT (12 bytes)
+[build-e2e] mirror: push FTWIN#040000 -> FTWIN (516 bytes)
+[build-e2e] mirror: push FTWINB#040000 -> FTWINB (516 bytes)
+[build-e2e] mirror: push FUNS#040000 -> FUNS (113 bytes)
+[build-e2e] mirror: push FUU135#040000 -> FUU135 (135 bytes)
+[build-e2e] mirror: push FUU46#040000 -> FUU46 (46 bytes)
+[build-e2e] mirror: push FUU57#040000 -> FUU57 (57 bytes)
+[build-e2e] mirror: push FUU58#040000 -> FUU58 (58 bytes)
+[build-e2e] mirror: push FUXINTER#040000 -> FUXINTER (11 bytes)
+[build-e2e] mirror: push FUXLEAD5#040000 -> FUXLEAD5 (7 bytes)
+[build-e2e] mirror: push FUXLEAD8#040000 -> FUXLEAD8 (16 bytes)
+[build-e2e] mirror: push FUXONESP#040000 -> FUXONESP (10 bytes)
+[build-e2e] mirror: push FUXT4#040000 -> FUXT4 (10 bytes)
+[build-e2e] mirror: push FXARGS#040000 -> FXARGS (28 bytes)
+[build-e2e] mirror: push FXARGSQ#040000 -> FXARGSQ (25 bytes)
+[build-e2e] mirror: push SCRIPT#040000 -> SCRIPT (28292 bytes)
+[build-e2e] mirror: push ST#040000 -> ST (0 bytes)
+[build-e2e] carrier=/Users/mdj/src/maux/.claude/worktrees/agent-a15b80f33a9019ed3/vendor/prodos-basic.po volname=MAUX
+[build-e2e] kept=[] removed=[]
+[build-e2e] MAUX.SYSTEM 27843B 5a5d352e46f7
+[build-e2e]   sh      36587B  sha256:517e469c6a6e
+[build-e2e]   echo     1244B  sha256:66d67aa70434
+[build-e2e]   sort     4315B  sha256:e646a28c52be
+[build-e2e]   diff     8354B  sha256:258c018d7f07
+[build-e2e]   tr       2700B  sha256:26b50e64ff82
+[build-e2e]   uniq     2795B  sha256:9ff341a94060
+[build-e2e]   comm     2367B  sha256:5e7695312599
+[build-e2e]   wc       2395B  sha256:cab16fe5241a
+[build-e2e]   od       4024B  sha256:4b8ac4d07227
+[build-e2e]   cmp      2677B  sha256:bf8a5fbc8b4f
+[build-e2e]   sum      1979B  sha256:93b2674ba5cf
+[build-e2e]   cat      1751B  sha256:796a97b456a6
+[build-e2e]   grep     6216B  sha256:753c71c8fa79
+[build-e2e]   tee      2757B  sha256:171b0576af15
+[build-e2e]   expr     6571B  sha256:6598dc2d7f13
+[build-e2e]   tail     3279B  sha256:abd202709729
+[build-e2e]   head     2204B  sha256:50c24beae0b1
+[build-e2e]   sed     10446B  sha256:1ad50bd2ecc0
+[build-e2e]   cut      2835B  sha256:a173feaef3c7
+[build-e2e]   xargs    4855B  sha256:9da2c4ed02aa
+[build-e2e]   find     8093B  sha256:dbebd7a4490d
+[build-e2e]   printf   3837B  sha256:c77bc3fac9d6
+[build-e2e]   basename   1533B  sha256:d20f12d7c184
+[build-e2e]   dirname   1463B  sha256:2a55b03d3395
+[build-e2e]   env      3350B  sha256:1f80dc16e671
+[build-e2e]   uuencode   2497B  sha256:56c3c38567ed
+[build-e2e]   uudecode   3203B  sha256:73b31b29db52
+[build-e2e]   cksum    2077B  sha256:a1df9a2e4e26
+[build-e2e]   paste    2649B  sha256:8d61b88ed280
+[build-e2e]   fold     2354B  sha256:5950f249feb4
+[build-e2e]   nl       6455B  sha256:902fc3293d83
+[build-e2e]   expand   2226B  sha256:4d65f9a03e4d
+[build-e2e]   unexpand   2573B  sha256:f54d897a8321
+[build-e2e]   cal      3384B  sha256:b0cc7bf2be6c
+[build-e2e]   strings   2645B  sha256:6584a93ad7d7
+[build-e2e]   nohup    3423B  sha256:0bbeaf4fbe21
+[build-e2e]   tsort    2276B  sha256:f8b28861f10d
+[build-e2e]   pr       6410B  sha256:2a3c0761c6c6
+[build-e2e]   pathchk   2238B  sha256:be839fc6f36f
+[build-e2e]   split    2940B  sha256:474ee97f1b60
+[build-e2e]   csplit   6708B  sha256:74e4f5d7cab3
+[build-e2e]   join     3764B  sha256:16ce92f1d69b
+[build-e2e] 95 fixtures + SCRIPT staged through `a2til mirror --once --raw` -> /mnt/MAUX/E2E (97 entries, 183475 bytes)
+[build-e2e] 329 cases; longest sh line 129 of LINEMAX 255
+[build-e2e] volume 613 of 1600 blocks free before the run
+[build-e2e] /Users/mdj/src/maux/.claude/worktrees/agent-a15b80f33a9019ed3/build/e2e.po ready (819200 bytes)
+python3 scripts/check_e2e.py build/e2e.po
+[mcp] backend: fast
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[mcp] roms: /Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom
+[mcp] fast: authentic AE Timemaster card on slot 4
+[mcp] fast: AppleMouse II on slot 5 (60 Hz VBL)
+[check-e2e] reset -> {'aux': 'ramworks', 'backend': 'fast', 'backends': ['fast', 'rtl'], 'clock': True, 'cycle': 0, 'mockingboard': False, 'mouse': True, 'ok': True, 'roms': {'system': '/Users/mdj/src/verilogapple/sim/roms/iie_cd_ef.rom', 'video': '/Users/mdj/src/verilogapple/sim/roms/iie_video.rom'}, 'ssc': False, 'ultraterm': False}
+[check-e2e] mount_disk -> {'ok': True, 'path': '/Users/mdj/src/maux/.claude/worktrees/agent-a15b80f33a9019ed3/build/e2e.po', 'size': 819200, 'slot': 7, 'type': 'smartport', 'unit': 1, 'unit_count': 1, 'write_mode': 'write_through'}
+libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument
+[check-e2e] PINNED DEFECT case 282  ECHO $(ECHO $(ECHO DEEP)) > /mnt/MAUX/E2E/O282 2>&1
+[check-e2e]     sh: nested $( ) is refused
+[check-e2e]     O282 was not created on the volume at all
+[check-e2e] PINNED DEFECT case 286  ( ECHO A ; ECHO B ) | CAT > /mnt/MAUX/E2E/O286 2>&1
+[check-e2e]     sh: a ( ) group cannot be a pipeline stage
+[check-e2e]     O286 was not created on the volume at all
+[check-e2e] done=$AA err=$00 step=$02 sh_pid=2 sh_wait=2 sh_status=$00 (75 x 5000000 cycles, 13.8s)
+[check-e2e] mirror: pull FSELF2 -> FSELF2#040000 (0 bytes)
+[check-e2e] mirror: pull ST -> ST#040000 (658 bytes)
+[check-e2e] mirror: pull CSE2E00 -> CSE2E00 (8 bytes)
+[check-e2e] mirror: pull CSE2E01 -> CSE2E01 (16 bytes)
+[check-e2e] mirror: pull O01 -> O01 (113 bytes)
+[check-e2e] mirror: pull O02 -> O02 (113 bytes)
+[check-e2e] mirror: pull O03 -> O03 (18 bytes)
+[check-e2e] mirror: pull O04 -> O04 (18 bytes)
+[check-e2e] mirror: pull O05 -> O05 (516 bytes)
+[check-e2e] mirror: pull O06 -> O06 (516 bytes)
+[check-e2e] mirror: pull O07 -> O07 (512 bytes)
+[check-e2e] mirror: pull O08 -> O08 (0 bytes)
+[check-e2e] mirror: pull O09 -> O09 (4 bytes)
+[check-e2e] mirror: pull O10 -> O10 (77 bytes)
+[check-e2e] mirror: pull O100 -> O100 (767 bytes)
+[check-e2e] mirror: pull O101 -> O101 (4 bytes)
+[check-e2e] mirror: pull O102 -> O102 (106 bytes)
+[check-e2e] mirror: pull O103 -> O103 (9 bytes)
+[check-e2e] mirror: pull O104 -> O104 (15 bytes)
+[check-e2e] mirror: pull O105 -> O105 (20 bytes)
+[check-e2e] mirror: pull O106 -> O106 (15 bytes)
+[check-e2e] mirror: pull O107 -> O107 (21 bytes)
+[check-e2e] mirror: pull O108 -> O108 (21 bytes)
+[check-e2e] mirror: pull O109 -> O109 (17 bytes)
+[check-e2e] mirror: pull O11 -> O11 (77 bytes)
+[check-e2e] mirror: pull O110 -> O110 (41 bytes)
+[check-e2e] mirror: pull O111 -> O111 (17 bytes)
+[check-e2e] mirror: pull O112 -> O112 (66 bytes)
+[check-e2e] mirror: pull O113 -> O113 (14 bytes)
+[check-e2e] mirror: pull O114 -> O114 (7 bytes)
+[check-e2e] mirror: pull O115 -> O115 (12 bytes)
+[check-e2e] mirror: pull O116 -> O116 (18 bytes)
+[check-e2e] mirror: pull O117 -> O117 (7 bytes)
+[check-e2e] mirror: pull O118 -> O118 (10 bytes)
+[check-e2e] mirror: pull O119 -> O119 (5 bytes)
+[check-e2e] mirror: pull O12 -> O12 (113 bytes)
+[check-e2e] mirror: pull O120 -> O120 (5 bytes)
+[check-e2e] mirror: pull O121 -> O121 (4 bytes)
+[check-e2e] mirror: pull O122 -> O122 (4 bytes)
+[check-e2e] mirror: pull O123 -> O123 (0 bytes)
+[check-e2e] mirror: pull O124 -> O124 (0 bytes)
+[check-e2e] mirror: pull O125 -> O125 (0 bytes)
+[check-e2e] mirror: pull O126 -> O126 (40 bytes)
+[check-e2e] mirror: pull O127 -> O127 (0 bytes)
+[check-e2e] mirror: pull O128 -> O128 (6 bytes)
+[check-e2e] mirror: pull O129 -> O129 (12 bytes)
+[check-e2e] mirror: pull O13 -> O13 (30 bytes)
+[check-e2e] mirror: pull O130 -> O130 (15 bytes)
+[check-e2e] mirror: pull O131 -> O131 (6 bytes)
+[check-e2e] mirror: pull O132 -> O132 (32 bytes)
+[check-e2e] mirror: pull O133 -> O133 (2 bytes)
+[check-e2e] mirror: pull O134 -> O134 (0 bytes)
+[check-e2e] mirror: pull O135 -> O135 (8 bytes)
+[check-e2e] mirror: pull O136 -> O136 (83 bytes)
+[check-e2e] mirror: pull O137 -> O137 (2 bytes)
+[check-e2e] mirror: pull O138 -> O138 (14 bytes)
+[check-e2e] mirror: pull O139 -> O139 (48 bytes)
+[check-e2e] mirror: pull O14 -> O14 (30 bytes)
+[check-e2e] mirror: pull O140 -> O140 (0 bytes)
+[check-e2e] mirror: pull O141 -> O141 (1 bytes)
+[check-e2e] mirror: pull O142 -> O142 (12 bytes)
+[check-e2e] mirror: pull O143 -> O143 (5 bytes)
+[check-e2e] mirror: pull O144 -> O144 (9 bytes)
+[check-e2e] mirror: pull O145 -> O145 (0 bytes)
+[check-e2e] mirror: pull O146 -> O146 (2 bytes)
+[check-e2e] mirror: pull O147 -> O147 (2 bytes)
+[check-e2e] mirror: pull O148 -> O148 (2 bytes)
+[check-e2e] mirror: pull O149 -> O149 (2 bytes)
+[check-e2e] mirror: pull O15 -> O15 (30 bytes)
+[check-e2e] mirror: pull O150 -> O150 (2 bytes)
+[check-e2e] mirror: pull O151 -> O151 (40 bytes)
+[check-e2e] mirror: pull O152 -> O152 (12 bytes)
+[check-e2e] mirror: pull O153 -> O153 (12 bytes)
+[check-e2e] mirror: pull O154 -> O154 (12 bytes)
+[check-e2e] mirror: pull O155 -> O155 (40 bytes)
+[check-e2e] mirror: pull O156 -> O156 (0 bytes)
+[check-e2e] mirror: pull O157 -> O157 (4 bytes)
+[check-e2e] mirror: pull O158 -> O158 (40 bytes)
+[check-e2e] mirror: pull O159 -> O159 (12 bytes)
+[check-e2e] mirror: pull O16 -> O16 (149 bytes)
+[check-e2e] mirror: pull O160 -> O160 (12 bytes)
+[check-e2e] mirror: pull O161 -> O161 (48 bytes)
+[check-e2e] mirror: pull O162 -> O162 (105 bytes)
+[check-e2e] mirror: pull O163 -> O163 (40 bytes)
+[check-e2e] mirror: pull O164 -> O164 (108 bytes)
+[check-e2e] mirror: pull O165 -> O165 (20 bytes)
+[check-e2e] mirror: pull O166 -> O166 (14 bytes)
+[check-e2e] mirror: pull O167 -> O167 (15 bytes)
+[check-e2e] mirror: pull O168 -> O168 (20 bytes)
+[check-e2e] mirror: pull O169 -> O169 (8 bytes)
+[check-e2e] mirror: pull O17 -> O17 (113 bytes)
+[check-e2e] mirror: pull O170 -> O170 (23 bytes)
+[check-e2e] mirror: pull O171 -> O171 (4 bytes)
+[check-e2e] mirror: pull O172 -> O172 (16 bytes)
+[check-e2e] mirror: pull O173 -> O173 (20 bytes)
+[check-e2e] mirror: pull O174 -> O174 (61 bytes)
+[check-e2e] mirror: pull O175 -> O175 (34 bytes)
+[check-e2e] mirror: pull O176 -> O176 (34 bytes)
+[check-e2e] mirror: pull O177 -> O177 (37 bytes)
+[check-e2e] mirror: pull O178 -> O178 (35 bytes)
+[check-e2e] mirror: pull O179 -> O179 (35 bytes)
+[check-e2e] mirror: pull O18 -> O18 (773 bytes)
+[check-e2e] mirror: pull O180 -> O180 (34 bytes)
+[check-e2e] mirror: pull O181 -> O181 (68 bytes)
+[check-e2e] mirror: pull O182 -> O182 (13 bytes)
+[check-e2e] mirror: pull O183 -> O183 (11 bytes)
+[check-e2e] mirror: pull O184 -> O184 (21 bytes)
+[check-e2e] mirror: pull O185 -> O185 (11 bytes)
+[check-e2e] mirror: pull O186 -> O186 (11 bytes)
+[check-e2e] mirror: pull O187 -> O187 (6 bytes)
+[check-e2e] mirror: pull O188 -> O188 (10 bytes)
+[check-e2e] mirror: pull O189 -> O189 (11 bytes)
+[check-e2e] mirror: pull O19 -> O19 (260 bytes)
+[check-e2e] mirror: pull O190 -> O190 (97 bytes)
+[check-e2e] mirror: pull O191 -> O191 (16 bytes)
+[check-e2e] mirror: pull O192 -> O192 (15 bytes)
+[check-e2e] mirror: pull O193 -> O193 (43 bytes)
+[check-e2e] mirror: pull O194 -> O194 (11 bytes)
+[check-e2e] mirror: pull O195 -> O195 (1 bytes)
+[check-e2e] mirror: pull O196 -> O196 (18 bytes)
+[check-e2e] mirror: pull O197 -> O197 (10 bytes)
+[check-e2e] mirror: pull O198 -> O198 (6 bytes)
+[check-e2e] mirror: pull O199 -> O199 (16 bytes)
+[check-e2e] mirror: pull O20 -> O20 (30 bytes)
+[check-e2e] mirror: pull O200 -> O200 (12 bytes)
+[check-e2e] mirror: pull O201 -> O201 (20 bytes)
+[check-e2e] mirror: pull O202 -> O202 (9 bytes)
+[check-e2e] mirror: pull O203 -> O203 (7 bytes)
+[check-e2e] mirror: pull O204 -> O204 (11 bytes)
+[check-e2e] mirror: pull O205 -> O205 (10 bytes)
+[check-e2e] mirror: pull O206 -> O206 (8 bytes)
+[check-e2e] mirror: pull O207 -> O207 (35 bytes)
+[check-e2e] mirror: pull O208 -> O208 (32 bytes)
+[check-e2e] mirror: pull O209 -> O209 (32 bytes)
+[check-e2e] mirror: pull O21 -> O21 (18 bytes)
+[check-e2e] mirror: pull O210 -> O210 (35 bytes)
+[check-e2e] mirror: pull O211 -> O211 (26 bytes)
+[check-e2e] mirror: pull O212 -> O212 (38 bytes)
+[check-e2e] mirror: pull O213 -> O213 (35 bytes)
+[check-e2e] mirror: pull O214 -> O214 (54 bytes)
+[check-e2e] mirror: pull O215 -> O215 (50 bytes)
+[check-e2e] mirror: pull O216 -> O216 (50 bytes)
+[check-e2e] mirror: pull O217 -> O217 (184 bytes)
+[check-e2e] mirror: pull O218 -> O218 (184 bytes)
+[check-e2e] mirror: pull O219 -> O219 (184 bytes)
+[check-e2e] mirror: pull O22 -> O22 (0 bytes)
+[check-e2e] mirror: pull O220 -> O220 (184 bytes)
+[check-e2e] mirror: pull O221 -> O221 (12 bytes)
+[check-e2e] mirror: pull O222 -> O222 (19 bytes)
+[check-e2e] mirror: pull O223 -> O223 (21 bytes)
+[check-e2e] mirror: pull O224 -> O224 (22 bytes)
+[check-e2e] mirror: pull O225 -> O225 (22 bytes)
+[check-e2e] mirror: pull O226 -> O226 (28 bytes)
+[check-e2e] mirror: pull O227 -> O227 (6 bytes)
+[check-e2e] mirror: pull O228 -> O228 (8 bytes)
+[check-e2e] mirror: pull O229 -> O229 (113 bytes)
+[check-e2e] mirror: pull O23 -> O23 (528 bytes)
+[check-e2e] mirror: pull O230 -> O230 (233 bytes)
+[check-e2e] mirror: pull O231 -> O231 (0 bytes)
+[check-e2e] mirror: pull O232 -> O232 (0 bytes)
+[check-e2e] mirror: pull O233 -> O233 (0 bytes)
+[check-e2e] mirror: pull O234 -> O234 (18 bytes)
+[check-e2e] mirror: pull O235 -> O235 (6 bytes)
+[check-e2e] mirror: pull O236 -> O236 (24 bytes)
+[check-e2e] mirror: pull O237 -> O237 (13 bytes)
+[check-e2e] mirror: pull O238 -> O238 (4 bytes)
+[check-e2e] mirror: pull O239 -> O239 (4 bytes)
+[check-e2e] mirror: pull O24 -> O24 (0 bytes)
+[check-e2e] mirror: pull O240 -> O240 (6 bytes)
+[check-e2e] mirror: pull O241 -> O241 (3 bytes)
+[check-e2e] mirror: pull O242 -> O242 (14 bytes)
+[check-e2e] mirror: pull O243 -> O243 (10 bytes)
+[check-e2e] mirror: pull O244 -> O244 (38 bytes)
+[check-e2e] mirror: pull O245 -> O245 (6 bytes)
+[check-e2e] mirror: pull O246 -> O246 (5 bytes)
+[check-e2e] mirror: pull O247 -> O247 (5 bytes)
+[check-e2e] mirror: pull O248 -> O248 (5 bytes)
+[check-e2e] mirror: pull O249 -> O249 (7 bytes)
+[check-e2e] mirror: pull O25 -> O25 (21 bytes)
+[check-e2e] mirror: pull O250 -> O250 (2 bytes)
+[check-e2e] mirror: pull O251 -> O251 (9 bytes)
+[check-e2e] mirror: pull O252 -> O252 (2 bytes)
+[check-e2e] mirror: pull O253 -> O253 (5 bytes)
+[check-e2e] mirror: pull O254 -> O254 (2 bytes)
+[check-e2e] mirror: pull O255 -> O255 (7 bytes)
+[check-e2e] mirror: pull O256 -> O256 (0 bytes)
+[check-e2e] mirror: pull O257 -> O257 (8 bytes)
+[check-e2e] mirror: pull O258 -> O258 (6 bytes)
+[check-e2e] mirror: pull O259 -> O259 (6 bytes)
+[check-e2e] mirror: pull O26 -> O26 (40 bytes)
+[check-e2e] mirror: pull O260 -> O260 (22 bytes)
+[check-e2e] mirror: pull O261 -> O261 (28 bytes)
+[check-e2e] mirror: pull O262 -> O262 (378 bytes)
+[check-e2e] mirror: pull O263 -> O263 (377 bytes)
+[check-e2e] mirror: pull O264 -> O264 (90 bytes)
+[check-e2e] mirror: pull O265 -> O265 (208 bytes)
+[check-e2e] mirror: pull O266 -> O266 (105 bytes)
+[check-e2e] mirror: pull O267 -> O267 (110 bytes)
+[check-e2e] mirror: pull O268 -> O268 (28 bytes)
+[check-e2e] mirror: pull O269 -> O269 (28 bytes)
+[check-e2e] mirror: pull O27 -> O27 (40 bytes)
+[check-e2e] mirror: pull O270 -> O270 (28 bytes)
+[check-e2e] mirror: pull O271 -> O271 (34 bytes)
+[check-e2e] mirror: pull O272 -> O272 (20 bytes)
+[check-e2e] mirror: pull O273 -> O273 (0 bytes)
+[check-e2e] mirror: pull O274 -> O274 (2 bytes)
+[check-e2e] mirror: pull O275 -> O275 (2 bytes)
+[check-e2e] mirror: pull O276 -> O276 (3 bytes)
+[check-e2e] mirror: pull O277 -> O277 (107 bytes)
+[check-e2e] mirror: pull O278 -> O278 (3 bytes)
+[check-e2e] mirror: pull O279 -> O279 (24 bytes)
+[check-e2e] mirror: pull O28 -> O28 (83 bytes)
+[check-e2e] mirror: pull O280 -> O280 (4 bytes)
+[check-e2e] mirror: pull O281 -> O281 (8 bytes)
+[check-e2e] mirror: pull O283 -> O283 (2 bytes)
+[check-e2e] mirror: pull O284 -> O284 (4 bytes)
+[check-e2e] mirror: pull O285 -> O285 (7 bytes)
+[check-e2e] mirror: pull O287 -> O287 (7 bytes)
+[check-e2e] mirror: pull O288 -> O288 (3 bytes)
+[check-e2e] mirror: pull O289 -> O289 (5 bytes)
+[check-e2e] mirror: pull O29 -> O29 (71 bytes)
+[check-e2e] mirror: pull O290 -> O290 (4 bytes)
+[check-e2e] mirror: pull O291 -> O291 (4 bytes)
+[check-e2e] mirror: pull O292 -> O292 (1 bytes)
+[check-e2e] mirror: pull O293 -> O293 (4 bytes)
+[check-e2e] mirror: pull O294 -> O294 (2 bytes)
+[check-e2e] mirror: pull O295 -> O295 (2 bytes)
+[check-e2e] mirror: pull O296 -> O296 (4 bytes)
+[check-e2e] mirror: pull O297 -> O297 (4 bytes)
+[check-e2e] mirror: pull O298 -> O298 (4 bytes)
+[check-e2e] mirror: pull O299 -> O299 (4 bytes)
+[check-e2e] mirror: pull O30 -> O30 (78 bytes)
+[check-e2e] mirror: pull O300 -> O300 (2 bytes)
+[check-e2e] mirror: pull O301 -> O301 (4 bytes)
+[check-e2e] mirror: pull O302 -> O302 (4 bytes)
+[check-e2e] mirror: pull O303 -> O303 (6 bytes)
+[check-e2e] mirror: pull O304 -> O304 (4 bytes)
+[check-e2e] mirror: pull O305 -> O305 (4 bytes)
+[check-e2e] mirror: pull O306 -> O306 (3 bytes)
+[check-e2e] mirror: pull O307 -> O307 (2 bytes)
+[check-e2e] mirror: pull O308 -> O308 (2 bytes)
+[check-e2e] mirror: pull O309 -> O309 (5 bytes)
+[check-e2e] mirror: pull O31 -> O31 (66 bytes)
+[check-e2e] mirror: pull O310 -> O310 (6 bytes)
+[check-e2e] mirror: pull O311 -> O311 (4 bytes)
+[check-e2e] mirror: pull O312 -> O312 (4 bytes)
+[check-e2e] mirror: pull O313 -> O313 (4 bytes)
+[check-e2e] mirror: pull O314 -> O314 (4 bytes)
+[check-e2e] mirror: pull O315 -> O315 (3 bytes)
+[check-e2e] mirror: pull O316 -> O316 (3 bytes)
+[check-e2e] mirror: pull O317 -> O317 (4 bytes)
+[check-e2e] mirror: pull O318 -> O318 (3 bytes)
+[check-e2e] mirror: pull O319 -> O319 (3 bytes)
+[check-e2e] mirror: pull O32 -> O32 (66 bytes)
+[check-e2e] mirror: pull O320 -> O320 (4 bytes)
+[check-e2e] mirror: pull O321 -> O321 (3 bytes)
+[check-e2e] mirror: pull O322 -> O322 (3 bytes)
+[check-e2e] mirror: pull O323 -> O323 (2 bytes)
+[check-e2e] mirror: pull O324 -> O324 (2 bytes)
+[check-e2e] mirror: pull O325 -> O325 (4 bytes)
+[check-e2e] mirror: pull O326 -> O326 (4 bytes)
+[check-e2e] mirror: pull O327 -> O327 (2 bytes)
+[check-e2e] mirror: pull O328 -> O328 (4 bytes)
+[check-e2e] mirror: pull O329 -> O329 (6 bytes)
+[check-e2e] mirror: pull O33 -> O33 (83 bytes)
+[check-e2e] mirror: pull O34 -> O34 (61 bytes)
+[check-e2e] mirror: pull O35 -> O35 (83 bytes)
+[check-e2e] mirror: pull O36 -> O36 (83 bytes)
+[check-e2e] mirror: pull O37 -> O37 (83 bytes)
+[check-e2e] mirror: pull O38 -> O38 (0 bytes)
+[check-e2e] mirror: pull O39 -> O39 (69 bytes)
+[check-e2e] mirror: pull O40 -> O40 (24 bytes)
+[check-e2e] mirror: pull O41 -> O41 (60 bytes)
+[check-e2e] mirror: pull O42 -> O42 (20 bytes)
+[check-e2e] mirror: pull O43 -> O43 (4 bytes)
+[check-e2e] mirror: pull O44 -> O44 (0 bytes)
+[check-e2e] mirror: pull O45 -> O45 (59 bytes)
+[check-e2e] mirror: pull O46 -> O46 (24 bytes)
+[check-e2e] mirror: pull O47 -> O47 (47 bytes)
+[check-e2e] mirror: pull O48 -> O48 (31 bytes)
+[check-e2e] mirror: pull O49 -> O49 (18 bytes)
+[check-e2e] mirror: pull O50 -> O50 (23 bytes)
+[check-e2e] mirror: pull O51 -> O51 (29 bytes)
+[check-e2e] mirror: pull O52 -> O52 (39 bytes)
+[check-e2e] mirror: pull O53 -> O53 (29 bytes)
+[check-e2e] mirror: pull O54 -> O54 (22 bytes)
+[check-e2e] mirror: pull O55 -> O55 (23 bytes)
+[check-e2e] mirror: pull O56 -> O56 (22 bytes)
+[check-e2e] mirror: pull O57 -> O57 (22 bytes)
+[check-e2e] mirror: pull O58 -> O58 (83 bytes)
+[check-e2e] mirror: pull O59 -> O59 (96 bytes)
+[check-e2e] mirror: pull O60 -> O60 (24 bytes)
+[check-e2e] mirror: pull O61 -> O61 (78 bytes)
+[check-e2e] mirror: pull O62 -> O62 (10 bytes)
+[check-e2e] mirror: pull O63 -> O63 (27 bytes)
+[check-e2e] mirror: pull O64 -> O64 (853 bytes)
+[check-e2e] mirror: pull O65 -> O65 (1105 bytes)
+[check-e2e] mirror: pull O66 -> O66 (71 bytes)
+[check-e2e] mirror: pull O67 -> O67 (5 bytes)
+[check-e2e] mirror: pull O68 -> O68 (1957 bytes)
+[check-e2e] mirror: pull O69 -> O69 (850 bytes)
+[check-e2e] mirror: pull O70 -> O70 (59 bytes)
+[check-e2e] mirror: pull O71 -> O71 (0 bytes)
+[check-e2e] mirror: pull O72 -> O72 (0 bytes)
+[check-e2e] mirror: pull O73 -> O73 (64 bytes)
+[check-e2e] mirror: pull O74 -> O74 (33 bytes)
+[check-e2e] mirror: pull O75 -> O75 (45 bytes)
+[check-e2e] mirror: pull O76 -> O76 (0 bytes)
+[check-e2e] mirror: pull O77 -> O77 (66 bytes)
+[check-e2e] mirror: pull O78 -> O78 (4 bytes)
+[check-e2e] mirror: pull O79 -> O79 (86 bytes)
+[check-e2e] mirror: pull O80 -> O80 (28 bytes)
+[check-e2e] mirror: pull O81 -> O81 (28 bytes)
+[check-e2e] mirror: pull O82 -> O82 (27 bytes)
+[check-e2e] mirror: pull O83 -> O83 (27 bytes)
+[check-e2e] mirror: pull O84 -> O84 (8 bytes)
+[check-e2e] mirror: pull O85 -> O85 (56 bytes)
+[check-e2e] mirror: pull O86 -> O86 (2454 bytes)
+[check-e2e] mirror: pull O87 -> O87 (2041 bytes)
+[check-e2e] mirror: pull O88 -> O88 (31 bytes)
+[check-e2e] mirror: pull O89 -> O89 (28 bytes)
+[check-e2e] mirror: pull O90 -> O90 (5 bytes)
+[check-e2e] mirror: pull O91 -> O91 (71 bytes)
+[check-e2e] mirror: pull O92 -> O92 (15 bytes)
+[check-e2e] mirror: pull O93 -> O93 (2 bytes)
+[check-e2e] mirror: pull O94 -> O94 (19 bytes)
+[check-e2e] mirror: pull O95 -> O95 (23 bytes)
+[check-e2e] mirror: pull O96 -> O96 (15 bytes)
+[check-e2e] mirror: pull O97 -> O97 (121 bytes)
+[check-e2e] mirror: pull O98 -> O98 (129 bytes)
+[check-e2e] mirror: pull O99 -> O99 (45 bytes)
+[check-e2e] mirror: pull OVW -> OVW (2 bytes)
+[check-e2e] mirror: pull SPE2EXAA -> SPE2EXAA (24 bytes)
+[check-e2e] mirror: pull TEEAPP -> TEEAPP (2 bytes)
+[check-e2e] mirror: pull TEEBIN -> TEEBIN (14 bytes)
+[check-e2e] mirror: pull TEEOK -> TEEOK (2 bytes)
+[check-e2e] mirror: pull TEEOUT -> TEEOUT (83 bytes)
+[check-e2e] mirror: pull TOV -> TOV (2 bytes)
+[check-e2e] coverage: basename 5, cal 4, cat 1, cksum 8, cmp 8, comm 6, csplit 1, cut 10, diff 8, dirname 5, echo 5, env 4, expand 6, expr 5, fold 6, grep 44, head 7, join 1, nl 10, nohup 1, od 6, paste 7, pathchk 1, pr 2, printf 11, sed 6, sh 56, sort 19, split 1, strings 6, sum 7, tail 7, tee 5, tr 12, tsort 1, unexpand 5, uniq 7, uuencode 8, wc 11, xargs 6  (289 of 329 invocations are WARM respawns -- the tool ran earlier in this same boot)
+[check-e2e] KNOWN DEFECT sh: a ( ) group cannot be a pipeline stage
+[check-e2e]   CHCK_GROUP (src/bin/sh.s) refuses a group with NCMD != 1, i.e. one that has a `|` on its line. This path does not go through RUN_PIPELINE, which is where a stage's fd 1 is wired to the pipe, and IGNORING that is the silent wrong answer docs/SH-FEATURES.md sec 17 rules against -- measured before the check existed, `( ECHO GPIPE ) | WC` printed GPIPE and no counts, the `|` simply vanishing. LOUD refusal, never a wrong answer; pinned rather than excluded because POSIX and V7 both allow it.
+
+THIS ENTRY HAS NOW BEEN NARROWED TWICE IN ONE DAY, which is the part worth reading.
+
+It first claimed a group was refused in any COMPOUND line, on the strength of `X ; ( A ) ; Y` producing nothing. That was a DIFFERENT defect and not a refusal at all: the group span was seeded only at token 0 of the LINE, and `;` does not split before TOKENIZE, so a `(` after a separator was tokenized as an ordinary word and the line silently misparsed -- CHCK_GROUP never saw a group. Fixed in sh.s; cases 118 and 126 went DEFECT-FIXED.
+
+It then covered REDIRECTS too, on the reasoning that honouring `( ... ) > F` 'needs RUN_PIPELINE's staging'. Half true: it needs THE STAGING, not RUN_PIPELINE. Extracting STG_OUTFILE and INIT_CHLDMAP from BLD_FDCTS_STG made the identical routines reachable from SUB_GROUP for +25 bytes, and cases 116 and 117 went DEFECT-FIXED -- redirected and nested-redirected groups now agree with /bin/sh byte for byte, `2>&1` included.
+
+So a pin's stated reason is a claim about the code, and two of the three claims this one made did not survive being checked. What is left is the pipeline half, which is genuinely different: the group would have to BE a stage, not merely carry a redirect. `< FILE` is refused separately and permanently -- a group's fd 0 is the body pipe the child sh reads its script from, so there is no fd 0 to redirect.
+[check-e2e] KNOWN DEFECT sh: nested $( ) is refused
+[check-e2e]   One level of command substitution works (this section's subst-1/2/4 pass); `$(ECHO $(ECHO DEEP))` is refused and writes no output file. SUB_TRKCH counts parens without knowing the child shell's quoting or nesting depth, the same machinery behind docs/TASKS.md #18(f)'s quoted-paren limit. Closing it costs bytes sh.bin does not have (16,332 of 16,384), so it is pinned here rather than fixed -- and pinned, not excluded, because the case is legal V7 and legal POSIX.
+[check-e2e] divergence ratchet: DISCHARGED 5, EXCLUDED 2, RULED 9, STRUCTURAL 14
+[check-e2e] boundary PAGE (6502 Y wrap) = 256 (ARCH)
+[check-e2e] boundary ARG_MAX = 1280 (inc/mm.procbnk2.equ)
+[check-e2e] boundary MLI_IOBUF_CNT = 6 (inc/mm.mlibuf.equ)
+[check-e2e] boundary MLI_IBF_SIZE = 1024 (inc/mm.mlibuf.equ)
+[check-e2e] boundary LINEMAX = 255 (src/bin/sh.s)
+[check-e2e] boundary MAXCMD = 3 (src/bin/sh.s)
+[check-e2e] boundary MAXARGV = 32 (src/bin/sh.s)
+[check-e2e] PASS: 327 cases across 40 tools agree with /usr/bin byte-for-byte (modulo 30 named divergence entries) and every exit status matches; 2 case(s) pinned to a KNOWN DEFECT above

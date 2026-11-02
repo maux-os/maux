@@ -1,0 +1,44 @@
+mouse.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+PUT-included module (no ORG/DSK -- same convention as
+sched.s/timer.s). This file exists purely to give MOUSE_SEND_CMD
+ONE owner. It was previously duplicated verbatim in
+src/kernel/timer.s and src/kernel/mli.s, because merlin32's one-
+level `put` nesting means a module cannot include another
+module, so the only way to share code between two kernel modules
+was to copy it. mli.s's own header admitted as much ("promoted
+verbatim (mechanism) from src/kernel/timer.s ... copied rather
+than" shared).
+
+That was harmless while no image included both files -- and none
+did, so the collision was latent. It stops being harmless the
+moment kernel modules are separately assembled and LINKED
+together (docs/SELFHOST.md): two REL objects exporting the same
+symbol is a link error, not a last-one-wins. `make check-
+modules` enforces the single-owner rule from here on.
+
+PRECONDITION ON THE INCLUDER (same discipline as the other
+kernel modules):
+  1. `use inc/memmap.equ`   -- MOUSE_PRA/MOUSE_PRB live there
+  2. `put src/kernel/mouse.s`   -- BEFORE any module that calls into it
+
+Under REL this module declares MOUSE_SEND_CMD as its ENT and
+callers take it as an EXT; the `put` above becomes a link-time
+reference instead.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+MOUSE_SEND_CMD -- write A as a command byte via the PRA-write +
+PRB-bit5-strobe protocol (mouse_card.h's on_portb() falling-
+edge latch). Preserves every OTHER live Port B bit (ROM-bank
+select, the bit6/7 handshake-ready flags) -- reads PRB first
+rather than writing a blind constant, the "acknowledge one
+thing, disturb nothing else" discipline
+(learning:01KWK8F6HFGRWS8SPPQ9MHC6GS, ClearMouse's own narrow
+clear). Clobbers A; assumes CRA/CRB bit2 already select PRA/PRB
+(the caller's one-time bring-up -- TIMER_INIT_MOUSE in timer.s,
+MOUSE_INIT in mli.s).
+----------------------------------------------------------------

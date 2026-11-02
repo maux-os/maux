@@ -1,0 +1,107 @@
+syscalltest.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+A multi-block SmartPort boot image (block 0 is a tiny chain-
+loader -- the ROM autostart only loads ONE block, so anything
+bigger than 512 bytes needs to pull in the rest itself; no
+filesystem is used, just fixed, build-known sequential block
+numbers, since this repo's own build fully controls the raw
+image layout -- see the LOADER section below for the adapted-
+from-malisp SmartPort dispatch technique).
+
+What it proves, in order (docs/TASKS.md #3 deliverable 4):
+  (a) installs the kernel skeleton (src/kernel/entry.s) + stamps a
+      process bank's $FFxx page (src/kernel/ffpage.s) into aux bank 1
+  (b) enters a fake process running IN bank 1 (own ZP/stack/memory)
+  (c) TESTCALL_ECHO: syscall with a test call number that echoes its
+      parms via copyin+copyout -- proves the full round trip
+  (d) TESTCALL_ARITH, called once with D=0 and once with D=1 SET:
+      proves kernel arithmetic is undamaged by the caller's D and that
+      D is restored to the caller on return
+  (e) with the mouse VBL enabled (60 Hz, slot 5, verilogapple's default
+      machine), loops TESTCALL_ECHO for several seconds of simulated
+      time so IRQs land inside entry/exit windows statistically --
+      counts round trips (K_SYSCALL_COUNT) and the live IRQ-handler
+      counter (K_IRQCOUNT), printed by TESTCALL_REPORT
+  (f) executes BRK, proving it reaches KERNEL_BRK_TRAP, not the
+      syscall dispatch path
+
+Results print to the 40-col text page (screen_text), same
+observation method as src/test/probetest.s /
+scripts/check_probe.py.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+TESTCALLARITH -- call #2. Deliberately decimal
+----------------------------------------------------------------
+----------------------------------------------------------------
+TESTCALL_ARITH -- call #2. Deliberately decimal-sensitive
+arithmetic ($79+$05): binary gives $7E; BCD-corrected (if D
+leaked into the kernel) gives $84. Proves the door's CLD
+(SYSCALL_ENTRY, before KERNEL_ENTRY ever runs) is effective
+regardless of the caller's D -- the caller's OWN D is untouched
+in the frame's P byte and restored by EXIT_TAIL's RTI, so this
+call's correctness is independent of whether the CALLER had D
+set or clear when it issued the JSR.
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+MOUSEISR -- KIRQHOOKs target. ARCHITECT RULING
+----------------------------------------------------------------
+----------------------------------------------------------------
+MOUSE_ISR -- K_IRQ_HOOK's target. ARCHITECT RULING (resolves
+docs/SYSCALL.md #7.5): the kernel NEVER calls mouse FIRMWARE
+(ServeMouse or any $Cn00 ROM entry) from the IRQ path -- the
+real AppleMouse ROM appears to re-enable interrupts internally
+as part of its own PIA handshake (the #7.5 finding), which is
+exactly the kind of uncontrolled behavior a kernel critical
+section cannot tolerate. Instead this acknowledges the VBL
+interrupt by driving the 6821 PIA DIRECTLY, at the register
+level, bypassing ROM entirely.
+
+Register model verified against verilogapple's own source
+(~/src/verilogapple/sim/mouse/mouse_card.h, read directly for
+this fix -- not from memory): the model's `irq` flag is cleared
+ONLY by the controller completing an M_SERV command (buff[0]=$20
+dispatched via on_command(), which sets `irq = false`
+synchronously) -- NOT by a bare register read the way a textbook
+6821's CA1/CB1 flag-clear-on-read would suggest (this model
+doesn't implement that path at all; verified by reading
+read()/write() -- no case touches `irq`). So "acknowledge" here
+means sending the SAME 2-byte PIA handshake real ServeMouse
+firmware sends (command byte $20 latched via the Port-B write-
+clock strobe), just via raw register pokes instead of a ROM
+call:
+  $C0(8+slot)0 = PRA/DDRA (CRA bit2=1 selects PRA)
+  $C0(8+slot)1 = CRA
+  $C0(8+slot)2 = PRB/DDRB (CRB bit2=1 selects PRB)
+  $C0(8+slot)3 = CRB
+(is_dev() in mouse_card.h: base = $C080 | (slot<<4) -- slot 5
+gives $C0D0, matching the classic Apple II "$C0n0" device-
+select convention where n = 8+slot as a hex digit.) CRA/CRB bit2
+and DDRA/DDRB are left as boot-time InitMouse (firmware, called
+ONCE at boot with interrupts masked -- see MAIN_ENTRY -- the
+ruling's sanctioned non-IRQ-context use) already configured
+them; this routine only touches PRA/PRB.
+
+NARROW acknowledge, not a reset --
+learning:01KWK8F6HFGRWS8SPPQ9MHC6GS (ClearMouse's own narrow-
+clear precedent: PIA registers + the Port-B handshake latch pb_q
+must NEVER be blindly clobbered). This routine:
+  1. writes the M_SERV command byte ($20) to PRA
+  2. READS PRB first (not written blind) and only flips bit5 (the
+     write-clock) high then low -- every other live bit (ROM-bank
+     select, the bit6/7 handshake-ready flags) round-trips unchanged,
+     exactly the "acknowledge one flag, disturb nothing else"
+     discipline the ruling asks for
+The falling edge of bit5 is what makes the controller latch PRA
+into its command buffer and dispatch M_SERV, whose own handler
+(mouse_card.h's on_command(), case M_SERV) sets irq=false -- no
+further bytes need to be sent or read; M_SERV's response byte
+(buff[1], the status byte) is never needed by this ISR.
+
+Runs kernel-side (RAMWRT already main) so the counter increment
+is an ordinary main-memory write.
+----------------------------------------------------------------

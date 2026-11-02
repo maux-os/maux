@@ -1,0 +1,47 @@
+startup.equ -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+Validated near-verbatim: this slice's original proposal
+(placement at PROC_LOWFREE, ARGC-then-pointer-array shape) is
+exactly what task #3 ruled, down to the byte layout -- ruling
+13's only addition is HOW the kernel gets the data there (string
+bytes re-packed via the same RAMWRT+$C073 bounce the exec loader
+already uses, pointer values recomputed for the child's own
+address space -- see docs/SYSCALL.md item 13 for spawn()'s exact
+4-step sequence). Nothing here changed as a result; only the
+header's own status did.
+
+PRECONDITION ON THE INCLUDER (same discipline TOOLCHAIN.md's
+put/use nesting gotcha established for src/kernel/bankprobe.s):
+this file references PROC_LOWFREE, so whatever top-level file
+`put`s this one MUST have already `use`d inc/memmap.equ
+directly -- merlin32 does not recurse into a put'd file's own
+put/use lines to satisfy a transitive dependency. Every
+src/bin/*.s util does this (see each util's header).
+
+Layout (docs/SYSCALL.md ruling 13): spawn() writes this into the
+CHILD bank during process creation, as the kernel's own last
+setup step before marking the child runnable (ruling 11) -- the
+parent's argv pointers are meaningless in the child's address
+space, so the kernel re-packs the STRING BYTES (not the parent's
+pointers) into the child's PROC_LOWFREE region and recomputes
+fresh pointers into that copy:
+
+  PROC_LOWFREE  ARGC  (1 byte)  -- argument count, argv[0] = program name,
+  ($0200)                          Unix-style (so argc is always >= 1 for
+                                    any process spawn() actually starts)
+  +1.. up       ARGV  (argc * 2 bytes) -- array of pointers, each pointing
+                                    to a NUL-terminated liba string (see
+                                    docs/USERLAND.md "string encoding"),
+                                    packed back-to-back starting at
+                                    $0300+ (right after the pointer
+                                    array -- ruling 13's own placement)
+
+Capacity note: 256 bytes - 1 (ARGC) = 255 bytes / 2 = 127 argv
+pointers addressable from the first page alone ($0200-$02FF);
+the packed string bytes follow at $0300+, well within
+PROC_LOWFREE's full 1536-byte reservation for any v1 shell's
+argument list. Plenty for a v1 shell with no globbing.
+----------------------------------------------------------------

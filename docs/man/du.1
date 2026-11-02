@@ -1,0 +1,46 @@
+.\" Derived from Research UNIX V1 du(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/du
+.\" Retrieved 2026-09-19; archived response SHA256: 4a0850d3c5fa114bcdeefaaacb0971d841b200089889dcec82783ec40c90c466
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH DU 1 "October 7, 2026" maux
+.SH NAME
+du \- summarize disk usage
+.SH SYNOPSIS
+.B du
+.RB [ \-sak ]
+.RI [ name ...]
+.SH DESCRIPTION
+.I Du
+gives the number of blocks contained in all files and (recursively)
+directories within each specified directory or file name.
+If name is missing, the current directory is used and names are
+reported relative to it: "./sub", then "." for the total.
+A trailing slash on a name is not doubled when entries are joined to it.
+The total for a volume (du /mnt/MAUX) counts its files, not the boot,
+directory and bitmap blocks the volume spends on itself; df(1) counts
+those as used.
+.TP
+.B \-s
+Give only the total for each operand.
+.TP
+.B \-a
+Generate an entry for each file as well as each directory.
+.TP
+.B \-k
+Report units of 1024 bytes, rounding a half-unit upward.
+.PP
+Without these options, an entry is generated for each directory
+after its contents have been visited.
+The count is allocated ProDOS blocks, including file index blocks,
+not the byte length divided by 512.
+.SH FILES
+/usr/man/DU  this page
+.SH "SEE ALSO"
+df(1), ls(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for traversal/access errors, 2 for usage errors.
+.SH BUGS
+Traversal uses bounded storage in one process bank. ProDOS has no hard links to coalesce.

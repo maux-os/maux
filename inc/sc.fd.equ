@@ -1,0 +1,35 @@
+*---------------------------------------------------------------
+* sc.fd.equ -- the process-visible fd ABI: standard fd
+* numbers (ABI FRICTION item 5) and open() access flags. Split
+* out of inc/syscall.equ (task #8, docs/SELFHOST-CONVERSION.
+* md phase 1) -- reference-set scan shows nearly every
+* src/bin/*.s program references FD_STDIN/STDOUT/STDERR
+* directly, disjoint from the kernel-internal device-fd handles
+* (inc/sc.devfd.equ) and the call-number tables
+* (sc.proc.equ/sc.file.equ) most of those same
+* programs also need via liba/syscalls.s.
+*
+* `put`-only file (no code/org/dsk), same precondition
+* discipline as memmap.equ -- the top-level file must `put`
+* this directly.
+*---------------------------------------------------------------
+
+* -- Standard fd numbers (ABI FRICTION item 5, RULING: confirmed
+* V6/Unix -- convention for the NUMBERS a process sees; the
+* kernel maps them to -- MLI refnums via a per-process
+* fd->refnum table in the PCB -- see -- docs/SYSCALL.md item 5,
+* MLI refnums start at 1 and 0/1/2 stay -- reserved for the tty
+* via that indirection, never raw MLI refnums).
+FD_STDIN    equ   0
+FD_STDOUT   equ   1
+FD_STDERR   equ   2
+
+* -- open() flags -- map to MLI access bits (TRM ch. 4:
+* bit0=read, -- bit1=write, bit2=invisible, bit7=rename-protect
+* -- READ|WRITE = $03 -- for full access). DRAFT-VALUE pending
+* task #11 wiring the real -- OPEN parmlist's access byte
+* through; the NUMBERS below are the -- actual MLI bit meanings,
+* not placeholders.
+O_RDONLY    equ   $01
+O_WRONLY    equ   $02
+O_RDWR      equ   $03

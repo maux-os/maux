@@ -1,0 +1,60 @@
+title: Hello, world in the shell
+description: A script is a text file whose first line is #!. Write one with vi and run it.
+lesson: l1
+---
+<h1>L1. hello, world, in the shell</h1>
+<p class="crumb"><a href="/learn/">Learn</a> / L1</p>
+
+<!-- src: docs/SITE.md sec 5 -->
+<p class="lead">Goal: write a two-line program with <code>vi</code> and run it by name.</p>
+
+<h2>What you need</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p>A booted maux. <a href="/learn/filesystem/">L0</a> if <code>cd</code> and
+<code>ls</code> are new.</p>
+
+<h2>The file</h2>
+<!-- src: examples/hellosh/hello -->
+<p>Two lines. The first tells the system which program should read the rest.</p>
+{{file:examples/hellosh/hello}}
+
+<h2>The session</h2>
+<!-- src: scripts/check_examples.py (row_l1); docs/man/vi.1 -->
+<p>The <code>[ ... ]</code> line is what to type inside <code>vi</code>: a key at
+a time, as the gate typed it. <code>i</code> starts inserting text, <kbd>ESC</kbd>
+stops, and <code>:wq</code> followed by <kbd>RETURN</kbd> writes the file and
+leaves.</p>
+{{gen:session}}
+
+<h2>What just happened</h2>
+<!-- src: docs/EXEC-SHEBANG.md -->
+<p>maux has no execute permission bit. When you name a file as a command, the
+system looks at what it is: a <code>BIN</code> or <code>SYS</code> file is a
+program and is loaded; a <code>TXT</code> file whose first two bytes are
+<code>#!</code> is a script, and is run by the program named on that line, here
+<code>/bin/sh</code>, with the script as its argument. Any other text file is
+data, and naming it as a command is refused with <code>sh: cannot execute</code>.
+The <code>./</code> in <code>./hello</code> says "the file called hello in this
+directory". A word with a slash in it is a path, and the shell never searches for
+it elsewhere.</p>
+
+<!-- src: docs/EXAMPLES-NOTES.md sec 2; docs/man/chtyp.1 -->
+<p>You did not need to give the file a type. <code>vi</code> writes ProDOS type
+<code>TXT</code> ($04) by itself; <code>ls -l</code> shows it in the first column.
+<code>chtyp</code> is for a file that arrived some other way, and its spelling is
+<code>chtyp -t TXT hello</code>: the <code>-t</code> is not optional. The last
+command in the session does exactly that to a file that is already text, which
+changes nothing and shows that the command line is a valid one.</p>
+
+<!-- src: README.md (Text); scripts/check_examples.py (row_l1) -->
+<p><code>cmp</code> printed nothing: your file is byte for byte the file on the
+disk at <code>/usr/src/examples/HELLOSH/hello</code>. Silence is the Unix way to
+say "no difference".</p>
+
+<h2>Try next</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p>Add a third line that runs <code>ls</code>. Then <code>cd /</code> and run the
+script again by its full path, <code>/tmp/l1/hello</code>: which directory does the
+<code>ls</code> list?</p>
+
+{{gen:lessonnav}}

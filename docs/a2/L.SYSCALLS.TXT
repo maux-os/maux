@@ -1,0 +1,119 @@
+syscalls.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+TRANSPORT (RATIFIED, docs/SYSCALL.md ruling 1 -- confirms this
+slice's original draft unchanged): call number in Y, pointer to
+a parameter block in A (low)/X (high), `JSR $FF00`. Cycle-
+counted against the other two candidates by task #3; registers
+won outright (zero marginal cost -- the trapframe's own PHA/TXA
+PHA/TYA PHA captures A/X/Y regardless of what's in them). No
+transport-dependent line needs a DRAFT-ABI tag any longer; the
+ABI is ratified, not guessed.
+
+RETURN CONVENTION (RATIFIED, docs/SYSCALL.md ruling 4 /
+KERNEL_EXIT, src/kernel/entry.s): carry clear = success, carry
+set = failure with an error code in A. Process-call errors are
+inc/errno.equ's $E0+ codes; FILE-call errors are RAW MLI
+codes ($01-$05, $40-$5A, TRM ch. 4), passed through
+PRODOS_DELEGATE untouched -- liba does not re-enumerate that
+table, by design (ruling 4: "it never needs updating as the
+MLI's own error table evolves"). SC_* propagates carry+A
+untouched.
+
+TWO DIFFERENT SHAPES OF PARAMETER BLOCK, per docs/SYSCALL.md
+ruling 3:
+
+  PROCESS calls (spawn/exit/wait/pipe/brk -- no MLI equivalent) use a
+  small, maux-invented, FIXED shape -- unaffected by the ProDOS ruling.
+  These SC_* routines take friendly register/PTR0-2 inputs and marshal
+  them into a shared PROCPARM scratch buffer themselves (unchanged in
+  spirit from this slice's original draft).
+
+  FILE calls (open/read/write/close/creat/unlink) use the REAL MLI
+  parmlist shape, VERBATIM (TRM ch. 4, transcribed in inc/mli.equ).
+  Since maux's kernel does not reimplement these calls -- it forwards
+  the caller's parmlist byte-for-byte to PRODOS_DELEGATE -- there is
+  nothing for liba to marshal: the CALLER builds the exact MLI struct
+  directly (each util declares its own static parmlist via `dfb`/`da`,
+  matching mli.equ's transcribed shapes) and simply loads A/X with a
+  pointer to it before calling SC_*. These six SC_* routines are
+  therefore just the bare gate -- Y=call#, JSR $FF00, RTS -- with NO
+  marshalling code at all. This is the direct, mechanical consequence of
+  ruling 3's "maux does not reimplement READ/WRITE" reasoning: if the
+  kernel is a passthrough, liba has nothing to translate either.
+
+PROCPARM (process calls only) deliberately lives OUTSIDE zero
+page -- TN #22 (no MLI parmlists on zero page) doesn't strictly
+bind maux's native process-call parmlists, but keeping them off
+zero page too costs nothing and never requires asking the
+question. Non-reentrant by construction (single-threaded v1
+processes, no interrupt-time syscalls).
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+SCSPAWN -- spawn(path argv fdactions). fdactio
+----------------------------------------------------------------
+----------------------------------------------------------------
+SC_SPAWN -- spawn(path, argv, fdactions). fdactions format is
+DEFINED (docs/SYSCALL.md ruling 10, inc/syscall.equ's
+FDACT_* equates): 3-byte [opcode][target fd][source fd] records,
+FDACT_END-terminated; a NULL fdactions pointer means "no
+actions" (default: child inherits fds 0/1/2 as real dup'd copies
+of the parent's -- see ruling 10 for the full worked pipeline
+example, mirrored in docs/SH-DESIGN.md).
+IN:  PTR0/PTR0+1 = path (liba string), PTR1/PTR1+1 = argv pointer
+     (startup.equ's convention), PTR2/PTR2+1 = fdactions pointer (or 0)
+OUT: carry clear, A = child pid; carry set, A = errno
+(inc/errno.equ)
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+SCWAIT -- wait(statusout). Scoped to the
+----------------------------------------------------------------
+----------------------------------------------------------------
+SC_WAIT -- wait(&status_out). Scoped to the CALLER's own
+children only (docs/SYSCALL.md ruling 9 -- V6-style wait-any
+among just this process's children, via the PCB's parent-pid
+tracking; no system-wide pid filter). A pipeline's `sh` waits N
+times (count-N pattern, ruling 9's worked example) rather than
+needing a pid-selective form.
+IN:  PTR0/PTR0+1 = pointer to a 1-byte location the kernel fills with
+     the reaped child's exit status
+OUT: carry clear, A = pid of reaped child; carry set, A =
+ERR_CHILD
+     (inc/errno.equ) if this process has no children of its own
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+SCBRK -- brk(newaddr). RATIFIED (docs/SYSCALL.
+----------------------------------------------------------------
+----------------------------------------------------------------
+SC_BRK -- brk(new_addr). RATIFIED (docs/SYSCALL.md ruling 8):
+absolute new-break address, not a delta -- unaffected by the
+ProDOS ruling (no MLI equivalent).
+IN:  PTR0/PTR0+1 = requested new break address
+OUT: carry clear, A = low byte of the actual new break (kernel
+may
+     round/clamp); carry set, A = ERR_NOMEM/ERR_AGAIN (inc/errno.equ)
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+FILE CALLS -- bare gates. The
+----------------------------------------------------------------
+----------------------------------------------------------------
+FILE CALLS -- bare gates. The caller has already built a
+complete, verbatim-shaped MLI parmlist (inc/mli.equ's
+transcribed shapes; each util declares its own static instance)
+and loads A/X with a pointer to it BEFORE calling these. No
+marshalling here at all -- see this file's header for why that's
+correct, not merely lazy.
+IN:  A/X = pointer to caller-built MLI parmlist (low/high)
+OUT: carry clear/set per docs/SYSCALL.md ruling 4. On file- call
+     SUCCESS, A's value is NOT a documented result -- the MLI's own
+     RESULT fields (ref_num, trans_count, ...) live in the parmlist
+     itself, already visible to the caller with no copy-back needed
+     (the caller owns the buffer). See docs/USERLAND.md "ABI
+     RESOLUTIONS" for why this is flagged, not just asserted.
+----------------------------------------------------------------

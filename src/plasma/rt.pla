@@ -1,0 +1,1577 @@
+//
+// rt.pla -- the maux PLASMA runtime (milestone 2, docs/PLASMA-PORT.md).
+// "Take the loader, leave the shell": this is dschmenk PLASMA's
+// cmd.pla (~/src/PLASMA/src/vmsrc/apple/cmd.pla) MINUS the CMD REPL
+// and every ProDOS/language-card primitive, with the maux memory
+// model in place of PLVM's ProDOS layout (docs/PLASMA-PORT.md). The
+// M1 seed raw-loads this module flat at $2000 (no relocation --
+// rt is assembled base $2000) and jumps into its init; init
+// registers the CMDSYS exports, sets the heap over maux `sbrk`, and
+// execmods argv[1] -- the FIRST real loadmod/reloc a maux process
+// runs through.
+//
+// No REPL, no ProDOS, no language card: every ROM-enable / LC-
+// read-enable / RAM-card-write-enable soft-switch poke in the
+// original is gone. Three
+// primitives are retargeted to maux's raw gate (A=parmlist lo,
+// X=parmlist hi, Y=call#, JSR $FF00, carry set=error, A=errno):
+// syscall (so open/close/read/loadmod's own $C4-family calls work
+// unchanged -- maux's SYS_* numbers ARE the MLI numbers), the
+// console (fd 1/0, high-bit ASCII, $8D newline), and a new
+// argc/argv/exit/sbrk/brkset set for the process-startup and
+// process-call ABI.
+//
+// Build (host, sibling-repo tools, run from this dir so xplasm's
+// generated rt.a and its absolute-path trap stay out of the way):
+//   cd src/plasma
+//   ~/src/PLASMA/src/xplasm -AMOW rt.pla
+//   acme --setpc 8190 -o ../../build/rt.mod rt.a
+//
+const RELADDR     = $2000   // maux modules assemble base $2000
+const iobuffer    = 0       // kernel-owned/discarded (M1's own
+                             // OPARM_IOBUF convention)
+//
+// System flags: memory allocator screen holes (KEPT verbatim --
+// allocheap's reshgr1/reshgr2 logic is unchanged, docs/PLASMA-
+// PORT.md M2 spec).
+//
+const restxt1     = $0001
+const restxt2     = $0002
+const resxtxt1    = $0004
+const resxtxt2    = $0008
+const reshgr1     = $0010
+const reshgr2     = $0020
+const resxhgr1    = $0040
+const resxhgr2    = $0080
+//
+// Module don't free memory
+//
+const modflagkeep = $1000
+const modkeep     = $2000
+const modinitkeep = $4000
+//
+// Pedefined functions.
+//
+predef syscall(cmd,params)#1, call(addr,areg,xreg,yreg,status)#1
+predef crout()#0, cout(c)#0, prstr(s)#0, prbyte(b)#0, prword(w)#0, print(i)#0, cin()#1, rdstr(p)#1, toupper(c)#1
+predef markheap()#1, allocheap(size)#1, allocalignheap(size, pow2, freeaddr)#1, releaseheap(newheap)#1, availheap()#1
+predef memset(addr,value,size)#0, memcpy(dst,src,size)#0, strcpy(dst,src)#1, strcat(dst,src)#1
+predef uword_isgt(a,b)#1, uword_isge(a,b)#1, uword_islt(a,b)#1, uword_isle(a,b)#1, sext(a)#1, divmod(a,b)#2
+predef execmod(modfile)#1, open(path)#1, close(refnum)#1, read(refnum, buff, len)#1
+predef lookuptbl(dci)#1, lookuptbl_scan(base,dci)#1, execsys(sysfile)#0
+predef sbrk(delta)#1, brkset(addr)#1, argc()#1, argv(i,dst)#0, exit(code)#0
+predef adddef(addr,deflast)#1, addsym(sym,addr)#0, loadmod(mod)#1
+predef dcitos(dci,str)#1, stodci(str,dci)#1, lookupidx(esd,index)#1, lookupdef(addr,deftbl)#1
+predef reloc(modfix,modofst,bytecode,rld)#3, lookupextern(esd,index)#1
+//
+// Exported CMDSYS table (cmd.pla 61-142, KEPT verbatim except the
+// MACHID export below, which now takes the address of a real
+// runtime byte instead of a ProDOS global-page constant).
+//
+byte MACHID      = $B0   // IIe|128K runtime id, exported by address
+word version     = $0221 // 02.21
+word syspath
+word syscmdln
+word             = @execmod, @open, @close, @read, 0
+byte perr
+byte jitcount    = 0
+byte jitsize     = 0
+word             = @execsys // Different between Apple II and ///
+word             = @lookuptbl
+word systemflags = 0
+//
+//
+// Standard Library exported functions.
+//
+byte sysmodstr  = "CMDSYS"
+byte putsstr    = "PUTS"
+byte putistr    = "PUTI"
+byte putcstr    = "PUTC"
+byte putlnstr   = "PUTLN"
+byte putbstr    = "PUTB"
+byte putwstr    = "PUTH"
+byte getcstr    = "GETC"
+byte getsstr    = "GETS"
+byte toupstr    = "TOUPPER"
+byte strcpystr  = "STRCPY"
+byte strcatstr  = "STRCAT"
+byte hpmarkstr  = "HEAPMARK"
+byte hpalignstr = "HEAPALLOCALIGN"
+byte hpallocstr = "HEAPALLOC"
+byte hprelstr   = "HEAPRELEASE"
+byte hpavlstr   = "HEAPAVAIL"
+word memsetstr  = "MEMSET"
+byte memcpystr  = "MEMCPY"
+byte uisgtstr   = "ISUGT"
+byte uisgestr   = "ISUGE"
+byte uisltstr   = "ISULT"
+byte uislestr   = "ISULE"
+byte sextstr    = "SEXT"
+byte divmodstr  = "DIVMOD"
+byte machidstr  = "MACHID"
+byte sysstr     = "SYSCALL"
+byte callstr    = "CALL"
+word exports    = @sysmodstr, @version
+word            = @sysstr,    @syscall
+word            = @callstr,   @call
+word            = @putcstr,   @cout
+word            = @putlnstr,  @crout
+word            = @putsstr,   @prstr
+word            = @putbstr,   @prbyte
+word            = @putwstr,   @prword
+word            = @putistr,   @print
+word            = @getcstr,   @cin
+word            = @getsstr,   @rdstr
+word            = @toupstr,   @toupper
+word            = @hpmarkstr, @markheap
+word            = @hpallocstr,@allocheap
+word            = @hpalignstr,@allocalignheap
+word            = @hprelstr,  @releaseheap
+word            = @hpavlstr,  @availheap
+word            = @memsetstr, @memset
+word            = @memcpystr, @memcpy
+word            = @uisgtstr,  @uword_isgt
+word            = @uisgestr,  @uword_isge
+word            = @uisltstr,  @uword_islt
+word            = @uislestr,  @uword_isle
+word            = @strcpystr, @strcpy
+word            = @strcatstr, @strcat
+word            = @sextstr,   @sext
+word            = @divmodstr, @divmod
+word            = @machidstr, @MACHID
+word            = 0
+word sysmodsym  = @exports
+//
+// System variables.
+//
+word heap
+word curbrk           // the kernel break we last confirmed >= heap
+const SYMTBLSZ   = 1280  // no $DA00/language card here. The CMDSYS
+                         // exports plus plasm's whole chain need ~600 B;
+                         // addsym REFUSES to pass the end (below)
+//
+// The module SYMBOL TABLE lives on the HEAP, allocated by the seed-path
+// init below -- NOT as a 4 KB static array. A static `byte symtbl[
+// SYMTBLSZ]` is part of this flat image, so every COOKED program
+// (docs/PLASCUT.md) carried 4,096 dead bytes: its CMDSYS and module
+// symbols are bound on the host and the table is never read. That cost
+// the cooked plasm the memory it needs to compile anything (a
+// 10,878-byte heap left plasm a 6-byte code buffer; PLASM-FIX,
+// docs/PLASM-FIX-NOTES.md). `symtbl` stays 0 in a cooked image, which
+// is also how loadmod/lookuptbl/execmod know there is no loader.
+// The name `symtbl` keeps its job as the END of the restore range
+// ([$2003, @symtbl), cookdata below): this word and everything after
+// it is rebuilt by init, never restored.
+//
+word symtbl
+word lastsym
+//
+// The command line rt hands the program (importers reach it through
+// the CMDSYS `cmdline` field, which is the `syscmdln` POINTER set in
+// init -- so this buffer may live anywhere). 127 characters + a length
+// byte, the size of ProDOS's own command line buffer; the old cap was
+// 80 and dropped whole tokens past it. Upstream cmd.pla declared it `byte cmdln = ""` (ONE byte) and
+// let buildcmdln's up-to-80-byte writes overrun into the string table
+// below, which was safe ONLY because the REPL's seed init consumed
+// those strings (the `while *sysmodsym` registration loop) BEFORE
+// buildcmdln ran; the cooked path binds CMDSYS on the host and SKIPS
+// that loop (docs/PLASCUT.md). It sits ABOVE the restore range
+// because init rebuilds it from scratch on every launch: no pristine
+// copy, no dirty-bank hazard.
+//
+const CMDLN_MAX  = 127   // ProDOS's own getlnbuf is 128 bytes
+byte cmdln[CMDLN_MAX + 2]   // length byte + 127 + the NUL argFirst writes
+                            // at cmdline[len+1] (ARGS, args.pla:29): at
+                            // len 127 that is byte 128, one past a 128-byte
+                            // buffer
+word target            // argv[1], for execmod: heap, seed path only
+word rc
+//
+// ---- plascut cook block (docs/PLASCUT.md) -------------------------
+// scripts/plascut.py finds this block by its 4-byte magic (a scan
+// of rt's image -- rt is flat, so nothing here relocates) and
+// PATCHES the fields in the cooked FILE. In the ordinary seed-loaded
+// rt they keep their initial values and init takes the execmod
+// path. Every field is data, never written at run time.
+//
+// The rt data init restores on a cooked launch is [$2003, @symtbl):
+// the exported table's cells, heap/curbrk, perr, cmdln -- everything
+// a run mutates. symtbl/lastsym/target/rc/this block sit ABOVE that
+// range: the loader never runs cooked (symtbl is dead), and the rest
+// is rebuilt by init before it is read.
+//
+word cookmagic  = $4B43, $4C50  // 'C','K','P','L'
+word cookinits  = 0             // patched: 0-terminated list of the
+                                // module init THUNKS in load order;
+                                // 0 = not a cooked image
+word cookheap   = 0             // patched: heap after the cooked load
+word cookrestore = 0            // patched: (dst, src, len)* 0 -- src 0 = zero fill --
+                                // pristine data copies to restore
+                                // before the inits run (a warm
+                                // respawn hands us last run's data)
+word cookargs   = 1             // first argv index on the cmdln: the
+                                // program's own name. Seed path: argv[1]
+                                // is the module; plascut patches 0 for
+                                // a cooked binary (argv[0] is it)
+word cooksysflags = 0           // patched: OR of the modules' sysflags
+word cookexports = @exports     // read by plascut: CMDSYS bindings
+word cookdata   = @symtbl       // read by plascut: rt restore range end
+word cookfn                     // scratch: the init being called
+//
+// Utility functions -- syscall is the FIRST asm block, so the
+// full plvmzp.inc zero-page layout (copied VERBATIM from
+// ~/src/PLASMA/src/vmsrc/plvmzp.inc) is inlined here:
+// rt.pla builds with no include path. This is the ABI every asm
+// block below (and every compiled module's own inline asm)
+// assumes -- never rearrange it.
+//
+// CALL MAUX -- SYSCALL(CMD, PARAMS)
+// A=parmlist lo, X=parmlist hi, Y=cmd, JSR $FF00, carry=error.
+// Unlike the ProDOS original (an inline MLI-entry JSR/cmd/params), the
+// maux gate takes cmd/params in REGISTERS, so nothing here is
+// self-modified -- PARML/PARMH are plain read-write scratch.
+//
+asm syscall(cmd,params)#1
+SRC     =   $06
+SRCL    =   SRC
+SRCH    =   SRC+1
+DST     =   SRC+2
+DSTL    =   DST
+DSTH    =   DST+1
+ESGUARD =   $9E
+ESTKSZ  =   $40
+ESTK    =   $A0
+ESTKH   =   ESTK
+ESTKL   =   ESTK+ESTKSZ/2
+VMZP    =   ESTK+ESTKSZ
+IFP     =   VMZP
+IFPL    =   IFP
+IFPH    =   IFP+1
+PP      =   IFP+2
+PPL     =   PP
+PPH     =   PP+1
+IPY     =   PP+2
+ESP     =   IPY+1
+JMPTMP  =   ESP+1
+TMP     =   JMPTMP+1
+TMPL    =   TMP
+TMPH    =   TMP+1
+        LDA     ESTKL,X          ; params lo (top of stack)
+        STA     PARML
+        LDA     ESTKH,X          ; params hi
+        STA     PARMH
+        INX                      ; pop params
+        LDA     ESTKL,X          ; cmd (now on top)
+        TAY
+        STX     ESP
+        LDA     PARML
+        LDX     PARMH
+        JSR     $FF00
+        LDX     ESP
+        BCC     +
+        LDY     #$00
+        STA     ESTKL,X
+        STY     ESTKH,X
+        RTS
++       LDA     #$00
+        STA     ESTKL,X
+        STA     ESTKH,X
+        RTS
+PARML   !BYTE   0
+PARMH   !BYTE   0
+end
+//
+// CALL 6502 ROUTINE
+// CALL(ADDR, AREG, XREG, YREG, STATUS)
+//
+asm call(addr,areg,xreg,yreg,status)#1
+REGVALS =   SRC
+        PHP
+        LDA     ESTKL+4,X
+        STA     TMPL
+        LDA     ESTKH+4,X
+        STA     TMPH
+        LDA     ESTKL,X
+        PHA
+        LDY     ESTKL+1,X
+        LDA     ESTKL+3,X
+        PHA
+        LDA     ESTKL+2,X
+        INX
+        INX
+        INX
+        INX
+        STX     ESP
+        TAX
+        PLA
+        PLP
+        JSR     JMPTMP
+        PHP
+        STA     REGVALS+0
+        STX     REGVALS+1
+        STY     REGVALS+2
+        PLA
+        STA     REGVALS+3
+        LDX     ESP
+        LDA     #<REGVALS
+        LDY     #>REGVALS
+        STA     ESTKL,X
+        STY     ESTKH,X
+        PLP
+        RTS
+end
+//
+// SET MEMORY TO VALUE
+// MEMSET(ADDR, VALUE, SIZE)
+//   With optimizations from Peter Ferrie
+//
+asm memset(addr,value,size)#0
+        LDA     ESTKL+2,X
+        STA     DSTL
+        LDA     ESTKH+2,X
+        STA     DSTH
+        LDY     ESTKL,X
+        BEQ     +
+        INC     ESTKH,X
+        LDY     #$00
++       LDA     ESTKH,X
+        BEQ     SETMEX
+SETMLPL CLC
+        LDA     ESTKL+1,X
+SETMLPH STA     (DST),Y
+        DEC     ESTKL,X
+        BEQ     ++
+-       INY
+        BEQ     +
+--      BCS     SETMLPL
+        SEC
+        LDA     ESTKH+1,X
+        BCS     SETMLPH
++       INC     DSTH
+        BNE     --
+++      DEC     ESTKH,X
+        BNE     -
+SETMEX  INX
+        INX
+        INX
+        RTS
+end
+//
+// COPY MEMORY
+// MEMCPY(DSTADDR, SRCADDR, SIZE)
+//
+asm memcpy(dst,src,size)#0
+        INX
+        INX
+        INX
+        LDA     ESTKL-3,X
+        ORA     ESTKH-3,X
+        BEQ     CPYMEX
+        LDA     ESTKL-2,X
+        CMP     ESTKL-1,X
+        LDA     ESTKH-2,X
+        SBC     ESTKH-1,X
+        BCC     REVCPY
+;
+; FORWARD COPY
+;
+        LDA     ESTKL-1,X
+        STA     DSTL
+        LDA     ESTKH-1,X
+        STA     DSTH
+        LDA     ESTKL-2,X
+        STA     SRCL
+        LDA     ESTKH-2,X
+        STA     SRCH
+        LDY     ESTKL-3,X
+        BEQ     FORCPYLP
+        INC     ESTKH-3,X
+        LDY     #$00
+FORCPYLP LDA    (SRC),Y
+        STA     (DST),Y
+        INY
+        BNE     +
+        INC     DSTH
+        INC     SRCH
++       DEC     ESTKL-3,X
+        BNE     FORCPYLP
+        DEC     ESTKH-3,X
+        BNE     FORCPYLP
+        RTS
+;
+; REVERSE COPY
+;
+REVCPY  ;CLC
+        LDA     ESTKL-3,X
+        ADC     ESTKL-1,X
+        STA     DSTL
+        LDA     ESTKH-3,X
+        ADC     ESTKH-1,X
+        STA     DSTH
+        CLC
+        LDA     ESTKL-3,X
+        ADC     ESTKL-2,X
+        STA     SRCL
+        LDA     ESTKH-3,X
+        ADC     ESTKH-2,X
+        STA     SRCH
+        DEC     DSTH
+        DEC     SRCH
+        LDY     #$FF
+        LDA     ESTKL-3,X
+        BEQ     REVCPYLP
+        INC     ESTKH-3,X
+REVCPYLP LDA    (SRC),Y
+        STA     (DST),Y
+        DEY
+        CPY     #$FF
+        BNE     +
+        DEC     DSTH
+        DEC     SRCH
++       DEC     ESTKL-3,X
+        BNE     REVCPYLP
+        DEC     ESTKH-3,X
+        BNE     REVCPYLP
+CPYMEX  RTS
+end
+//
+// CONSOLE -- fd 1/0, high-bit ASCII, $8D newline. crout falls
+// through into cout's tail (the original's own trick, retargeted).
+//
+asm crout()#0
+        LDA     #$8D
+        BNE     +
+end
+asm cout(c)#0
+        LDA     ESTKL,X
+        INX
++       ORA     #$80
+        STA     COUTBUF
+        STX     ESP
+        LDA     #<COUTPARM
+        LDX     #>COUTPARM
+        LDY     #$CB
+        JSR     $FF00
+        LDX     ESP
+        RTS
+COUTBUF     !BYTE 0
+COUTPARM    !BYTE 4
+            !BYTE 1
+COUTPARM_BUF !WORD COUTBUF
+COUTPARM_REQ !WORD 1
+             !WORD 0
+end
+//
+// CHAR IN -- READ 1 byte from fd 0, strip the high bit.
+//
+asm cin()#1
+        STX     CINSAVEX
+        LDA     #<CINPARM
+        LDX     #>CINPARM
+        LDY     #$CA
+        JSR     $FF00
+        LDX     CINSAVEX
+        DEX
+        LDA     CINBUF
+        AND     #$7F
+        LDY     #$00
+        STA     ESTKL,X
+        STY     ESTKH,X
+        RTS
+CINSAVEX    !BYTE 0
+CINBUF      !BYTE 0
+CINPARM     !BYTE 4
+            !BYTE 0
+CINPARM_BUF !WORD CINBUF
+CINPARM_REQ !WORD 1
+            !WORD 0
+end
+//
+// PRINT STRING -- copy the Pascal string into a 256-byte runtime
+// buffer with bit 7 set, then ONE write of the whole thing.
+//
+asm prstr(s)#0
+        LDA     ESTKL,X
+        STA     SRCL
+        LDA     ESTKH,X
+        STA     SRCH
+        STX     PRSAVEX
+        LDY     #0
+        LDA     (SRC),Y
+        BEQ     PRSDONE
+        TAX
+        LDY     #0
+PRSLP   INY
+        LDA     (SRC),Y
+        ORA     #$80
+        STA     PRSBUF-1,Y
+        DEX
+        BNE     PRSLP
+        STY     PRSPARM_REQ
+        LDA     #0
+        STA     PRSPARM_REQ+1
+        LDA     #<PRSPARM
+        LDX     #>PRSPARM
+        LDY     #$CB
+        JSR     $FF00
+PRSDONE LDX     PRSAVEX
+        INX
+        RTS
+PRSAVEX     !BYTE 0
+PRSBUF      !FILL 256, 0
+PRSPARM     !BYTE 4
+            !BYTE 1
+PRSPARM_BUF !WORD PRSBUF
+PRSPARM_REQ !WORD 0
+            !WORD 0
+end
+//
+// READ STRING -- write the prompt char, READ a cooked line from
+// fd 0 into a runtime buffer (NOT $01FF -- that's the kernel's
+// argv block on maux), strip bit 7 and the trailing $8D/$0D,
+// build a Pascal string in place, return its address.
+//
+asm rdstr(p)#1
+        LDA     ESTKL,X
+        ORA     #$80
+        STA     RDPBUF
+        STX     ESP
+        LDA     #<RDPPARM
+        LDX     #>RDPPARM
+        LDY     #$CB
+        JSR     $FF00
+        LDA     #<RDRPARM
+        LDX     #>RDRPARM
+        LDY     #$CA
+        JSR     $FF00
+        LDX     ESP
+        LDA     RDRPARM_TRANS
+        BEQ     RDZERO
+        TAY
+        LDA     RDBUF-1,Y
+        AND     #$7F
+        CMP     #$0D
+        BNE     RDKEEP
+        DEY
+RDKEEP  STY     RDLEN
+        BEQ     RDSTORE
+RDSCAN  LDA     RDBUF-1,Y
+        AND     #$7F
+        STA     RDBUF-1,Y
+        DEY
+        BNE     RDSCAN
+        BEQ     RDSTORE
+RDZERO  LDA     #0
+        STA     RDLEN
+RDSTORE LDA     RDLEN
+        STA     RDBUF0
+        LDA     #<RDBUF0
+        STA     ESTKL,X
+        LDA     #>RDBUF0
+        STA     ESTKH,X
+        RTS
+RDPBUF      !BYTE 0
+RDPPARM     !BYTE 4
+            !BYTE 1
+RDPPARM_BUF !WORD RDPBUF
+RDPPARM_REQ !WORD 1
+            !WORD 0
+RDLEN       !BYTE 0
+RDRPARM     !BYTE 4
+            !BYTE 0
+RDRPARM_BUF !WORD RDBUF
+RDRPARM_REQ !WORD 255
+RDRPARM_TRANS !WORD 0
+RDBUF0      !BYTE 0
+RDBUF       !FILL 255, 0
+end
+asm uword_isge(a,b)#1
+        LDA     ESTKL+1,X
+        CMP     ESTKL,X
+        LDA     ESTKH+1,X
+        SBC     ESTKH,X
+        LDA     #$FF
+        ADC     #$00
+        EOR     #$FF
+        STA     ESTKL+1,X
+        STA     ESTKH+1,X
+        INX
+        RTS
+end
+asm uword_isle(a,b)#1
+        LDA     ESTKL,X
+        CMP     ESTKL+1,X
+        LDA     ESTKH,X
+        SBC     ESTKH+1,X
+        LDA     #$FF
+        ADC     #$00
+        EOR     #$FF
+        STA     ESTKL+1,X
+        STA     ESTKH+1,X
+        INX
+        RTS
+end
+asm uword_isgt(a,b)#1
+        LDA     ESTKL,X
+        CMP     ESTKL+1,X
+        LDA     ESTKH,X
+        SBC     ESTKH+1,X
+        LDA     #$FF
+        ADC     #$00
+        STA     ESTKL+1,X
+        STA     ESTKH+1,X
+        INX
+        RTS
+end
+asm uword_islt(a,b)#1
+        LDA     ESTKL+1,X
+        CMP     ESTKL,X
+        LDA     ESTKH+1,X
+        SBC     ESTKH,X
+        LDA     #$FF
+        ADC     #$00
+        STA     ESTKL+1,X
+        STA     ESTKH+1,X
+        INX
+        RTS
+end
+asm divmod(a,b)#2
+INTERP  =   $0803              ; the seed's DINTRP ABI slot (was
+                                ; ProDOS page-3 $03D0)
+        JSR     INTERP
+        !BYTE   $36, $5C        ; DIVMOD, RET
+end
+asm sext(a)#1
+        LDY     #$00
+        LDA     ESTKL,X
+        BPL     +
+        DEY
++       STY     ESTKH,X
+        RTS
+end
+//
+// ARGV/ARGC/EXIT -- process-startup ABI (new). ARGC at $0200,
+// pointer pairs at $0201+2i, NUL-terminated high-bit strings.
+//
+asm argc()#1
+        DEX
+        LDA     $0200
+        LDY     #0
+        STA     ESTKL,X
+        STY     ESTKH,X
+        RTS
+end
+asm argv(i,dst)#0
+        LDA     ESTKL,X          ; dst lo
+        STA     TMPL
+        CLC
+        ADC     #1
+        STA     DSTL
+        LDA     ESTKH,X          ; dst hi
+        STA     TMPH
+        ADC     #0
+        STA     DSTH
+        INX
+        LDA     ESTKL,X          ; i
+        ASL
+        TAY
+        INX                      ; both args popped -- X is final
+        LDA     $0201,Y
+        STA     SRCL
+        LDA     $0202,Y
+        STA     SRCH
+        LDY     #0
+AVSCAN  CPY     #255
+        BEQ     AVDONE
+        LDA     (SRC),Y
+        BEQ     AVDONE
+        AND     #$7F
+        STA     (DST),Y
+        INY
+        BNE     AVSCAN
+AVDONE  TYA
+        LDY     #0
+        STA     (TMP),Y
+        RTS
+end
+asm exit(code)#0
+        LDA     ESTKL,X
+        STA     EXITPARM
+        LDA     #<EXITPARM
+        LDX     #>EXITPARM
+        LDY     #2
+        JSR     $FF00
+EXITHANG JMP     EXITHANG
+EXITPARM    !FILL 8, 0
+end
+//
+// SBRK/BRKSET -- the maux SYS_BRK(5) primitives the heap rides.
+// A 3-byte parmlist, [value lo][value hi][mode]: 0=SET (value is
+// an address), nonzero=GROW (value is a byte count, 0=query). On
+// success the kernel writes the PREVIOUS break back into [0-1].
+//
+asm sbrk(delta)#1
+        LDA     ESTKL,X
+        STA     BRKPARM
+        LDA     ESTKH,X
+        STA     BRKPARM+1
+        LDA     #1
+        STA     BRKPARM+2
+        STX     ESP
+        LDA     #<BRKPARM
+        LDX     #>BRKPARM
+        LDY     #5
+        JSR     $FF00
+        LDX     ESP
+        BCC     +
+        LDA     #0
+        STA     ESTKL,X
+        STA     ESTKH,X
+        RTS
++       LDA     BRKPARM
+        LDY     BRKPARM+1
+        STA     ESTKL,X
+        STY     ESTKH,X
+        RTS
+BRKPARM     !WORD 0
+            !BYTE 0
+end
+asm brkset(addr)#1
+        LDA     ESTKL,X
+        STA     BRKPARM2
+        LDA     ESTKH,X
+        STA     BRKPARM2+1
+        LDA     #0
+        STA     BRKPARM2+2
+        STX     ESP
+        LDA     #<BRKPARM2
+        LDX     #>BRKPARM2
+        LDY     #5
+        JSR     $FF00
+        LDX     ESP
+        BCC     +
+        LDA     #0
+        STA     ESTKL,X
+        STA     ESTKH,X
+        RTS
++       LDA     BRKPARM2
+        LDY     BRKPARM2+1
+        STA     ESTKL,X
+        STY     ESTKH,X
+        RTS
+BRKPARM2    !WORD 0
+            !BYTE 0
+end
+//
+// A DCI string is one that has the high bit set for every character
+// except the last. More efficient than C or Pascal strings.
+//
+asm dcitos(dci, str)#1
+        LDA     ESTKL,X
+        STA     DSTL
+        LDA     ESTKH,X
+        STA     DSTH
+        LDA     ESTKL+1,X
+        STA     SRCL
+        LDA     ESTKH+1,X
+        STA     SRCH
+        LDY     #$00
+-       LDA     (SRC),Y
+        CMP     #$80
+        AND     #$7F
+        INY
+        STA     (DST),Y
+        BCS     -
+        TYA
+        LDY     #$00
+        STA     (DST),Y
+        INX
+        STA     ESTKL,X
+        STY     ESTKH,X
+        RTS
+end
+asm stodci(str,dci)#1
+        LDA     ESTKL,X
+        STA     DSTL
+        LDA     ESTKH,X
+        STA     DSTH
+        LDA     ESTKL+1,X
+        STA     SRCL
+        LDA     ESTKH+1,X
+        STA     SRCH
+        INX
+        LDY     #$00
+        LDA     (SRC),Y
+        BEQ     ++
+        TAY
+        LDA     (SRC),Y
+        JSR     TOUPR
+        BNE     +
+-       LDA     (SRC),Y
+        JSR     TOUPR
+        ORA     #$80
++       DEY
+        STA     (DST),Y
+        BNE     -
+        LDA     (SRC),Y
+++      STA     ESTKL,X
+        STY     ESTKH,X
+        RTS
+end
+asm toupper(c)#1
+        LDA     ESTKL,X
+TOUPR   AND     #$7F
+        CMP     #'a'
+        BCC     +
+        CMP     #'z'+1
+        BCS     +
+        SBC     #$1F
++       STA     ESTKL,X
+        RTS
+end
+//
+// Lookup routines (KEPT verbatim below the PLASMA-level wrapper --
+// no ProDOS/LC reference). lookuptbl_scan takes the table base as
+// an explicit arg instead of a hardcoded $DA00/language-card
+// immediate: an asm block cannot reference a PLASMA data symbol
+// (symtbl) by name -- xplasm mangles every global to an internal
+// label an asm block's raw text never sees -- so the small `def
+// lookuptbl` wrapper below (after all asm blocks, since PLASMA
+// requires every asm block before any def block) passes symtbl,
+// which DOES resolve correctly in real PLASMA source. Exported
+// signature (`lookuptbl(dci)#1`, cmdsys.plh's own ABI) is
+// unchanged; only the internal split is new.
+//
+asm lookuptbl_scan(base, dci)#1
+        LDA     ESTKL,X          ; dci (top of stack)
+        STA     SRCL
+        LDA     ESTKH,X
+        STA     SRCH
+        INX                      ; pop dci
+        LDA     ESTKL,X          ; base (now on top)
+        STA     DSTL
+        LDA     ESTKH,X
+        STA     DSTH
+--      LDY     #$00
+-       LDA     (DST),Y
+        BEQ     +
+        CMP     (SRC),Y
+        BNE     ++
+        INY
+        ASL
+        BCS     -
+        LDA     (DST),Y
+        STA     ESTKL,X
+        INY
+        LDA     (DST),Y
+        STA     ESTKH,X
+        RTS
++       STA     ESTKL,X
+        STA     ESTKH,X
+        RTS
+++
+-       LDA     (DST),Y
+        BPL     +
+        INY
+        BNE     -
++       TYA
+        CLC
+        ADC     #$03
+        ADC     DSTL
+        STA     DSTL
+        BCC     --
+        INC     DSTH
+        BNE     --
+end
+asm lookupidx(esd, index)#1
+        LDA     ESTKL,X
+        STA     TMPL
+        INX
+---     LDA     ESTKH,X
+        STA     SRCH
+        LDA     ESTKL,X
+--      STA     SRCL
+        LDY     #$00
+-       LDA     (SRC),Y
+        BPL     +
+        INY
+        BNE     -
++       BEQ     ++              ; END OF ESD
+        INY
+        LDA     (SRC),Y
+        INY
+        AND     #$10            ; EXTERN FLAG?
+        BEQ     +
+        LDA     (SRC),Y
+        CMP     TMPL
+        BEQ     +++             ; MATCH
++       INY
+        TYA
+        SEC
+        ADC     SRCL
+        STA     ESTKL,X         ; SYM PTRL
+        BCC     --
+        INC     ESTKH,X         ; SYM PTRH
+        BNE     ---
+++      STA     ESTKL,X         ; END OF ESD
+        STA     ESTKH,X
++++     RTS
+end
+asm lookupdef(addr, deftbl)#1
+        LDA     ESTKH,X
+        STA     SRCH
+        LDA     ESTKL,X
+        STA     SRCL
+        INX
+-       LDY     #$00
+        LDA     (SRC),Y
+        CMP     #$20            ; JSR OPCODE?
+        BNE     ++
+        LDY     #$03
+        LDA     (SRC),Y
+        CMP     ESTKL,X
+        BNE     +
+        INY
+        LDA     (SRC),Y
+        CMP     ESTKH,X
+        BNE     +
+        LDA     SRCL            ; MATCH
+        STA     ESTKL,X
+        LDA     SRCH
+        STA     ESTKH,X
+        RTS
++       LDA     #$05
+        CLC
+        ADC     SRCL
+        STA     SRCL
+        BCC     -
+        INC     SRCH
+        BNE     -
+++      STY     ESTKL,X
+        STY     ESTKH,X
+        RTS
+end
+//
+// Reloc internal data (KEPT verbatim -- no ProDOS/LC reference).
+//
+asm reloc(modfix, modofst, bytecode, rld)#3
+        LDA     ESTKL,X
+        STA     SRCL
+        LDA     ESTKH,X
+        STA     SRCH
+        LDY     #$00
+-       LDA     (SRC),Y
+        BEQ     RLDEX       ; END OF RLD
+        INY
+        LDA     (SRC),Y
+        CLC
+        ADC     ESTKL+3,X   ; ADDR=ENTRY=>1+MODFIX
+        STA     DSTL
+        INY
+        LDA     (SRC),Y
+        ADC     ESTKH+3,X
+        STA     DSTH
+        LDY     #$00
+        LDA     (SRC),Y
+        AND     #$10        ; EXTERN REF - EXIT
+        BNE     RLDEX
+        LDA     (SRC),Y
+        BMI     FIX16
+        AND     #$40
+        BNE     FIXMSB
+FIXLSB  LDA     (DST),Y
+        CLC
+        ADC     ESTKL+2,X
+        CLC
+        BCC     FIX8
+FIXMSB  LDY     #$03
+        LDA     (SRC),Y     ; FIXUPH=(ENTRY->3+MODOFSTL)+(^ADDR+MODOFSTH)
+        CLC
+        ADC     ESTKL+2,X
+        LDY     #$00
+        LDA     (DST),Y
+        ADC     ESTKH+2,X
+        CLC
+        BCC     FIX8
+FIX16   LDA     (DST),Y     ; FIXUP=*ADDR+MODOFST
+        CLC
+        ADC     ESTKL+2,X
+        STA     TMPL
+        INY
+        LDA     (DST),Y
+        ADC     ESTKH+2,X
+        CMP     ESTKH+1,X   ; FIXUP >= BYTECODE?
+        BCC     +
+        STA     TMPH
+        BNE     RLDEX       ; YEP, EXIT
+        LDA     TMPL
+        CMP     ESTKL+1,X
+        BCS     RLDEX       ; YEP, EXIT
+        LDA     TMPH
++       STA     (DST),Y     ; *ADDR=FIXUP
+        DEY
+        LDA     TMPL
+FIX8    STA     (DST),Y
+        LDA     SRCL        ; NEXT ENTRY
+        ADC     #$04
+        STA     SRCL
+        BCC     -
+        INC     SRCH
+        BNE     -
+RLDEX   INX
+        LDA     TMPL
+        STA     ESTKL,X
+        LDA     TMPH
+        STA     ESTKH,X
+        LDA     DSTL
+        STA     ESTKL+1,X
+        LDA     DSTH
+        STA     ESTKH+1,X
+        LDA     SRCL
+        STA     ESTKL+2,X
+        LDA     SRCH
+        STA     ESTKH+2,X
+        RTS
+end
+//
+// PRINT BYTE/WORD -- hand-rolled hex through cout, two chars per
+// byte, no monitor PRBYTE routine.
+//
+def prbyte(b)#0
+    byte n
+    b = b & $FF         // PUTB/PRBYTE take a WORD: shift only the low byte
+    n = b >> 4
+    cout(n < 10 ?? n + '0' :: n - 10 + 'A')
+    n = b & $0F
+    cout(n < 10 ?? n + '0' :: n - 10 + 'A')
+end
+def prword(w)#0
+    prbyte(w >> 8)
+    prbyte(w)           // prbyte masks: it used to shift its WHOLE argument,
+                        // so a word with a non-zero high byte printed a
+                        // wrong low byte (plasm's "buffer size = $..."
+                        // read as $01GE), and PUTB above $FF was wrong too
+end
+//
+// Cheap and dirty print integer (KEPT verbatim).
+//
+def print(i)#0
+    if i < 0; cout('-'); i = -i; fin
+    if i >= 10; print(i / 10); fin
+    cout(i % 10 + '0')
+end
+//
+// Symbol table routines. The RAM-card bank-2 write-enable/disable
+// pokes are gone -- symtbl is plain main-RAM module data, always
+// writable.
+//
+def addsym(sym, addr)#0
+    word last
+    //
+    // The table is bounded: the name (a DCI string -- high bit on every
+    // character but the last), its address and the 0 terminator must fit.
+    // Before PLASM-FIX a full table ran on into rt's own data.
+    //
+    last = sym
+    while ^last & $80
+        last++
+    loop
+    if uword_isgt(lastsym + (last - sym) + 4, symtbl + SYMTBLSZ)
+        prstr("rt: symbol table full\n")
+        exit(2)
+    fin
+    while ^sym & $80
+        ^lastsym = ^sym
+        lastsym++
+        sym++
+    loop
+    lastsym->0 = ^sym
+    lastsym=>1 = addr
+    lastsym    = lastsym + 3
+    ^lastsym   = 0
+end
+//
+// String routines (KEPT verbatim).
+//
+def strcpy(dst, src)#1
+    memcpy(dst+1, src+1, ^src)
+    ^dst = ^src
+    return dst
+end
+def strcat(dst, src)#1
+    memcpy(dst + ^dst + 1, src + 1, ^src)
+    ^dst = ^dst + ^src
+    return dst
+end
+//
+// lookuptbl -- the PLASMA-level wrapper that supplies symtbl
+// (which DOES resolve here, unlike inside lookuptbl_scan's raw
+// asm text) to the real scan routine above.
+//
+def lookuptbl(dci)#1
+    if !symtbl; return 0; fin   // cooked image: no symbol table
+    return lookuptbl_scan(symtbl, dci)
+end
+//
+// Module routines.
+//
+def lookupextern(esd, index)#1
+    word sym, addr
+    byte str[33]
+    sym = lookupidx(esd, index)
+    if sym
+        addr = lookuptbl(sym)
+        if !addr
+            perr = $81
+            dcitos(sym, @str)
+            cout('?'); prstr(@str); crout
+        fin
+        return addr
+    fin
+    return 0
+end
+def adddef(addr, deflast)#1
+    word defentry
+    defentry = *deflast
+    *deflast = defentry + 5
+    defentry->0 = $20
+    defentry=>1 = $0806     // the seed's IINTRP ABI slot (was
+                             // PLVM's ProDOS page-3 vector) --
+                             // the seed's own def thunk goes
+                             // through it too.
+    defentry=>3 = addr
+    defentry->5 = 0 // NULL out next entry
+    return defentry
+end
+//
+// A do-nothing stub -- the exported CMDSYS table has a slot for
+// it (Apple II vs. /// SYSTEM-file exec), but there is no ProDOS
+// .SYSTEM concept on maux; nothing in this runtime calls it.
+//
+def execsys(sysfile)#0
+end
+//
+// File primitives -- unchanged from cmd.pla: maux's SYS_OPEN/
+// SYS_CLOSE/SYS_READ numbers ARE the MLI OPEN/CLOSE/READ numbers
+// ($C8/$CC/$CA), so these ride the retargeted syscall() unmodified.
+//
+def open(path)#1
+    byte params[6]
+
+    params.0 = 3
+    params:1 = path
+    params:3 = iobuffer
+    params.5 = 0
+    perr     = syscall($C8, @params)
+    return params.5
+end
+def close(refnum)#1
+    byte params[2]
+
+    params.0 = 1
+    params.1 = refnum
+    perr     = syscall($CC, @params)
+    return perr
+end
+def read(refnum, buff, len)#1
+    byte params[8]
+
+    params.0 = 4
+    params.1 = refnum
+    params:2 = buff
+    params:4 = len
+    params:6 = 0
+    perr     = syscall($CA, @params)
+    return params:6
+end
+def loadmod(mod)#1
+    word rdlen, modsize, bytecode, defofst, defcnt, init, initcode[], fixup
+    word addr, defaddr, modaddr, modfix, modofst, modend
+    word deftbl, deflast
+    word moddep, rld, esd, sym
+    byte refnum, filename[64], str[]
+    byte header[128]
+    //
+    // Read the RELocatable module header (first 128 bytes)
+    //
+    dcitos(mod, @filename)
+    refnum = open(@filename)
+    if !refnum and filename < 16
+        //
+        // Try the system path (syspath, not a ProDOS GET_PREFIX
+        // overlay -- init sets it to a fixed string).
+        //
+        refnum = open(strcpy(@filename, strcat(strcpy(@header, syspath), @filename)))
+    fin
+    if refnum
+        rdlen   = read(refnum, @header, 128)
+        modsize = header:0
+        moddep  = @header.1
+        defofst = modsize + RELADDR
+        init    = 0
+        if rdlen > 4 and header:2 == $6502 // magic number
+            //
+            // This is an EXTended RELocatable (data+bytecode) module.
+            //
+            systemflags = header:4 | systemflags
+            defofst  = header:6
+            defcnt   = header:8
+            init     = header:10
+            moddep   = @header.12
+            //
+            // Load module dependencies.
+            //
+            while ^moddep
+                if !lookuptbl(moddep)
+                    close(refnum)
+                    refnum = 0
+                    if loadmod(moddep) < 0
+                        return -perr
+                    fin
+                fin
+                moddep = moddep + dcitos(moddep, @str)
+            loop
+            //
+            // Init def table.
+            //
+            deftbl   = allocheap(defcnt * 5 + 1)
+            deflast  = deftbl
+            ^deflast = 0
+            if !refnum
+                //
+                // Reset read pointer.
+                //
+                refnum = open(@filename)
+                rdlen  = read(refnum, @header, 128)
+            fin
+        fin
+        //
+        // Alloc heap space for relocated module (data + bytecode).
+        //
+        moddep  = moddep  + 1
+        modfix  = moddep  - @header.2 // Adjust to skip header
+        modsize = modsize - modfix
+        rdlen   = rdlen   - modfix - 2
+        modaddr = allocheap(modsize)
+        memcpy(modaddr, moddep, rdlen)
+        //
+        // Read in remainder of module into memory for fixups.
+        //
+        addr = modaddr
+        repeat
+            addr  = addr + rdlen
+            rdlen = read(refnum, addr, 4096)
+        until rdlen <= 0
+        close(refnum)
+        //
+        // Add module to symbol table.
+        //
+        addsym(mod, modaddr)
+        //
+        // Apply all fixups and symbol import/export.
+        //
+        modfix   = modaddr - modfix
+        modofst  = modfix  - RELADDR
+        modend   = modaddr + modsize
+        bytecode = defofst + modofst
+        defofst  = bytecode - defofst
+        rld      = modend  // Re-Locatable Directory
+        esd      = rld     // Extern+Entry Symbol Directory
+        while ^esd         // Scan to end of ESD
+            esd = esd + 4
+        loop
+        esd = esd + 1
+        //
+        // Run through the DeFinition Dictionary.
+        //
+        while ^rld == $02
+            //
+            // This is a bytcode def entry - add it to the def directory.
+            //
+            adddef(rld=>1 + defofst, @deflast)
+            rld = rld + 4
+        loop
+        //
+        // Run through the Re-Location Dictionary.
+        //
+        while ^rld
+            rld, addr, fixup = reloc(modfix, modofst, bytecode, rld)
+            if ^rld
+                *addr = ^rld & $10 ?? *addr + lookupextern(esd, rld->3) :: lookupdef(fixup, deftbl)
+                rld   = rld + 4
+            fin
+        loop
+        //
+        // Run through the External/Entry Symbol Directory.
+        //
+        while ^esd
+            sym = esd
+            esd = esd + dcitos(esd, @str)
+            if ^esd & $08
+                //
+                // EXPORT symbol - add it to the global symbol table.
+                //
+                addr = esd=>1 + modofst
+                if uword_isge(addr, bytecode)
+                    //
+                    // Use the def directory address for bytecode.
+                    //
+                    addr = lookupdef(addr, deftbl)
+                fin
+                addsym(sym, addr)
+            fin
+            esd = esd + 3
+        loop
+    else
+        perr = $46
+    fin
+    if perr
+        return -perr
+    fin
+    //
+    // Free up rld+esd in main memory.
+    //
+    releaseheap(modend)
+    //
+    // Call init routine if it exists.
+    //
+    initcode = modkeep
+    if init
+        init     = init + defofst
+        initcode = adddef(init, @deflast)()
+        if initcode < modinitkeep
+            //
+            // Free init routine unless initkeep
+            //
+            releaseheap(init)
+            if initcode < 0
+                perr = -initcode
+            fin
+        else
+            initcode = initcode & ~modinitkeep
+        fin
+    fin
+    return initcode
+end
+def execmod(modfile)#1
+    byte moddci[63]
+    word keep, saveheap, savesym, saveflags
+
+    perr = 1
+    if !symtbl
+        return -perr    // a cooked image has no loader (see symtbl)
+    fin
+    if stodci(modfile, @moddci)
+        saveheap  = heap
+        savesym   = lastsym
+        saveflags = systemflags
+        keep = loadmod(@moddci)
+        if keep < modkeep
+            if not (keep & modflagkeep)
+                systemflags = saveflags
+            fin
+            heap     = saveheap
+            lastsym  = savesym
+            ^lastsym = 0
+        fin
+    fin
+    return -perr
+end
+//
+// Heap routines -- PLASMA's byte-granular bump pointer over maux
+// sbrk. reshgr1/reshgr2 screen-hole logic is KEPT verbatim (it IS
+// maux's graphics-mode knob, docs/PLASMA-PORT.md M2 spec); the
+// frame-collision check (uword_isge(heap, @addr), meaningless here
+// -- the frame stack is BELOW $2000 on maux, never above the heap)
+// is replaced by: whenever heap outgrows the last known break,
+// sbrk the shortfall (kernel page-rounds it) so PCB_BRK >= heap;
+// undo the bump and return 0 if sbrk fails (ERR_NOMEM).
+//
+def availheap()#1
+    return $BF00 - heap
+end
+def allocheap(size)#1
+    word oldheap, addr, shortfall, newbrk
+    oldheap = heap
+    addr    = heap
+    heap    = heap + size
+    if systemflags & reshgr1
+        if uword_islt(addr, $4000) and uword_isgt(heap, $2000)
+            addr = $4000
+            heap = addr + size
+        fin
+    fin
+    if systemflags & reshgr2
+        if uword_islt(addr, $6000) and uword_isgt(heap, $4000)
+            addr = $6000
+            heap = addr + size
+        fin
+    fin
+    if uword_isgt(heap, curbrk)
+        shortfall = heap - curbrk
+        newbrk = sbrk(shortfall)
+        if !newbrk
+            heap = oldheap
+            return 0
+        fin
+        curbrk = sbrk(0)
+    fin
+    return addr
+end
+def allocalignheap(size, pow2, freeaddr)#1
+    word align, addr, oldheap, shortfall, newbrk
+    if freeaddr
+        *freeaddr = heap
+    fin
+    oldheap = heap
+    align = (1 << pow2) - 1
+    addr  = (heap | align) + 1
+    heap  = addr + size
+    if uword_isgt(heap, curbrk)
+        shortfall = heap - curbrk
+        newbrk = sbrk(shortfall)
+        if !newbrk
+            heap = oldheap
+            return 0
+        fin
+        curbrk = sbrk(0)
+    fin
+    return addr
+end
+def markheap()#1
+    return heap
+end
+def releaseheap(newheap)#1
+    word pgaddr
+    heap   = newheap
+    pgaddr = (newheap + $FF) & $FF00
+    brkset(pgaddr)
+    curbrk = pgaddr
+    return heap
+end
+//
+// Build syscmdln from argv[cookargs..], space-separated -- the maux
+// replacement for cmd.pla's ProDOS GET_PREFIX/getlnbuf command-line
+// staging. The convention is Dave's: on a stock PLASMA system the
+// command line a program sees is the WHOLE typed command, program
+// name first (cmd.pla's REPL buffer), and the ARGS module's argFirst
+// is that name -- plasm discards it with `argNext(argFirst)`. So:
+// seed path (`plasma MODULE args`) starts at argv[1], the module name,
+// and a cooked binary (`plasm args`) at argv[0], its own name; either
+// way the first token IS the program and the arguments follow
+// (PLASM-FIX, docs/PLASM-FIX-NOTES.md). Before that fix the program
+// name was dropped, so `plasm hello.pla hello.mod` lost its source
+// file and every gate invoked plasm with a throwaway first token.
+//
+// Each argument is copied straight from the kernel's argv block, a
+// byte at a time, with bit 7 stripped. There is NO scratch buffer:
+// the old one was 64 bytes and argv() copies up to 255, so any argument
+// over 63 bytes overran it and wrecked rt's own data (a BRK at start;
+// found by the awk stream, docs/AWK-NOTES.md sec 14.6). The line is
+// bounded by CMDLN_MAX (127) -- the old
+// 80-character cap dropped whole tokens SILENTLY. An argument list
+// that does not fit is refused loudly and the program does not run.
+//
+def buildcmdln#0
+    byte i, n
+    word src, len, k
+    len = 0
+    n   = argc()
+    for i = cookargs to n - 1
+        src = *($0201 + (i << 1))     // argv pointer i, kernel block
+        k   = 0
+        while ^(src + k)
+            k++
+        loop
+        if len; k = k + 1; fin        // the separating space
+        if len + k > CMDLN_MAX
+            prstr("rt: command line too long\n")
+            exit(2)
+        fin
+        if len
+            cmdln[len + 1] = ' '
+            len++
+        fin
+        k = 0
+        while ^(src + k)
+            cmdln[len + 1] = ^(src + k) & $7F
+            len++
+            k++
+        loop
+    next
+    cmdln[0] = len
+end
+//
+// Init -- no ProDOS, no REPL, no banner. Register the exported
+// symbol table, point syspath at the sysmods dir, build syscmdln
+// from argv[1..], then execmod argv[1].
+//
+if cookinits
+    //
+    // Cooked image (docs/PLASCUT.md): rt + modules are already in
+    // memory, relocated and bound. Restore every writable data range
+    // to its post-load bytes FIRST (this may be a warm respawn into
+    // the bank the previous run dirtied -- lazy free recopies
+    // nothing, docs/STICKY.md sec 27), then take the heap plascut
+    // computed, build the cmdln from argv[cookargs..], run the module
+    // inits in load order exactly as loadmod would have, and exit
+    // with the LAST init's return -- the main module's own status,
+    // so a nonzero `return` reaches `make` (the seed path's execmod
+    // discards it, an upstream cmd.pla inheritance).
+    //
+    rc = cookrestore
+    while *rc
+        if rc=>2
+            memcpy(rc=>0, rc=>2, rc=>4)
+        else
+            memset(rc=>0, 0, rc=>4)     // src 0: a run of zeros
+        fin
+        rc = rc + 6
+    loop
+    heap   = cookheap
+    curbrk = sbrk(0)
+    systemflags = systemflags | cooksysflags
+    syspath  = "/mnt/MAUX/PLLIB/"
+    syscmdln = @cmdln
+    buildcmdln()
+    rc = 0
+    cookfn = cookinits
+    while *cookfn
+        rc = (*cookfn)()
+        cookfn = cookfn + 2
+    loop
+    exit(rc & $FF)
+fin
+heap   = sbrk(0)     // the seed's break, past rt's own image
+curbrk = heap
+symtbl = allocheap(SYMTBLSZ)     // the loader's symbol table (see symtbl)
+if !symtbl
+    prstr("rt: no memory for the symbol table\n")
+    exit(2)
+fin
+lastsym  = symtbl
+^lastsym = 0
+while *sysmodsym
+    stodci(sysmodsym=>0, heap)
+    addsym(heap, sysmodsym=>2)
+    sysmodsym = sysmodsym + 4
+loop
+syspath  = "/mnt/MAUX/PLLIB/"    // NOT /bin/PLASMA -- collides
+                               // case-insensitively with the
+                               // `plasma` util itself (M3,
+                               // docs/PLASMA-PORT.md)
+syscmdln = @cmdln
+buildcmdln()
+if argc() < 2
+    prstr("usage: plasma MODULE\n")
+    exit(2)
+fin
+target = allocheap(64)       // not in the image: a cooked tool has no use
+if !target                   // for it (every byte of image is heap lost)
+    prstr("rt: no memory\n")
+    exit(2)
+fin
+argv(1, target)
+rc = execmod(target)
+exit(rc == 0 ?? 0 :: 1)
+done

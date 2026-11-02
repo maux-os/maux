@@ -1,0 +1,45 @@
+.\" Derived from Research UNIX V7 tail(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/man/man1/tail.1
+.\" Retrieved 2026-09-19; archived response SHA256: fcaa25a7995bfa2c68832851e0f874a9f8c903958c60f4f7ed7a895641b2457d
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH TAIL 1 "October 8, 2026" maux
+.SH NAME
+tail \- deliver the last part of a file
+.SH SYNOPSIS
+.B tail
+.RB [ \-f ]
+.RB [ \-n " number" | \-number | \-c " number" ]
+.RI [ file ]
+.SH DESCRIPTION
+.I Tail
+copies the last part of the named file to the standard output.
+If no file is named, the standard input is used.
+The default is the last ten lines.
+.TP
+.B \-n number
+Copy the last number lines. The spelling -number is also accepted.
+.TP
+.B \-c number
+Copy the last number bytes.
+.TP
+.B \-f
+After copying, do not stop: look at the file once a second and copy
+whatever has been appended, until interrupted (a typed ^C ends it,
+status 130). The file is reopened on every look, because a ProDOS
+file's end-of-file is not shared between two openers; a file that has
+become shorter is followed from its start. Needs a timer (a mouse card
+or a Mockingboard) and refuses without one, like sleep(1). Ignored
+when reading the standard input.
+.PP
+A final unterminated line is counted as a line.
+.SH FILES
+/usr/man/TAIL  this page
+.SH "SEE ALSO"
+head(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 if the input cannot be opened, 2 for usage or range errors.
+.SH BUGS
+Tails relative to the end of the file are treasured up in a buffer, and thus are limited in length. Here the limits are 64 lines, 255 bytes per stored line, and 255 bytes for -c. There is no +number start-relative form. With -f the wait between looks is a polling loop, so it holds the processor as sleep(1) does.

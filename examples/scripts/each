@@ -1,0 +1,19 @@
+#!/bin/sh
+# each DIR -- describe every file in DIR
+cd $1
+for f in *
+do
+    case "$f" in
+    *.s)    kind=source ;;
+    *.o)    kind=object ;;
+    *)      kind=other ;;
+    esac
+    echo $f is $kind
+done
+ls > /tmp/each.$$
+while read line
+do
+    echo listed: $line
+done < /tmp/each.$$
+rm /tmp/each.$$
+echo $(ls | wc -l) files

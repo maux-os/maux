@@ -1,0 +1,65 @@
+.\" Derived from Research UNIX V1 df(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/df
+.\" Retrieved 2026-09-19; archived response SHA256: deb46af04c80c4f9bcd4621a1d216bc0c89d8a3341cdc9429c989d58af42f700
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH DF 1 "October 7, 2026" maux
+.SH NAME
+df \- report volume block usage
+.SH SYNOPSIS
+.B df
+.RB [ \-Pk ]
+.RI [ file ...]
+.SH DESCRIPTION
+The historical
+.I df
+prints the number of free blocks available on a file system.
+This maux implementation prints the POSIX
+.B \-P
+report, always:
+.PP
+.nf
+Filesystem 512-blocks Used Available Capacity Mounted on
+/mnt/MAUX 8192 1689 6503 21% /mnt/MAUX
+.fi
+.PP
+There is one row per volume.
+Filesystem and Mounted on are both the volume path:
+ProDOS has no device name for a volume.
+Used is the blocks for all files and Available is Total less Used;
+the volume's own boot, directory and bitmap blocks count as used.
+Capacity is the used fraction of the total, rounded up.
+All three numbers come from one GET_FILE_INFO on the volume directory
+(the ProDOS 8 Technical Reference Manual: the total is returned in
+aux_type and the blocks for all files in blocks_used).
+.PP
+With no operand, every volume that is online is listed, in unit order.
+Only non-floppy units are queried: a 5.25-inch drive is never polled
+to build the list.
+An operand names the volume holding it: a path on the volume
+("/bin/ls"), a bare volume name ("BASIC"), or a relative path
+("bin", "./x"), which is checked to exist and reported against the
+volume of the working directory.
+The operand "/" lists every volume, like no operand.
+.TP
+.B \-P
+Accepted; the report is always in this form.
+.TP
+.B \-k
+Use units of 1024 bytes.
+Total and Used are halved, rounding up; Available is their difference.
+Capacity is unchanged.
+A block is 512 bytes, so the default unit is the block.
+.SH FILES
+/usr/man/DF  this page
+.SH "SEE ALSO"
+du(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 if every operand was reported, 1 if any could not be
+accessed ("df: path: cannot access"), 2 for a usage error.
+.SH BUGS
+There are no other Unix df options, and no per-volume device column.
+A volume that goes offline between listing and query is reported as
+cannot access.

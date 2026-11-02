@@ -1,0 +1,115 @@
+# scripts/open_census.txt -- every SC_OPEN call site in src/bin and
+# src/liba, classified (docs/OPEN-RW-2.md item 6; checked by
+# scripts/check_open_census.py).  Format:  FILE  LABEL  ro|append|none  REASON
+#   ro   the parmlist count byte is OPEN_RO: the site only READS through
+#        its fd, so it may share a file with one writer
+#   append  the count byte is OPEN_APPEND (OAPPEND-1): every write
+#        through the fd lands at EOF, so any number of appenders may
+#        share the file; the site must be a pure appender
+#   none no intent declared: the site may write, or has not been proven
+#        read-only (an open is write-capable until it says otherwise)
+# LABEL is the parmlist loaded before the call; a second call on the
+# same label in one file is LABEL#2.  A new SC_OPEN site fails the
+# gate until it is listed here.
+
+bin/as.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/asboot.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/asxform.s DOPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/bpatchp.s OPARM none bpatch reads then writes one fd
+bin/bpatchp.s OPARM#2 none bpatch reads then writes one fd
+bin/bye.s OPARM none bye opens the ProDOS target
+bin/cat.s OPARM ro copies its operands to stdout; never writes through the fd (OPEN-RW-2)
+bin/chvt.s CVT_OPRM none opens a /dev tty
+bin/cksum.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/cmp.s O1PARM ro both operands, read only (OPEN-RO-2)
+bin/cmp.s O2PARM ro both operands, read only (OPEN-RO-2)
+bin/comm.s O1PARM ro both operands, read only (OPEN-RO-2)
+bin/comm.s O2PARM ro both operands, read only (OPEN-RO-2)
+bin/cp.s DOPARM none copy destination: written
+bin/cp.s SOPARM none copy source (read); not classified ro, see cp DOPARM
+bin/csplit.s OPARM none csplit reads its input and writes pieces through the same helpers
+bin/cut.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/ddparse.s OPARM none dd uses one parmlist for if= and of=: the output side writes
+bin/ddparse.s OPARM#2 none dd uses one parmlist for if= and of=: the output side writes
+bin/ddparse.s OPARM#3 none dd uses one parmlist for if= and of=: the output side writes
+bin/difftop.s O1PARM ro both operands, read only (OPEN-RO-2)
+bin/difftop.s O2PARM ro both operands, read only (OPEN-RO-2)
+bin/edfil2.s ROPARM none ed/ex file read; same parmlist family as the writer, unreviewed for ro
+bin/edfil2.s WOPARM none the file writer (w, ZZ): written
+bin/edparse.s ROPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/exbuf.s EXOPP none ex buffer file (read and written)
+bin/excmd.s ROPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/excmd2.s EXBCOPW none ex copy/write target: written
+bin/excmd2.s EXBIOPN none ex buffer file work (read or written)
+bin/excmd2.s EXBIOPR none ex buffer file work (read or written)
+bin/excmd2.s EXBOOPR none ex buffer file work (read or written)
+bin/excmd2.s EXBOOPW none ex output file: written
+bin/expand.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/findtst.s EVOPARM none find -newer style probe
+bin/fold.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/grepbody.s OPARM ro input files AND the -f pattern file, read only; one parmlist, never written (OPEN-RW-2)
+bin/grepbody.s OPARM#2 ro input files AND the -f pattern file, read only; one parmlist, never written (OPEN-RW-2)
+bin/head.s OPARM ro reads its operand, prints to stdout (OPEN-RW-2)
+bin/joinopt.s O1PARM ro both operands, read only (OPEN-RO-2)
+bin/joinopt.s O2PARM ro both operands, read only (OPEN-RO-2)
+bin/ldargf.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/ldpass.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/ldscan.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/ldzout.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/makeread.s MKOPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/man.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/mld.s DOPARM none linker reads objects and writes its output
+bin/mld.s ODPARM2 none linker reads objects and writes its output
+bin/mld.s ODPARMS none linker reads objects and writes its output
+bin/mldload.s MODOPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/mntdens.s DOPN none mount reads a densify image header
+bin/morecmd.s OPARM ro input opens (:e, reopen); more reads the file it pages (OPEN-RW-2)
+bin/morecmd.s OPARM#2 ro input opens (:e, reopen); more reads the file it pages (OPEN-RW-2)
+bin/morefile.s OPARM ro input opens; TMPCREATE flips the shared count for its spill (OPEN-RW-2)
+bin/morefile.s OPARM#2 ro input opens; TMPCREATE flips the shared count for its spill (OPEN-RW-2)
+bin/moreio.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/mvtop.s O2PARM none mv across volumes: copy destination written
+bin/mvtop.s OPARM none mv across volumes: copy destination written
+bin/nl.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/nmtop.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/nohupfd.s NH_OPARM append nohup opens nohup.out: appended (OAPPEND-1)
+bin/nulib2.s OPARM none archive: read and written
+bin/nulib2af.s IOPARM none archive add: read and written
+bin/od.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/paste.s OPARM ro operands, read only (OPEN-RO-2)
+bin/pastepar.s OPARM ro operands, read only (OPEN-RO-2)
+bin/patchhnk.s IOPARM none patch reads and rewrites its target
+bin/patchio.s IOPARM none patch reads and rewrites its target
+bin/patchtgt.s IOPARM none patch reads and rewrites its target
+bin/plasmald.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/pr.s OPARM ro operands, read only (OPEN-RO-2)
+bin/prmrg.s OPARM ro operands of pr -m, read only (OPEN-RO-2)
+bin/proshim.s OPARM none the ProDOS shim opens for a tenant program: any mode
+bin/sed.s OPARM none sed script/input open; not yet declared (outside the idiom)
+bin/sedio.s OPARM none sed input; not yet declared (outside the idiom)
+bin/sedout.s OPARM none sed output file (-i style): written
+bin/shpath.s SH_OPARM ro `<` and script reads (OPEN-RO-2)
+bin/shpath.s SH_OPARM#2 append sh `>>` and exec N>> (AP_TRY): appended (OAPPEND-1)
+bin/shpath.s SH_TOPARM ro PATH_EXISTS probe: opens and closes (OPEN-RW-2)
+bin/shpath.s SH_TOPARM#2 ro XEC_PEEK: reads the first bytes (OPEN-RW-2)
+bin/shpth2.s SH_GOPARM none sh glob: opens a directory to list it
+bin/sort.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/split.s OPARM none split reads its input and writes pieces through the same helpers
+bin/strings.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/sum.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/tail.s OPARM ro reads its operand (OPEN-RW-2); tail -f must open beside a writer
+bin/tailin.s OPARM ro the -f poll re-opens the file each second (OPEN-RW-2)
+bin/tee.s OPARM append tee -a: the only SC_OPEN in tee, reached only by -a (OAPPEND-1)
+bin/tip.s OPARM none tip opens the serial/device and files; both ways
+bin/tsort.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/unexpand.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/uniq.s IOPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/uniq.s OOPARM none uniq output file: written
+bin/uudecode.s OPARM none uudecode writes the decoded file
+bin/uuencode.s OPARM none no intent declared; not reviewed for read-only use (outside the follow/cat idiom)
+bin/wc.s OPARM ro reads its operand, counts (OPEN-RW-2)
+liba/cptree2.s CPT_O2 none cp -R / mv tree copy: source and destination share the walker
+liba/cptree2.s CPT_OP none cp -R / mv tree copy: source and destination share the walker
+liba/creat.s CR8_OPARM none creat(): truncates by handle, MUST stay no-intent
+liba/pathres.s PRS_OPARM none path resolution probe (directory)
+liba/readdir.s RD_OPARM none readdir opens a directory

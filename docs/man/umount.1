@@ -1,0 +1,57 @@
+.\" umount.1 -- maux's umount(1), in the V7 man(1) shape. An
+.\" original page (this project's own text), so it carries no
+.\" third-party notice -- MIT like the code, same posture as tty.1.
+.\" Rendered at build time to build/man/UMOUNT.TXT and staged on the
+.\" play image as /usr/man/UMOUNT: `man umount`.
+.TH UMOUNT 1 "October 10, 2026" maux
+.SH NAME
+umount \- unmount a floppy or a disk image
+.SH SYNOPSIS
+.B umount
+.I /mnt/NAME
+.br
+.B umount
+.I /dev/sNdM
+.SH DESCRIPTION
+.I Umount
+takes a Disk ][ that
+.IR mount (1)
+mounted back out of
+.BR /mnt ,
+.IR df (1)
+and
+.IR mount 's
+listing. Nothing reads the drive again until it is mounted again.
+.PP
+It also detaches a disk image that
+.IR mount (1)
+attached as
+.BR /dev/s3d2 :
+the unit and its volume go away, the image file is closed and can be
+changed again. A volume that holds a mounted image cannot be
+unmounted until the image is. If a write to the image failed while it
+was mounted (a read-only mount, or the host refusing), the unit is
+still detached but
+.I umount
+says "N blocks were not written" and exits 1.
+.PP
+The volume is named by its place under
+.B /mnt
+or by its unit. A name is found by reading, with one ON_LINE each,
+only the units already mounted; a drive that is not mounted is never
+polled.
+.PP
+Refused as "busy" while a file on the volume is open or parked, a
+process has its working directory on it, or a block device on the
+unit is open. The boot volume and fast units (SmartPort, hard disk)
+cannot be unmounted: "not a mountable unit".
+.SH FILES
+/mnt/NAME       a mounted volume
+.br
+/dev/sNdM       the units
+.SH "SEE ALSO"
+mount(1), df(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 on failure ("busy", "not mounted",
+"not a mountable unit") or when writes to a detached image were lost,
+2 for a usage error.

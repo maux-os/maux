@@ -1,0 +1,101 @@
+.\" Derived from Research UNIX V1 od(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/od
+.\" Retrieved 2026-09-19; archived response SHA256: 22e833b1778c0fee2791e10184937d96f10da54435cabf118c43fe1e1ff0c689
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH OD 1 "September 19, 2026" maux
+.SH NAME
+od \- dump file bytes
+.SH SYNOPSIS
+.B od
+.RB [ \-bcdosvx ]
+.RB [ \-A " base" ]
+.RB [ \-t " type" ]
+.RB [ \-j " skip" ]
+.RB [ \-N " limit" ]
+.RI [ file ]
+.SH DESCRIPTION
+.I Od
+dumps a file with the origin of the line on the left.
+This byte-machine version prints sixteen bytes per line and uses a
+four-digit hexadecimal offset, rather than PDP-11 octal words.
+With no file it reads standard input.
+A final line gives the trailing offset alone.
+.TP
+.B \-x
+Hexadecimal bytes; also the default.
+.TP
+.B \-b
+Three-digit octal bytes.
+.TP
+.B \-c
+Printable characters, with a dot for nonprinting bytes.
+The high bit is stripped before classifying characters.
+.TP
+.B \-d
+Unsigned decimal 16-bit words, same as -t u2.
+.TP
+.B \-o
+Octal 16-bit words, same as -t o2.
+.TP
+.B \-s
+Signed decimal 16-bit words, same as -t d2.
+.TP
+.B \-A base
+Offset column in base d (5 digits), o (6) or x (4, the default);
+n prints no offset.
+.TP
+.B \-t type
+Output type, repeatable.
+A type string is one or more of
+.B a
+(named characters, low seven bits),
+.B c
+(characters, with C escapes, else three octal digits),
+and
+.BR d ,
+.BR o ,
+.B u
+or
+.B x
+(signed decimal, octal, unsigned decimal, hexadecimal)
+followed by a size: 1, 2 or 4, or C, S, I, L (1, 2, 4, 4).
+No size means 4.
+There is no 8-byte unit: x8 and every other size is a usage error.
+Units are little-endian and the last one of a short row is padded
+with zero bytes.
+Each type prints its own line under the same offset; later lines carry
+a blank offset, and the columns are widened to line up.
+.TP
+.B \-v
+Print every row.
+Without it, a row equal to the one before collapses to a single
+.B *
+line for the whole run.
+.TP
+.B \-j skip
+Read and discard skip bytes first.
+.TP
+.B \-N limit
+Dump at most limit bytes.
+.PP
+Of the old letters, -x, -b and -c together print in hex, octal,
+character order whatever the argument order;
+-t, -d, -o and -s print in argument order.
+Skip and limit are unsigned decimal operands.
+.SH FILES
+/usr/man/OD  this page
+.SH "SEE ALSO"
+cat(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on completion, 1 if the input cannot be opened, 2 for usage errors.
+.SH BUGS
+Offsets and numeric operands are 16-bit; do not use values above 65535.
+Hexadecimal digits are upper case, as in the offset column.
+-x is hexadecimal BYTES here, not the XCU's 16-bit words (use -t x2).
+-c keeps the high bit stripped, so a text byte prints as itself where a
+host od prints octal; -t c does the same for a byte whose low seven
+bits are printable or a C escape.
+No 8-byte or floating types.

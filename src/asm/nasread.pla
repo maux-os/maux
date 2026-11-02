@@ -1,0 +1,214 @@
+// Single bounded token walk, followed only by the unparsed line tail.
+// Tentative tokens live at $8E..$9B. A missing CR changes no public state.
+// $0A..$0F and $66..$6F are private scratch, disjoint from native context.
+asm lineprep(slot, lineinfo, tokens, dirs)#1
+!macro NSGO .target {
+        LDA $30
+        CLC
+        ADC #<(.target-NSENTRY)
+        STA TMPL
+        LDA $31
+        ADC #>(.target-NSENTRY)
+        STA TMPH
+        JMP JMPTMP
+}
+// Retain the original tokenizer's bounded-length semantics, but discover
+// CR during tokenization. Never read beyond the available buffer.
+!macro NSBOUND {
+        CPY TMPL
+        BCS +
+        LDA (SRC),Y
+        CMP #13
+        BNE +
+        STY TMPL
++       CPY TMPL
+}
+NSENTRY LDA ESTKL+3,X
+        STA $0A
+        LDA ESTKH+3,X
+        STA $0B
+        ORA $0A
+        STA $6F
+        LDA ESTKL+2,X
+        STA $0C
+        LDA ESTKH+2,X
+        STA $0D
+        LDA ESTKL+1,X
+        STA $0E
+        LDA ESTKH+1,X
+        STA $0F
+        LDA #0
+        STA $6B
+        LDA $6F
+        BEQ NSSERVED
+        LDY #4
+        LDA ($0A),Y
+        LDY #2
+        SEC
+        SBC ($0A),Y
+        STA $68
+        LDY #5
+        LDA ($0A),Y
+        LDY #3
+        SBC ($0A),Y
+        STA $69
+        LDY #0
+        LDA ($0A),Y
+        LDY #2
+        CLC
+        ADC ($0A),Y
+        STA SRCL
+        LDY #1
+        LDA ($0A),Y
+        LDY #3
+        ADC ($0A),Y
+        STA SRCH
+        LDA $69
+        BEQ NSLIMIT
+        LDA #255
+        BNE NSREADY
+NSLIMIT LDA $68
+        CLC
+        BCC NSREADY
+NSSERVED LDY #0
+        LDA ($0C),Y
+        STA SRCL
+        INY
+        LDA ($0C),Y
+        STA SRCH
+        INY
+        LDA ($0C),Y
+NSREADY STA TMPL
+        LDA SRCL
+        STA $66
+        LDA SRCH
+        STA $67
+        LDA #$8E
+        STA DSTL
+        LDA #0
+        STA DSTH
+        LDA #1
+        STA $6D
+// TOKENIZER inserted here by the builder.
+// FINISH starts with the first byte not already consumed by tokenization.
+NSFIN   LDY $6C
+        LDA $6F
+        BEQ NSPUBLISH
+        LDA $69
+        BEQ NSTAIL
+NSPAGE  LDA (SRC),Y
+        CMP #13
+        BEQ NSHIT
+        INY
+        BNE NSPAGE
+        INC SRCH
+        INC $6B
+        DEC $69
+        BNE NSPAGE
+NSTAIL  CPY $68
+        BCS NSMISS
+        LDA (SRC),Y
+        CMP #13
+        BEQ NSHIT
+        INY
+        BNE NSTAIL
+NSMISS  LDA #$FE
+        STA ESTKL+3,X
+        LDA #$FF
+        STA ESTKH+3,X
+        INX
+        INX
+        INX
+        RTS
+NSHIT   STY $6A
+        LDY #0
+        LDA $66
+        STA ($0C),Y
+        INY
+        LDA $67
+        STA ($0C),Y
+        INY
+        LDA $6B
+        BEQ NSLENGTH
+        LDA #255
+        BNE NSLENPUT
+NSLENGTH LDA $6A
+NSLENPUT STA ($0C),Y
+        INY
+        LDA #0
+        STA ($0C),Y
+        INY
+        LDA ($0C),Y
+        CLC
+        ADC #1
+        STA ($0C),Y
+        INY
+        LDA ($0C),Y
+        ADC #0
+        STA ($0C),Y
+        LDY #2
+        LDA ($0A),Y
+        SEC
+        ADC $6A
+        STA ($0A),Y
+        INY
+        LDA ($0A),Y
+        ADC $6B
+        STA ($0A),Y
+NSPUBLISH LDY #2
+        LDA $90
+        STA ($0E),Y
+        BEQ NSNOLO
+        LDY #0
+        LDA $8E
+        STA ($0E),Y
+        INY
+        LDA $8F
+        STA ($0E),Y
+NSNOLO  LDY #3
+        LDA #0
+        STA ($0E),Y
+        LDY #6
+        LDA $94
+        STA ($0E),Y
+        BEQ NSNOMN
+        LDY #4
+        LDA $92
+        STA ($0E),Y
+        INY
+        LDA $93
+        STA ($0E),Y
+        LDY #12
+        LDA $9A
+        STA ($0E),Y
+        INY
+        LDA #0
+        STA ($0E),Y
+NSNOMN  LDY #7
+        LDA #0
+        STA ($0E),Y
+        LDY #10
+        LDA $98
+        STA ($0E),Y
+        BEQ NSNOOP
+        LDY #8
+        LDA $96
+        STA ($0E),Y
+        INY
+        LDA $97
+        STA ($0E),Y
+NSNOOP  LDY #11
+        LDA #0
+        STA ($0E),Y
+        LDA $6D
+        CMP #1
+        BEQ NSCLASS
+        STA ESTKL+3,X
+        STA ESTKH+3,X
+        INX
+        INX
+        INX
+        RTS
+NSCLASS
+// CLASSIFIER inserted here by the builder.
+end

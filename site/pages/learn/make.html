@@ -1,0 +1,65 @@
+title: make
+description: A Makefile for upcase: rules, prerequisites, make -n, and the second run that does nothing.
+lesson: l5
+---
+<h1>L5. make</h1>
+<p class="crumb"><a href="/learn/">Learn</a> / L5</p>
+
+<!-- src: docs/SITE.md sec 5 -->
+<p class="lead">Goal: stop typing <code>nas</code> and <code>ld</code>. Describe how
+<code>upcase</code> is built once, and let <code>make</code> do the rest.</p>
+
+<h2>What you need</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p><a href="/learn/filter/">L3</a>: the <code>upcase</code> source. The directory on
+the disk, <code>/usr/src/examples/UPCASE</code>, already holds the Makefile beside
+it, and the session copies both.</p>
+
+<h2>The file</h2>
+<!-- src: examples/upcase/Makefile; docs/man/make.1 -->
+<p>Each rule is a target, a colon, the files it is made from, and then the commands
+that make it, each indented by a <em>tab</em>. The first rule is what a bare
+<code>make</code> builds.</p>
+{{file:examples/upcase/Makefile}}
+
+<h2>The session</h2>
+<!-- src: scripts/check_examples.py (row_l5) -->
+<p><code>make -n</code> prints the commands without running them.</p>
+{{gen:session}}
+
+<h2>What just happened</h2>
+<!-- src: docs/man/make.1; src/bin/make.s -->
+<p><code>make</code> read the first rule and saw that <code>upcase</code> needs
+<code>upcase.o</code>, which needs <code>upcase.s</code>. The source exists and the
+object does not, so it ran the commands from the bottom up and printed each one as
+it ran it. A command that exits non-zero stops the whole thing. The second
+<code>make</code> printed nothing at all: no file was newer than the target made
+from it, so there was nothing to do. (Some makes say so; this one is silent,
+and so is <code>make -n</code> at that point.) <code>make clean</code> is an ordinary
+rule that no file depends on; you ask for it by name.</p>
+
+<!-- src: docs/man/make.1; src/bin/make.s; learning:01M0BQQ6XN04NQAWE0WAQX1RG5 -->
+<p>How does it decide a target is out of date? It compares the modification times
+ProDOS keeps for the two files. ProDOS stamps files to the minute, not the second,
+so maux's <code>make</code> has a one-minute rule: a target rebuilt within a minute
+of its source's last change compares equal to it and is judged up to date. If you
+edit <code>upcase.s</code>, run <code>make</code>, edit again and run <code>make</code>
+within the same minute, the second build can be skipped. The BUGS section of the
+manual page names <code>-t</code> and <code>touch</code> as the way out, and says
+there is no <code>-B</code> to force a rebuild. The gate that produced the session above runs with the clock
+card off, so every stamp is the same; it cannot show the rule, and this page does not
+pretend to.</p>
+
+<!-- src: docs/man/make.1 -->
+<p>Because no shell sits between <code>make</code> and the command, a recipe line is
+split at blanks and run directly. There is no pipe, no redirection and no globbing in
+a recipe; a rule that needs one runs a script. <a href="/learn/prodos-system/">L7</a>
+does exactly that.</p>
+
+<h2>Try next</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p>Add a rule <code>test: upcase</code> whose one command runs
+<code>upcase</code> on a file you choose. What does <code>make test</code> print the
+first time, and the second?</p>
+
+{{gen:lessonnav}}

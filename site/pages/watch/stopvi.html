@@ -1,0 +1,67 @@
+title: Stop vi, run make, carry on
+description: vi is stopped with ^Z, make builds in the background while a second console shows both processes in their own banks, and fg brings vi back where it was.
+demo: stopvi
+---
+<div class="band demo">
+<h1>Stop vi, run make, carry on</h1>
+<p class="crumb"><a href="/watch/">Watch</a> / stopvi</p>
+
+{{gen:player}}
+</div>
+
+<!-- src: site/demos/stopvi.py; examples/hello/hello.s; examples/hello/Makefile -->
+<p class="lead">Job control and virtual consoles, together, on a small project.
+The film opens <code>hello.s</code> from the hello example in <code>vi</code> and
+makes an edit it does not save. <code>^Z</code> stops <code>vi</code>, and
+<code>make</code> starts in the background. While it builds, <code>chvt 2</code> moves
+to a second console, where <code>ps</code> shows <code>vi</code> stopped and
+<code>make</code> running, each in a bank of its own. Back on console 1,
+<code>fg</code> returns to <code>vi</code> with the buffer and the cursor where they
+were, the edit is saved, and <code>make</code> builds the new program.</p>
+
+<h2>What it types</h2>
+{{gen:democommands}}
+
+<h2>What the captions say</h2>
+{{gen:democaptions}}
+
+<h2>Why make runs in the background</h2>
+<!-- src: site/demos/stopvi.py; docs/CONSOLE.md -->
+<p>A <code>make</code> run in the foreground would hold console 1, and
+<code>chvt</code> is a program: it has to be typed at a shell prompt, and there is no
+hotkey. So the film starts <code>make</code> as a job, with its output in a file,
+and the shell gives the prompt back at once. <code>jobs</code> lists
+<code>vi</code> stopped and <code>make</code> running. The film reads the
+process numbers off the screen: the one the
+shell printed when it started <code>make</code>, and the stopped process that
+<code>ps</code> showed on console 1 before <code>make</code> began. (The film sends <code>ps</code> to a file and filters out the two console shells with <code>grep</code>, because a shell's state at the instant <code>ps</code> looks can be running or waiting, and a recording must say the same on both displays.)</p>
+
+<h2>What make saw</h2>
+<!-- src: site/demos/stopvi.py -->
+<p><code>make</code> reads the disk, and the edit was still only in <code>vi</code>'s
+buffer, so the first build is the old program and says
+<code>hello, world</code>. The new one, built after the save, says
+<code>hello, world, again.</code> Afterwards a plain <code>make</code> prints nothing. The film runs with the clock
+card switched off, so that every recording is the same, and every file has one date.
+With a clock card ProDOS would still date files only to the minute, and
+<code>make</code> treats an equal date as not newer; the edit comes about 50 seconds
+after the build, so it would be invisible to <code>make</code> either way. The film
+runs <code>make clean</code> first.</p>
+
+<h2>The gate that proves it</h2>
+<!-- src: site/demos/README; site/demos/stopvi.py; docs/VERIFICATION.md (check-demos, check-recorder) -->
+<p>This film is made by <code>site/demos/stopvi.py</code>. Run as assertions, the
+same file is {{gen:demogate}}, and it runs with the rest of the tests, on both displays. It requires that
+the shell reports <code>vi</code> Stopped and <code>jobs</code> lists it beside the
+running <code>make</code>; that <code>ps</code> on console 2 holds the process that was
+stopped, still stopped, and the process the shell numbered for <code>make</code>, in
+the bank that is its process number, with a child of its own; that console 1, when
+it is switched back to, is exactly as it was left; that the log <code>make</code>
+wrote while <code>vi</code> was stopped is the old build and that program says the
+old greeting; that after <code>fg</code> the same rows are on the screen as before
+<code>^Z</code> and a full stop typed there lands right after the edit; that the saved
+file holds both; that a plain <code>make</code> after the save prints nothing; and that the rebuilt program says the new greeting. No label in the
+gate holds a process number or any timing. The checks themselves were tested: with <code>make</code> replaced by a copy of <code>true</code> it fails at "jobs lists vi stopped and make running"; with <code>chvt</code> replaced by <code>true</code> it fails at "console 2 is a fresh, blank screen with a prompt".</p>
+
+<h2>Transcript</h2>
+{{gen:demotranscript}}

@@ -1,0 +1,18 @@
+.\" ar.1 -- maux's stub for the POSIX ar(1) utility, which this tree
+.\" does not provide. An original page (this project's own text), so
+.\" it carries no third-party notice -- MIT like the code, same
+.\" posture as env.1/man.1. Recorded in docs/POSIX-GAPS.md sec 5
+.\" ("Not applicable, and why") so the omission is not re-litigated.
+.\" Rendered at build time to build/man/AR.TXT and staged on the
+.\" play image as /usr/man/AR.
+.TH AR 1 "September 17, 2026" maux
+.SH NAME
+ar \- create and maintain library archives
+.SH DESCRIPTION
+.I Ar
+is not provided on maux.
+ld(1) links object modules from library DIRECTORIES (/LIB/LIBK,
+given to the linker as -l k), not from archive files, so there
+is no archive format for ar to manage.
+.SH "SEE ALSO"
+ld(1)

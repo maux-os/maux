@@ -1,0 +1,41 @@
+.\" Original maux page, MIT, 2026-09-19.
+.\" Historical-source decision: House display/console protocol; no applicable Research UNIX or early BSD page.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH VIDMODE 1 "September 19, 2026" maux
+.SH NAME
+vidmode \- report or select console video mode
+.SH SYNOPSIS
+.B vidmode
+.RI [ mode " [" discipline ]]
+.SH DESCRIPTION
+With no operands, report the current console's columns, rows and
+output discipline. Otherwise request a change and read back the result.
+At most two words are accepted.
+.TP
+.B 40, 80
+Select native 40- or 80-column display, with 24 rows.
+.TP
+.B hq, card
+Select the UltraTerm 80-column display.
+.TP
+.B vt, apple
+Select VT-style or Apple output discipline.
+.TP
+.B onehead
+Let monitor selection follow the active console.
+.TP
+.B dualhead
+Hold monitor selection for a second display.
+.PP
+For example,
+.B vidmode 80 vt
+requests both geometry and discipline.
+Availability depends on the hardware detected by this build.
+.SH FILES
+/usr/man/VIDMODE  this page
+.SH "SEE ALSO"
+chvt(1), stty(1), reset(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 for a refused mode or non-console output, 2 for usage errors.
+.SH BUGS
+This controls the current console through standard output. Unsupported hardware modes are refused, not emulated.

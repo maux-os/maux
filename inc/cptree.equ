@@ -1,0 +1,44 @@
+*---------------------------------------------------------------
+* cptree.equ -- CPT_MAXDEP and the CPT_ERR reason codes, split
+* out of cptreebss.s and cptree.s so they are `put` BEFORE the
+* code that tests them with `cmp #...`.
+*
+* Same hazard as inc/readdir.equ: real Merlin-8 rejects a
+* forward `equ` reference in an immediate operand, merlin32 does
+* not. cp.s and mv.s both `cmp #CPTE_LONG` well above their
+* `put` of cptree.s, and cptree.s itself tests `#CPT_MAXDEP`
+* which cptreebss.s (the dum arena, necessarily last) defined.
+* Byte-neutral: an `equ` emits nothing.
+*---------------------------------------------------------------
+
+* -- Walk depth cap. ProDOS caps an MLI pathname at 64
+* -- characters, so with real 15-character component names the
+* -- reachable depth is a handful of levels. Exceeding it is a
+* -- LOUD failure, never a truncated walk.
+CPT_MAXDEP  equ   8
+
+* -- CPT_ERR REASON CODES. A real MLI errno is always < $80, so
+* -- the two maux-side refusals take values no MLI call can
+* -- return and the consumer can tell them apart without a
+* -- second flag.
+CPTE_LONG   equ   $F0        ;a child path exceeds MLI_PTH_MAXLN
+CPTE_DEEP   equ   $F1        ;the walk hit CPT_MAXDEP
+
+* -- moved from cptreebss.s 2026-08-29: cptree.s uses both,
+* -- and a REL module cannot export an equate (Merlin-8 ENT is
+* -- code labels only).
+CPT_BUFSZ   equ   512
+CPT_RECSZ   equ   32
+
+* -- MLI errno $47, duplicate filename (P8 TRM ch. 4's CREATE
+* -- error table). Moved here from cptree.s 2026-09-01: the
+* -- cptree2.s split made it a cross-module reference, and REL
+* -- cannot export an equate. mv.s/cp.s still declare their own
+* -- ERR_DUPFN -- a liba module may not depend on a consumer's
+* -- equates, and vice versa.
+CPT_EDUP    equ   $47
+
+* -- volume-directory storage_type. No house constant exists for
+* -- this one; ls.s and file.s set the precedent of spelling it
+* -- inline next to STYP_DIR. Same move, same reason.
+CPT_STYPVOL equ   $0F

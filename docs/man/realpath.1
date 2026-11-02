@@ -1,0 +1,69 @@
+.\" realpath.1 -- maux's realpath(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic realpath(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as env.1. Rendered at build
+.\" time to build/man/REALPATH.TXT and staged on the play image
+.\" as /usr/man/REALPATH: `more /usr/man/REALPATH`.
+.TH REALPATH 1 "September 15, 2026" maux
+.SH NAME
+realpath \- print the absolute, canonical pathname of each operand
+.SH SYNOPSIS
+.B realpath
+[
+.B \-E
+|
+.B \-e
+]
+.I file
+...
+.SH DESCRIPTION
+For each
+.I file
+operand,
+.I realpath
+resolves it against the current directory if it is not already
+absolute, folds every
+.B .
+and
+.B ..
+component, collapses repeated slashes, and prints the result.
+ProDOS has no symbolic links, so none are ever resolved. A
+.B ..
+above a volume's own root has nowhere to go and is a no-op,
+leaving the path at the root.
+.PP
+A failure on one operand prints a diagnostic to standard error
+and continues with the next; the exit status reflects whether
+any operand failed.
+.TP
+.B \-E
+Do not treat it as an error if resolving the last component
+results in "no such file or directory" -- only the components
+before it need exist. This is the default.
+.TP
+.B \-e
+Every component, including the last, must exist.
+.PP
+If both
+.B \-E
+and
+.B \-e
+are given, the last one given takes effect.
+.SH FILES
+/usr/man/REALPATH  this page
+.SH "SEE ALSO"
+pwd(1), dirname(1), basename(1)
+.SH DIAGNOSTICS
+0 if every operand resolved (and, under
+.BR \-e ,
+exists in full); 1 if any operand could not be resolved or does
+not satisfy
+.BR \-e / \-E ;
+2 on a usage error.
+.SH BUGS
+The canonical form is whatever case ProDOS itself stored the
+name in, the same as
+.IR pwd (1)
+prints -- there is no case folding of its own. A pathname that
+folds to longer than 64 characters (ProDOS's own pathname limit)
+is refused rather than truncated.

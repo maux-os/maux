@@ -1,0 +1,20 @@
+mli.s -- design notes
+================================================================
+Extracted from the source header so the source stays
+assemblable by real Merlin (64-char line limit).
+
+----------------------------------------------------------------
+MKPATH -- convert a liba string into an MLI pathname buffer.
+IN:  PTR0/PTR0+1 = liba string (high-bit-set, NUL-terminated)
+     PTR1/PTR1+1 = destination buffer, >= 65 bytes (1 count byte + up to
+     MLI_PATH_MAXLEN=64 chars)
+OUT: A = length written (excl. the count byte); the count byte
+at
+     (PTR1) also holds this value. Strings longer than 64 chars are
+     SILENTLY TRUNCATED (MLI's own hard pathname-component limit) --
+     not escalated as an error, since no v1 caller currently checks for
+     one (see docs/USERLAND.md "ABI RESOLUTIONS").
+CLOBBERS: A, X, Y, PTR2/PTR2+1 (scratch -- NOT one of this
+routine's real inputs, just a spare pointer pair borrowed from
+zp.equ).
+----------------------------------------------------------------

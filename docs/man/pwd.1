@@ -1,0 +1,23 @@
+.\" Derived from Research UNIX V6 pwd(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/pwd.1
+.\" Retrieved 2026-09-19; archived response SHA256: 62ebd340a7bf9c2223f145d21ac6cb19c4a39ac8c00f4a8981d5c45ac11c2690
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: No suitable earlier page located in the V1/V6 archive search.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH PWD 1 "September 19, 2026" maux
+.SH NAME
+pwd \- working directory name
+.SH SYNOPSIS
+.B pwd
+.SH DESCRIPTION
+.I Pwd
+prints the pathname of the working (current) directory.
+On maux this is the current ProDOS prefix, followed by a newline.
+An unset prefix is printed as an empty line.
+.SH FILES
+/usr/man/PWD  this page
+.SH "SEE ALSO"
+sh(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on success, 1 if the prefix cannot be read.

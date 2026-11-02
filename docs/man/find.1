@@ -1,0 +1,90 @@
+.\" Derived from Research UNIX V6 find(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/man/man1/find.1
+.\" Retrieved 2026-09-19; archived response SHA256: ef6083a99784560cd53545b10fbd4d1bb518fe3ac4810b3dcf313bdd32e0c233
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 find searches the whole filesystem by name/inode; V6 supplies the applicable pathname/expression interface.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH FIND 1 "October 8, 2026" maux
+.SH NAME
+find \- find files
+.SH SYNOPSIS
+.B find
+.I pathname
+.RI [ expression ]
+.SH DESCRIPTION
+.I Find
+recursively descends the directory hierarchy from pathname seeking files
+that match a boolean expression written in the primaries given below.
+In numeric tests, +n means more than n, -n less than n, and n exactly n.
+.TP
+.B \-name pattern
+Match the entry's name against a shell pattern.
+.TP
+.B \-path pattern
+Match the whole walked pathname against a shell pattern.
+.TP
+.B \-type f|d
+Select ordinary files or directories.
+.TP
+.B \-newer file
+Compare modification timestamps with the named reference file.
+.TP
+.B \-mtime [+-]n
+Compare modification age in calendar days, ignoring time of day.
+Without a usable clock this test is false.
+.TP
+.B \-size [+-]n[c]
+Compare file length in rounded-up 512-byte units; append c for bytes.
+.TP
+.B \-links [+-]n
+Compare a link count of 1: ProDOS has no hard links.
+.TP
+.B \-xdev
+Accepted; the traversal cannot cross a ProDOS volume boundary.
+.TP
+.B \-nouser, \-nogroup
+Accepted as constant true: there are no account or group databases.
+.TP
+.B \-print
+Print the current pathname; true.
+.TP
+.B \-prune
+Do not descend into this directory; true.
+.TP
+.B \-exec command ... ;
+True if the executed command returns exit status zero.
+The end of the command is punctuated by a quoted semicolon.
+A command argument '{}' is replaced by the current pathname.
+.TP
+.B \-ok command ... ;
+Like -exec, but first write
+.B < command ... pathname > ?
+to the standard error and read one reply line from the terminal (the
+standard error, which stays the console when the standard input is a
+file). The command runs only if the reply begins with y or Y; otherwise
+the primary is false and nothing runs. Where standard error is not a
+terminal every reply is taken as no.
+.TP
+.B \-depth
+Always true. Act on the entries of a directory before the directory
+itself, so a tree is listed deepest first. -prune has no effect
+when -depth is given.
+.PP
+The operators, in decreasing precedence, are ! (not), -a (and,
+also implied by adjacency), and -o (or).
+And/or short-circuit; parentheses group expressions.
+Quote parentheses, pattern metacharacters and the semicolon for the shell:
+.PP
+.B find . \-name '*.S' \-exec echo '{}' ';'
+.PP
+If there is no -print, -exec or -ok, a -print is implicitly ANDed with
+the complete expression.
+.SH FILES
+/usr/man/FIND  this page
+.SH "SEE ALSO"
+sh(1), ls(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 on a successful walk, 1 for access/path/spawn failures, 2 for syntax, complexity or traversal-depth errors. A child's nonzero -exec status makes that primary false, not itself an execution failure.
+.SH BUGS
+One starting path is accepted. The walk is limited to eight directory frames and 64-character full paths; at most three -exec primaries are allowed. No -perm, -user or -group: ProDOS files have no permission bits, owner or group to test, so the primaries are refused (exit status 2) rather than invented.

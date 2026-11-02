@@ -1,0 +1,63 @@
+.\" pathchk.1 -- maux's pathchk(1), in the V7 man(1) shape. An
+.\" original page (this project's own text), so it carries no
+.\" third-party notice -- MIT like the code, same posture as
+.\" env.1/man.1.
+.TH PATHCHK 1 "September 15, 2026" maux
+.SH NAME
+pathchk \- check pathnames for validity/portability
+.SH SYNOPSIS
+.B pathchk
+[
+.B \-p
+] [
+.B \-P
+]
+.I pathname
+.IR .\|.\|.
+.SH DESCRIPTION
+.I Pathchk
+checks each
+.I pathname
+operand and writes a diagnostic to standard error for any that
+fails. With no option, the limits are this tree's OWN (not the
+host's): each component at most 15 characters (ProDOS's own
+directory\-entry name_length field), the whole pathname at most
+64 characters (MLI_PTH_MAXLN, inc/mli.equ \(em the same cap
+.BR MKPATH ()
+enforces for every program in this tree), and each component
+must begin with a letter and otherwise hold only letters,
+digits, or a period (ProDOS's own naming rule, case\-insensitive).
+An intermediate component that does not exist is
+.B not
+an error; one that exists and is not itself a directory is.
+.SH OPTIONS
+.TP
+.B \-p
+Check portability instead: the POSIX portable character set
+.RI ([A\-Za\-z0\-9._\-]), " " 14
+characters per component, 255 for the whole pathname
+.RI ( _POSIX_NAME_MAX / _POSIX_PATH_MAX ,
+the XCU's own limits). No existence check is made under
+.BR \-p .
+.TP
+.B \-P
+In addition to whichever of the above is active, an empty
+.I pathname
+or a component beginning with
+.B \-
+is also a failure.
+.SH FILES
+.br
+/usr/man/PATHCHK  this page
+.SH "SEE ALSO"
+mkdir(1)
+.SH DIAGNOSTICS
+Exit status is 0 if every
+.I pathname
+passed, 1 if any failed, 2 for a usage error.
+.SH BUGS
+The whole\-pathname length check under
+.B \-p
+is limited by an 8\-bit counter and so cannot actually observe
+the difference between 255 and 256 bytes \(em not a concern on
+a system whose own absolute pathname cap is 64.

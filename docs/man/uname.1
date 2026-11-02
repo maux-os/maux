@@ -1,0 +1,68 @@
+.\" uname.1 -- maux's uname(1), in the V7 man(1) shape. An
+.\" original page (this project's own text, not copied from a
+.\" historic uname(1)), so it carries no third-party notice --
+.\" MIT like the code, same posture as env.1. Rendered at build
+.\" time to build/man/UNAME.TXT and staged on the play image as
+.\" /usr/man/UNAME: `more /usr/man/UNAME`.
+.TH UNAME 1 "September 14, 2026" maux
+.SH NAME
+uname \- print system identification
+.SH SYNOPSIS
+.B uname
+[
+.B \-snrvma
+]
+.SH DESCRIPTION
+.I Uname
+writes system identification to standard output. With no
+options, it behaves as though
+.B \-s
+were given. Each option below selects one field; if more than
+one is selected, whether by several letters or by
+.BR \-a ,
+every selected field is written on one line, space-separated,
+always in the fixed order
+.IR sysname ", " nodename ", " release ", " version ", " machine
+regardless of the order the options were given.
+.TP
+.B \-s
+The name of this implementation:
+.BR maux .
+.TP
+.B \-n
+The name of this node. maux has no hostname or network concept;
+this is a fixed string,
+.BR apple2e .
+.TP
+.B \-r
+The release level of this implementation:
+.BR 1.0 ,
+a placeholder -- no kernel version is tracked anywhere in the
+tree yet.
+.TP
+.B \-v
+The version level of this release: also
+.BR 1.0 ,
+the same placeholder as
+.BR \-r ,
+for the same reason.
+.TP
+.B \-m
+The hardware type this system requires:
+.BR 65c02 .
+.TP
+.B \-a
+Behave as though
+.B \-mnrsv
+were all given.
+.SH FILES
+/usr/man/UNAME  this page
+.SH "SEE ALSO"
+env(1)
+.SH DIAGNOSTICS
+Exit status is 0; 2 on a usage error (an unrecognised option, or
+any operand -- this utility takes none).
+.SH BUGS
+Release and version are both the same fixed placeholder string
+because neither is tracked by this build; either becomes a real
+value the day a kernel version equate exists.

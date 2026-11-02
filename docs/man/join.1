@@ -1,0 +1,99 @@
+.\" join.1 -- maux's join(1), in the V7 man(1) shape. An original
+.\" page (this project's own text), so it carries no third-party
+.\" notice -- MIT like the code, same posture as cksum.1/paste.1.
+.\" Rendered at build time to build/man/JOIN.TXT and staged on the
+.\" play image as /usr/man/JOIN.
+.TH JOIN 1 "September 15, 2026" maux
+.SH NAME
+join \- relational join of two sorted files on a common field
+.SH SYNOPSIS
+.B join
+[
+.B \-a
+.I n
+|
+.B \-v
+.I n
+] [
+.B \-e
+.I string
+] [
+.B \-o
+.I list
+] [
+.B \-t
+.I char
+] [
+.B \-1
+.I n
+] [
+.B \-2
+.I n
+]
+.I file1 file2
+.SH DESCRIPTION
+.I Join
+reads
+.I file1
+and
+.IR file2 ,
+each already sorted on its own join field (field 1 by default,
+.B \-1
+and
+.B \-2
+select a different field per side), and writes one line per
+matching pair: the join field, then
+.IR file1 's
+other fields, then
+.IR file2 's
+other fields. It does not sort and does not check.
+.PP
+The default field separator is a run of blanks, leading blanks
+ignored;
+.B \-t
+.I char
+makes
+.I char
+the separator on both input and output, and every field it bounds
+\(em an empty one included \(em counts.
+.B \-a
+.I n
+adds
+.IR n 's
+own unpaired lines to the output;
+.B \-v
+.I n
+prints
+.B only
+.IR n 's
+unpaired lines, in place of the normal output.
+.B \-o
+.I list
+is a comma-separated list of
+.BI m . n
+field selectors (or the bare digit
+.B 0
+for the join field) choosing and ordering the output fields; an
+item naming a side that has no line for the current record prints
+empty, replaced by
+.B \-e
+.I string
+when given (the XCU/GNU rule: applied only through
+.BR \-o ;
+BSD's own
+.B \-e
+differs).
+.RB ( \-1 / \-2 )
+field numbers and
+.B \-o
+selectors are single digits in this build.
+.PP
+.RB "A " \-
+names standard input for either operand (not both at once).
+.SH FILES
+/usr/man/JOIN  this page
+.SH DIAGNOSTICS
+Exit status is 0 on success; 1 if a file could not be opened; 2 on
+a usage error.
+.SH BUGS
+None known.

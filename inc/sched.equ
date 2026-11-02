@@ -1,0 +1,10 @@
+*---------------------------------------------------------------
+* sched.equ -- scheduler shared constants (task #6)
+*---------------------------------------------------------------
+
+K_PCB_PTR   equ   $E0
+CWD_TBL_ADDR equ   ANNEX_STRCT_C
+K_SW_OUTPID equ   $E9        ;1  outgoing pid (== K_CURPID at
+                             ;entry) -- entry.s's KRN_EXIT
+                             ;reads this; sched.s still owns
+                             ;every write

@@ -1,0 +1,97 @@
+title: Hello, world in PLASMA
+description: Compile David Schmenk's hello.pla with plasm on the machine, run it with plasma, then run the same program cooked by the plasma cutter.
+lesson: l6
+---
+<h1>L6. hello, world, in PLASMA</h1>
+<p class="crumb"><a href="/learn/">Learn</a> / L6</p>
+
+<!-- src: docs/SITE.md sec 5; examples/hellopla/hello.pla -->
+<p class="lead">Goal: compile a program in PLASMA, a small language that
+compiles to bytecode, with the compiler running on the machine itself, run it,
+and then run the same program again as a single file cut by the plasma cutter.</p>
+
+<h2>What you need</h2>
+<!-- src: docs/SITE.md sec 5 -->
+<p><a href="/learn/shell-hello/">L1</a> (you can edit a file with
+<code>vi</code>) and <a href="/learn/make/">L5</a> (you can write a
+<code>Makefile</code>). The files are on the disk in
+<code>/usr/src/examples/HELLOPLA</code>; this lesson types them, because typing
+a program is how you learn it.</p>
+
+<h2>Where the program comes from</h2>
+<!-- src: examples/hellopla/hello.pla; docs/man/licenses.1; dependencies.lock.json -->
+<p>The program is not ours. It is <code>src/samplesrc/hello.pla</code> from
+<strong>PLASMA</strong>, written by <strong>David Schmenk</strong>
+(<a href="https://github.com/dschmenk/PLASMA">github.com/dschmenk/PLASMA</a>,
+MIT licence, Copyright &copy; 2010-2022 David Schmenk), and it is here byte for byte,
+with his indentation and his line continuations. A check compares our copy
+with his file at the PLASMA version maux builds against, and fails the build if
+a byte differs. The licence text is in <code>man licenses</code>.</p>
+
+<h2>The files</h2>
+<!-- src: examples/hellopla/hello.pla -->
+<p>Six lines. <code>include</code> pulls in the declarations of the runtime,
+<code>puts</code> prints a string, and a backslash at the end of a line
+continues the statement on the next one. <code>done</code> ends the module.</p>
+{{file:examples/hellopla/hello.pla}}
+
+<!-- src: examples/hellopla/Makefile; docs/man/plasm.1 -->
+<p>The <code>Makefile</code> is maux's own. PLASMA's compiler exits with
+success even when it reports an error, and <code>make</code> runs each line
+without a shell, so the rule removes the old module first and lists the new one
+afterwards: <code>ls</code> fails if the module is not there, and that stops
+<code>make</code>. Each indented line starts with a TAB.</p>
+{{file:examples/hellopla/Makefile}}
+
+<h2>The session</h2>
+<!-- src: scripts/check_examples.py (row_l6) -->
+<p>Typed in <code>vi</code>, a key at a time, then built and run. Near the end
+it runs <code>HELLO</code>, the cooked copy of the same program that came on the
+disk, from <code>/usr/src/examples/HELLOPLA</code>.</p>
+{{gen:session}}
+
+<h2>What just happened</h2>
+<!-- src: docs/man/plasm.1; docs/man/plasma.1; docs/PLASMA-PORT.md -->
+<p><code>plasm</code> compiled <code>hello.pla</code> into
+<code>hello.mod</code>, a relocatable module (type <code>$FE</code>). It reported 23 bytes: a
+program of this kind is tiny, and so is the compiler's room. <code>plasm</code> fits
+programs of a few hundred bytes of code and data, enough for hello, world and a
+sieve, and the manual page says where the limit is.
+<code>plasma hello.mod</code> then ran it: <code>plasma</code> starts the PLASMA
+virtual machine, loads the runtime, reads the module, resolves the names it imports and
+runs it. All of that happens again on every launch.</p>
+
+<h2>The plasma cutter</h2>
+<!-- src: docs/PLASCUT.md; examples/hellopla/hello.pla; scripts/check_plasma_examples.py -->
+<p><code>/usr/src/examples/HELLOPLA/HELLO</code> is the same program with the
+loading already done. It was made on the host, not on the machine, by
+<strong>plascut</strong>, the plasma cutter: it does what <code>plasma</code> does at
+launch (read the runtime and the module, relocate, bind every import) once, and
+writes the result as one flat <code>BIN</code> file that the shell starts like any
+command. Nothing is left to resolve when it runs. The module it cuts is the one
+<code>plasm</code> writes (the host compiler is run without its optimizer, as
+<code>plasm</code> has none), and the file on the disk is checked against a fresh cut
+of David Schmenk's <code>hello.pla</code>, so it cannot drift from the source.</p>
+<!-- src: scripts/demo_record.py (measure); site/demos/hellopla.py -->
+{{gen:hellopla_figures}}
+<!-- src: docs/PLASCUT.md; evidence/plascut-485672f5-2026-10-23/README.md -->
+<p>The saving is the loading, so it grows with how much a program has to load:
+small for this one, larger for <code>nas</code>, which is shipped cut and which
+<code>make</code> starts again for every file. In the gate that checks the cutter, one warm <code>nas</code> run on a
+small fixture (it assembles to {{fact:plascut_fixture_bytes}} bytes) takes
+{{fact:plascut_cooked_mcycles}} million cycles cut against
+{{fact:plascut_modular_mcycles}} million loaded through <code>plasma NAS</code>:
+{{fact:plascut_saved_mcycles}} million cycles, {{fact:plascut_saved_percent}} percent less, at revision {{fact:plascut_rev}}.
+<code>nas</code>, <code>plasm</code> and this <code>HELLO</code> are all cut programs.</p>
+
+<h2>Try next</h2>
+<!-- src: docs/SITE.md sec 5; docs/man/make.1 -->
+<p>Change the message and run <code>make</code> again. Does it rebuild? It compares
+the modification times ProDOS keeps, and the one-minute rule from
+<a href="/learn/make/">L5</a> applies, so a change made within a minute of the
+last build can be skipped; <code>touch hello.pla</code> is the way out. Then break
+the source on purpose and see what <code>plasm</code> prints and what the
+<code>Makefile</code> does about it. Finally compare <code>ls -l</code> of
+<code>HELLO</code> and <code>hello.mod</code>: what type is each?</p>
+
+{{gen:lessonnav}}

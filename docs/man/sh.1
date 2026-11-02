@@ -1,0 +1,436 @@
+.\" Derived from Research UNIX V7 sh(1).
+.\" Source: https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/man/man1/sh.1
+.\" Retrieved 2026-09-19; archived response SHA256: e4827b35a57390207d87fdf4bbcc820131733280ff810cdc2ba1b1641c4961e2
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1/V6 sh are Thompson shells; V7 is the earliest applicable Bourne command-language manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH SH 1 "September 19, 2026" maux
+.SH NAME
+sh \- command language
+.SH SYNOPSIS
+.B sh
+.br
+.B sh
+[-exE]
+.I script
+[\fIarg\fR ...]
+.br
+.B sh
+.B -s
+[\fIarg\fR ...]
+.br
+.B sh
+[-exE]
+.B -c
+.I string
+[\fIname\fR [\fIarg\fR ...]]
+.br
+.B sh
+.B -E
+.SH DESCRIPTION
+.I Sh
+is a command programming language that executes commands read from a
+terminal or a file.
+A simple command is a sequence of nonblank words separated by blanks
+(a tab or a space). The first word specifies the name of the command;
+the remaining words are passed as arguments.
+The value of a command is its exit status.
+.PP
+.B Invocation.
+With no operands sh reads standard input, prompting if it is a terminal.
+The first operand after the options -e (exit on error) and -x (trace)
+names a script file, leaving standard input free for that script's
+commands; $0 is the script's path and the operands after it are $1,
+$2 and so on.
+With -s the commands come from standard input and every operand is a
+positional parameter ($0 stays sh).
+With -c the first operand is a command string, run as one line with no
+prompt and no line editor, and sh then exits with the status of the last
+command (usage error, status 2, if the string is missing); the next
+operand, if any, is $0 and the operands after it are $1, $2 and so on,
+as in POSIX sh -c.
+The string is a single line: a newline inside it is not a command
+separator.
+Standard input is untouched, so the string's commands read it.
+.PP
+A script file may be in the system's standard text form (ProDOS TXT:
+low ASCII bytes, a carriage return $0D ending each line) as well as
+sh's own high-bit form; it runs as written.
+This holds for a file named as the script, a file read by the . command
+and a file redirected to standard input, and not for text arriving on a
+pipe or typed at a terminal.
+.PP
+.B Simple commands.
+A command may be prefixed by assignments, NAME=value words before the
+command name: they are expanded like an ordinary assignment (no field
+splitting, no globbing), in order, and exported for that command only.
+The shell's own variables are the same afterwards, including a
+variable's export mark, so TERM=vt100 vi file starts vi with that TERM.
+For a builtin the assignment holds while it runs (IFS=: read a b).
+The assignments of a special builtin (:, ., break, continue, eval, exit,
+export, readonly, set, shift, times, trap, unset, and exec with no
+command) persist in the shell,
+and so do those of a command that has no name (A=1 B=2, or A=1 > file).
+Each stage of a pipeline takes its own.
+A NAME=value word after the command name is an ordinary argument, and
+there is no -k.
+Eight variables is the limit: an assignment that needs a ninth, or
+that names a readonly variable, stops the command with a message.
+A name that does not fit the kernel's argument region is refused with
+a message and the command does not run.
+.PP
+.B Line editing.
+When standard input is the console and sh is reading a command at its own
+prompt, sh edits the line itself, with the console in raw mode for the
+length of that one line (a $( ) substitution, a script, a sourced file,
+a pipe or sh < file is read as before, and every command sh starts runs
+with the console cooked again).
+Bindings: Control-A and Control-E go to the start and end of the line;
+Control-B, Control-F and the left and right arrows move a character;
+Open Apple plus f or b (or ESC f, ESC b) move a word; Control-P, Control-N
+and the up and down arrows walk the history; Open Apple plus k (or ESC k),
+or Option plus k, deletes to the end of the line and Option plus u deletes
+the whole line; Backspace and DEL erase before the cursor;
+Control-D deletes the character under the cursor, or ends the shell on an
+empty line; Control-L clears the screen and redraws the prompt and the
+line at the top.
+Unlike the kernel's cooked editor, Control-L does not bring back output
+printed before the prompt (a process cannot read the kernel's copy of it),
+as in bash and zsh; sh -E keeps the old behaviour.
+A physical line typed at the editor is at most 127 characters.
+A logical line is at most 255 bytes (below).
+The history holds the last eight logical lines (as many as fit in 512
+bytes), is private to each shell, and is not kept when it exits: a nested
+sh and a shell started afresh begin with none. A line is added once it is
+complete, whole, as a single entry; one longer than 127 bytes is not added.
+Recalling an entry that spans several lines paints a real line break, so
+editing it can leave the cursor off by a row; the line itself is right.
+.PP
+A quote left open at the end of a line, or a backslash as the last
+character of a line outside single quotes, continues the command onto the
+next line. At the console sh shows a secondary prompt, > , until the
+command is complete; a script, a sourced file or a pipe prints nothing.
+Inside quotes the newline is part of the word; a backslash-newline outside
+single quotes is removed. A # that begins a word starts a comment, and
+nothing in a comment continues the line. Control-C at the secondary prompt
+abandons the whole command (status 130); Control-D gives
+.B sh: unterminated quote
+and returns to the primary prompt. Quotes inside an open $( ) or ( ) do not
+continue the line. A logical line longer than 255 bytes is refused whole,
+with
+.BR "sh: line too long" ,
+status 1, and the rest of the command it spans is skipped.
+The editor assumes the prompt starts in column 0; after output that ends
+without a newline the prompt follows it on the same row, and an edit that
+crosses a row boundary on that line can leave the display untidy though
+the line itself, and what runs, are right.
+.PP
+.B Completion.
+TAB completes the word before the cursor and TAB TAB (no key between)
+lists the candidates. In command position the candidates are the
+aliases (matched in exact case), the builtins and reserved words and the
+runnable files of every PATH directory (types BIN, SYS and TXT; a TXT
+without a #! line does not run, so this is a superset), listed once
+each however many places name them; elsewhere, and after a < or > and
+for the words of a for list, they are the names in the directory the
+word names, including / , /dev and /mnt. A unique match is completed
+with a / after a directory and a blank after anything else (no blank if
+one already follows); several matches complete as far as they all agree,
+and TAB again, with no key between, prints them sorted in columns,
+at most 31 and then a ... row, and redraws the prompt and the line.
+Only a suffix of what was typed is inserted, in the spelling of the
+first candidate. The cursor must stand at the end of a word: the byte
+after it may only be the end of the line, a blank or one of | ; & < > ( ).
+Nothing is done (the line is left alone, with no bell) for a word that
+holds a quote, backslash, $, backquote, glob character or =, in a
+comment, after << or >& or <&, as the NAME of a for, on a > continuation
+line, or if a directory cannot be read. Assignment words before the
+command (A=1 ca) do not change which word is the command. Variables,
+~ and options are not completed, and neither is anything in vi or ex.
+.PP
+.B Interrupts at the prompt.
+Control-C at the prompt abandons the line being typed, and Control-Z does
+the same (it never stops the shell).
+They reach the shell alone: a background job, or a stopped job, is not
+touched by them.
+If a trap is set on INT (or on signal 14), that trap runs, as in other
+shells, before the next prompt.
+A trap on any other signal runs at once if the line is empty and no loop
+or if is open (at a > prompt it waits), and after the line if something
+has been typed.
+With the terminal's echo off (stty -echo) nothing may show as the line
+is typed, so the kernel's cooked editor reads that line, as with -E.
+The
+.B -E
+option turns the line editor off; the kernel's cooked line editor then
+reads the prompt, with the same bindings (there, Control-D on a non-empty
+line ends it without a newline instead of deleting forward).
+.PP
+.B Signals.
+An interactive shell (standard input is a terminal) ignores TERM, as in
+V7, so that a stray TERM, such as one from a script, does not end it;
+kill -9 still does, and on the console init starts a new shell.
+A trap on signal 15 takes precedence, and trap - 15 restores the ignore.
+The shell's children do not inherit it, so they die of TERM as usual.
+A login shell, the one init starts, also sets the terminal to ICANON,
+ECHO and OPOST when it starts; a shell started from another shell leaves
+the terminal as it finds it.
+A text file whose first line is #!interpreter [arg] is run by the shell
+as interpreter [arg] script args, so it may be named as a command; an
+interpreter that is itself such a script is followed once.
+Other programs that spawn commands (find -exec, xargs, env, time) do
+not do this and report that they cannot execute the file.
+.PP
+.B Commands and lists.
+A pipeline is a sequence of commands separated by |.
+The standard output of each command but the last is connected by a pipe
+to the standard input of the next.
+At most three stages are supported.
+Separate commands with a newline or ;.
+Use && to continue only after success, || only after failure,
+and a trailing & to start a background job.
+{ list; } groups commands in this shell, not a new process.
+.PP
+.B Quoting and expansion.
+Single quotes protect their contents literally.
+Double quotes allow dollar expansion but protect spaces.
+A backslash quotes the following character; inside double quotes it is
+special before $, backquote, double quote, backslash and newline.
+Quoted and unquoted fragments can form one word.
+# begins a comment at the start of an unquoted word.
+.PP
+$NAME and \fB${NAME}\fR expand variables; NAME=value assigns one.
+$0 through $9 are positional parameters, $# their count,
+$? the last status, $$ the shell process ID and $! the last background PID.
+$* and $@ expand positional parameters.
+The ${V-word}, ${V=word}, ${V?word} and ${V+word} forms, and their
+colon variants, provide defaults, assignment, errors or alternatives.
+${V#pattern}, ${V##pattern}, ${V%pattern} and ${V%%pattern}
+remove a shortest/longest matching prefix or suffix.
+Unquoted expansions split on IFS; its default is space, tab and newline.
+Unquoted * ? and bracket patterns select file names.
+Only the last component of a path is matched, so a/*/b is not
+expanded; the directories /, /dev and /mnt match like any other.
+.PP
+$(command args) substitutes the output of a command.
+The body is run by a nested sh, so pipelines, redirections, lists and
+background operators inside it mean what they say, as in
+$(ls | wc -l).
+What is refused, with a diagnostic and a nonzero status, is nesting
+(any ( inside the body, so $( $( ) ) and $( ( ) ) both fail) and a $(
+with no closing ).
+Backquote substitution, shell functions and $((arithmetic)) are absent;
+use expr(1) for arithmetic.
+.PP
+.B Redirection.
+< file reads input; > file replaces output; >> file appends.
+N> file and N>> file redirect descriptor N (0 to 7), and N< file opens
+file for reading on descriptor N; 2> file redirects diagnostics and 0< is <.
+Redirections are applied from left to right, so
+.B cmd > out 2> err
+sends each stream to its own file and
+.B cmd 2>&1 > out
+leaves diagnostics on the old standard output; each stage of a pipeline
+applies its own after the pipe is connected, and
+.B exec
+applies them to the shell itself in the same order. A loop or group
+terminator (done, fi, }) takes one output redirection.
+Descriptor duplication and closing use
+forms such as 2>&1, 3<&0, >&- and <&-.
+Here-documents use <<word or <<-word; the latter strips leading tabs.
+A quoted delimiter suppresses body expansion.
+.PP
+.B Busy files.
+ProDOS lets a file be open only once when anyone may write it, so a >
+or >> whose target another process holds open at that instant (a
+.B tail -f
+between its polls, a short
+.BR cp )
+is retried: the shell waits one tick and tries again, up to 30 times
+(about a second), and ^C ends the wait with status 130. Past the bound,
+or for any other error, it prints
+.B sh: cannot redirect.
+This is not Unix, where an open never waits: a long holder
+.RB ( "exec 3<file; echo x >> file" )
+still fails, after the bound instead of at once.
+Here-documents are limited to 255 bytes and the first pipeline stage.
+.PP
+.B Control flow.
+The shell implements if/then/elif/else/fi, while/do/done,
+until/do/done, for name in words/do/done, and case/in/esac.
+Use shell patterns and ;; to separate case arms.
+Loops rewind a seekable script; console loop input is spooled to a
+temporary file. Arbitrary pipe-fed loop input is not a seekable script.
+For example, in a command file:
+.PP
+.B for f in *.S
+.br
+.B do
+.br
+.B "    echo $f"
+.br
+.B done
+.PP
+.B Builtin commands.
+Builtins and reserved words are recognized without regard to case.
+Most builtins require a single-command pipeline.
+They are not generally usable as external commands.
+.TP
+.B :
+Do nothing successfully.
+.TP
+.B . file
+Read commands from file in the current shell; nesting is limited to four.
+.TP
+.B cd directory
+Change the working directory.
+.TP
+.B echo [-n] [word ...]
+Print words separated by spaces. -n omits the newline.
+An external echo is used for unsupported builtin I/O shapes.
+.TP
+.B test expression, [ expression ]
+Test a condition; the bracket form requires its closing ].
+-z/-n test string length; =/!= compare strings.
+-e/-f/-d test existence, file and directory; -r/-w test ProDOS
+read/write access; -x tests a BIN or SYS type, not an execute bit.
+-s tests allocated blocks, not byte-exact length.
+-eq/-ne/-lt/-le/-gt/-ge compare unsigned numbers.
+! negates; -a/-o combine conditions; quote parentheses for grouping.
+Statuses are 0 true, 1 false, 2 invalid expression.
+.TP
+.B break [n], continue [n]
+Leave loops or begin their next iteration.
+.TP
+.B shift [n]
+Discard leading positional parameters.
+.TP
+.B export [name[=value] ...]
+Mark variables for inheritance by external commands.
+.TP
+.B unset name ...
+Remove variables; readonly variables cannot be removed.
+.TP
+.B readonly [-p] [name[=value] ...]
+Protect variables from assignment. Without names, list them.
+The listing does not quote values containing blanks.
+.TP
+.B read name ...
+Read one input line, splitting it among variables using IFS;
+the last receives the remainder. EOF returns nonzero.
+A direct 'read name < file' is refused; use a compound input redirection
+or a script file distinct from standard input.
+.TP
+.B getopts optstring name [arg ...]
+Parse short options, setting name, OPTARG and OPTIND.
+A colon after an option letter requires an argument; a leading colon
+selects silent error reporting. Set OPTIND=1 to restart.
+Without explicit arguments, use positional parameters.
+.TP
+.B set -x, set +x, set -e, set +e
+Enable/disable tracing or exit-on-error.
+-e does not exit for commands used as conditions or tested by &&/||.
+These are the supported set forms, not a general options interface.
+.TP
+.B command [-v|-V] name [arg ...], type name ...
+Run an external command, or report command lookup.
+-v is terse; -V and type give descriptions.
+.TP
+.B eval [arg ...]
+Join arguments with spaces and execute the resulting command text.
+.TP
+.B exec [command [arg ...]]
+With only redirections, change the shell's own descriptors permanently.
+The descriptor the shell reads its commands from (a script, a sourced
+file, a construct's redirect) is kept high, from 7 down, so exec 3<file
+in a script does not touch it; an exec onto one of those descriptors is
+refused with exec: cannot redirect.
+With a command, run it externally and then exit with its status.
+Prefix assignments are exported to it.
+This does not replace the shell process: its bank remains occupied
+while the child runs.
+.TP
+.B exit [status]
+Leave the shell, using the given status or the last command's status.
+.TP
+.B trap [command] [signal ...]
+Run command when a held signal is taken between commands.
+An empty command ignores signals; a signal-first form, or - as the
+command, restores defaults.
+With no operands, list traps. EXIT or 0 selects the exit trap.
+Names HUP, INT, QUIT, KILL and TERM are recognized, but KILL cannot be
+caught or ignored.
+A trap on INT also runs when Control-C is typed at the idle prompt.
+.TP
+.B jobs, fg [job], bg [job], wait [pid ...]
+List jobs, resume in foreground/background, or wait for children.
+Control-C interrupts the foreground job; Control-Z stops it.
+A foreground command killed by a signal other than the interrupt and the
+broken pipe is named on the standard error as V7 sh named it (Killed,
+Terminated, Trace/BPT trap, Hangup, ...), and the same names label a
+finished background job; the status is 128 plus the signal number.
+Use jobs to identify a stopped job before resuming it.
+.TP
+.B alias [name[=value] ...], unalias [-a] name ...
+With no operands alias lists every alias as alias name='value'.
+A name alone prints that alias (or "alias: name: not found",
+status 1); name=value defines one. unalias removes the named
+aliases, or all with -a. Only the first word of a command is
+replaced, text-for-text, before the line is parsed: after the
+start of a line, or after ; & && || | ( { ! if then elif else
+while until do. A name being expanded is not expanded again
+inside its own value, and a value ending in a blank makes the
+NEXT word eligible too. A word quoted in any part (\(aqls\(aq, \\ls) is never
+an alias. Names are case-sensitive, 15 characters of letters,
+digits and . _ - ! % , @ + : ; reserved words are refused.
+The table holds EIGHT aliases of at most 31 characters each; a
+ninth, a longer value, or an expansion that would pass the
+255-character line limit is an error, never a truncation.
+Aliases are not inherited by a subshell (( ), $( ) or a script
+run by sh): each shell starts with none. Divergences: a word
+after VAR=value or a case pattern is not checked, and an alias
+may not stand before a for/while/until head on the same typed
+line.
+.TP
+.B hash [-r] [name ...]
+sh keeps a tracked-command cache of FOUR resolved commands.
+hash -r empties it. hash name resolves name as a spawn would
+(PATH search, or a probe if it contains a slash), records it,
+and is silent with status 0; if it cannot be found it prints
+"hash: name: not found" and returns 1 (a builtin name is not a
+PATH command, so hash cd fails, as in bash). Bare hash prints
+nothing and returns 0: the listing format POSIX leaves open is
+not implemented.
+.TP
+.B fc
+Not supported: the command history belongs to the console's line
+editor and no system call exposes it. Prints "sh: fc: not
+supported (history is the console's)" and returns 2.
+.TP
+.B times
+Print two pairs of time fields. Only the first is measured: elapsed
+time since shell startup, NOT user CPU time. The other three are zero.
+With no usable tick source all four are zero.
+.PP
+type, times, alias, unalias, hash, readonly listings, command -v/-V
+and eval refuse direct
+redirections. exec is the explicit descriptor-changing exception.
+.PP
+External commands are located using PATH, except that a command word
+containing a slash is never searched: it is a path, taken relative to
+the current directory unless it begins with a slash, so ./prog, ../prog
+and dir/prog run the program named (a . or .. in the middle of the
+word, dir/../prog, is not resolved). A command that cannot be found
+returns status 127. ProDOS file names are
+case-insensitive and each component has at most fifteen characters.
+.SH FILES
+/usr/man/SH  this page
+.SH "SEE ALSO"
+man(1), echo(1), expr(1), kill(1), ps(1), make(1), licenses(1)
+.SH DIAGNOSTICS
+The shell normally returns the last command's status or the explicit exit status. Lookup/spawn/syntax failures are nonzero. A terminated child's status encodes the signal as 128 plus the signal number.
+.SH BUGS
+Completion refuses everything between a case word and its esac, so a
+command inside a case arm is not completed.
+Limits include 255 input bytes per logical line, 128 tokens, eight construct levels, eight variables, 15-byte variable names and 31-byte values. A for list has at most sixteen words of fifteen bytes. Expansion storage is bounded. This is a useful Bourne subset, not a full POSIX shell. There are no functions or backquote substitution, and a ( ) group cannot be a pipeline stage.

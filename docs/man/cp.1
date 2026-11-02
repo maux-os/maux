@@ -1,0 +1,42 @@
+.\" Derived from Research UNIX V1 cp(1).
+.\" Source: https://man.cat-v.org/unix-1st/1/cp
+.\" Retrieved 2026-09-19; archived response SHA256: 0d5d22bf1edfa01a100b009fda3e5c31746da28e205560c2e5a170c4ad78c0bf
+.\" Licence: Caldera Ancient UNIX grant; see CALDERA-LICENSE and licenses(1).
+.\" Search: V1 is the earliest Research UNIX manual.
+.\" maux adaptations, 2026-09-19: syntax, implementation, limits and diagnostics.
+.\" Rendered by make man-pages; staged on play image in /usr/man/.
+.TH CP 1 "September 19, 2026" maux
+.SH NAME
+cp \- copy files and directory trees
+.SH SYNOPSIS
+.B cp
+.RB [ \-iprR ]
+.I source ... destination
+.SH DESCRIPTION
+The source file is opened for reading and copied into the destination.
+Unlike V1's pairs of operands, maux accepts source ... destination:
+with several sources, the destination must be a directory.
+If the destination is a directory, each file is copied under its own name.
+An existing destination file is replaced, not appended to.
+.TP
+.B \-i
+Prompt before replacing an existing file; only y or Y proceeds.
+.TP
+.B \-p
+Preserve ProDOS access, file type, auxiliary type, creation date
+and modification date.
+.TP
+.B \-r, \-R
+Copy directory trees recursively, merging into an existing destination
+directory where necessary.
+.PP
+Without -r or -R, a directory source is refused.
+Errors are reported and remaining source operands are attempted.
+.SH FILES
+/usr/man/CP  this page
+.SH "SEE ALSO"
+mv(1), cat(1), chmod(1), licenses(1)
+.SH DIAGNOSTICS
+Exit status is 0 for successful or declined copies, 1 for file/copy failures, 2 for usage errors.
+.SH BUGS
+Replacement and recursive copying are not transactional. Keep a backup when replacing important data.
