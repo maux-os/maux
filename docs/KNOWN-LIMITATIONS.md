@@ -307,3 +307,14 @@ program. Accepted limits (docs/PLASM-FIX-NOTES.md; `man plasm`):
   line is capped at 127 as well.
 - **A PLASMA module chain may export about 40 symbols beyond CMDSYS's own**
   (`rt: symbol table full`, exit 2): the loader's table is 1,280 bytes.
+- **The plasma cutter is host-side only, so a program compiled ON maux
+  cannot be cooked there.** `plascut` (docs/PLASCUT.md) is
+  `scripts/plascut.py`, a host script, and there is no `/bin/plascut`:
+  it binds a program's module closure into one spawnable binary at BUILD
+  time. `/bin/nas` and `/bin/plasm` are its output and are cooked, which
+  is where the measured ~21% per invocation goes. A module you compile on
+  the target runs the modular way instead -- `plasma MYPROG`, with rt
+  reading, relocating and binding each module on every launch. Trigger to
+  revisit: someone developing PLASMA on the target rather than
+  cross-compiling for it, or a lesson that wants a cooked program built
+  on the disk.
