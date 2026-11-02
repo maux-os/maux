@@ -1329,7 +1329,24 @@ class Build:
             out = self.expand(out, route, depth + 1)
         return out
 
+    # Two counts of DIFFERENT sets on one page read as an error even
+    # when both are true, and the front page shipped exactly that: "all
+    # 85 utilities" one line above "91 commands". utility_count is the
+    # man roster (Makefile UTILS plus nas and ld); selfrebuild_utils is
+    # what ONE archived self-make run staged, which at 52a54cf left out
+    # 8 of the roster (AS by ruling, 7 that did not exist yet) and added
+    # 2 proshim variants that are not commands. Print either; never
+    # both on the same page.
+    RIVAL_FACTS = [('utility_count', 'selfrebuild_utils')]
+
     def finish_facts(self, text, route):
+        names = set(re.findall(r'\0F([^\0]+)\0', text))
+        for a, b in self.RIVAL_FACTS:
+            if a in names and b in names:
+                self.err('%s: prints both {{fact:%s}} and {{fact:%s}}, which '
+                         'count different sets -- one page, one count'
+                         % (route or 'home', a, b))
+
         def sub(m):
             name = m.group(1)
             if name == 'revision':
@@ -1513,7 +1530,9 @@ class Build:
         # facts used by pages exist; re-run the substitution now values are known
         for dirpath in sorted(self.out.rglob('index.html')):
             t = dirpath.read_text()
-            t2 = strip_comments(self.finish_facts(t, str(dirpath)))
+            rel = str(dirpath.parent.relative_to(self.out))
+            t2 = strip_comments(self.finish_facts(
+                t, 'home' if rel == '.' else rel + '/'))
             if '\0' in t2:
                 self.err('internal: fact marker left in ' + str(dirpath))
             dirpath.write_bytes(t2.encode('ascii', 'xmlcharrefreplace'))

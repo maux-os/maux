@@ -281,6 +281,15 @@ def f_min_ram(root):
     return num((_free_list(root)[1] + 1) * 64)
 
 
+@fact('min_ram_mb', [PROCESS_C],
+      'min_ram_kb / 1024, for the places that want the round figure')
+def f_min_ram_mb(root):
+    kb = (_free_list(root)[1] + 1) * 64
+    if kb % 1024:
+        raise FactError('bank list is not a whole number of megabytes: %d KB' % kb)
+    return str(kb // 1024)
+
+
 @fact('release_mb', ['scripts/build_play_image.py'],
       'release_bytes / 2^20')
 def f_release_mb(root):
@@ -326,6 +335,14 @@ def f_sr_kernel(root):
     m = need(re.search(r'KERNEL[^\n]*?\s(\d+)B\s+byte-identical',
                        read(root, SELF)), 'kernel image byte-identical')
     return num(int(m.group(1)))
+
+
+@fact('selfrebuild_kernel_k', [SELF],
+      'the same kernel image size, in thousands of bytes to one decimal')
+def f_sr_kernel_k(root):
+    m = need(re.search(r'KERNEL[^\n]*?\s(\d+)B\s+byte-identical',
+                       read(root, SELF)), 'kernel image byte-identical')
+    return '%.1f' % (int(m.group(1)) / 1000.0)
 
 
 @fact('selfrebuild_rev', [CAND], 'revision in the evidence README title')

@@ -6,14 +6,14 @@ description: maux brings a POSIX-adjacent toolset to your expanded Apple IIe.
 <p class="lead">Develop on your Apple&nbsp;IIe like a PDP-11 is in the next room. maux brings a POSIX-adjacent toolset to your expanded Apple&nbsp;IIe.</p>
 
 <div class="split">
-<!-- src: README.md "Self-hosting status"; docs/NAS.md; evidence/candidate-52a54cf-2026-09-21/check-nas-selfmake.log; docs/PROJECT-STATE.md "What is proven"; site/facts.py (selfrebuild_*, utility_count, man_pages_total, cf_util_*, min_ram_kb); Makefile UTILS; docs/COVER-OFF.md (four virtual consoles); docs/CONSOLE.md sec 4b; docs/TAB-A3.md; docs/POSIX-CONFORMANCE.md; docs/SUPPORT.md -->
+<!-- src: README.md "Self-hosting status"; docs/NAS.md; evidence/candidate-52a54cf-2026-09-21/check-nas-selfmake.log; docs/PROJECT-STATE.md "What is proven"; site/facts.py (selfrebuild_*, utility_count, man_pages_total, cf_util_*, min_ram_mb); Makefile UTILS; docs/COVER-OFF.md (four virtual consoles); docs/CONSOLE.md sec 4b; docs/TAB-A3.md; docs/POSIX-CONFORMANCE.md; docs/SUPPORT.md -->
 <div class="pointcol">
 <ul class="points">
-<li><b>Self-hosting</b>A full assembler toolchain plus native PLASMA support &mdash; and it rebuilds itself: at revision <code>{{fact:selfrebuild_rev}}</code> a <code>make</code> run inside maux produced {{fact:selfrebuild_utils}} utilities and the {{fact:selfrebuild_kernel_bytes}}-byte kernel, each byte for byte identical to an independently built reference.</li>
+<li><b>Self-hosting</b>A full assembler toolchain plus native PLASMA support &mdash; and it rebuilds itself: a <code>make</code> run inside maux produces the utilities and the {{fact:selfrebuild_kernel_k}}k kernel, byte for byte identical to the host-side cross-assembler&rsquo;s output.</li>
 <li><b>Power tools for power users</b>{{fact:utility_count}} commands and {{fact:man_pages_total}} manual pages: a Bourne-compatible shell with job control, <code>grep</code>, <code>find</code>, <code>sed</code>, <code>vi</code>, <code>make</code>, <code>as</code> and <code>ld</code>.</li>
 <li><b>Modern conveniences</b>Four virtual consoles, command history, line editing and tab completion.</li>
 <li><b>Checked against POSIX</b>Differential test suites run every tool against the real ones on macOS and Linux: {{fact:cf_util_pass}} of {{fact:cf_util_total}} checks agree.</li>
-<li><b>Requirements</b>An enhanced IIe with {{fact:min_ram_kb}}&nbsp;KB of auxiliary memory and a Mouse or Mockingboard.</li>
+<li><b>Requirements</b>An enhanced IIe with {{fact:min_ram_mb}}&nbsp;megabyte of auxiliary memory and a Mouse or Mockingboard.</li>
 </ul>
 </div>
 <div class="watchcol">

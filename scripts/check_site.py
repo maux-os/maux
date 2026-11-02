@@ -378,7 +378,9 @@ def output_errors(out, full, roster=None, local_ok=False):
         # means the template lost it for all of them -- and the whole
         # point of an MIT project with a site is that a reader who wants
         # the code does not have to hunt for it.
-        m = re.search(r'<a class="src" href="([^"]*)"', text)
+        # class="src github-button": buttons.js keys on the second class,
+        # so the first one may not be the whole attribute any more.
+        m = re.search(r'<a class="src(?: [^"]*)?" href="([^"]*)"', text)
         if not m:
             errs.append('%s: the header has no source link (class="src")'
                         % f.relative_to(out))
@@ -936,14 +938,17 @@ def self_test(root, cache):
              lambda: write('pages/watch/ghost.html',
                            'title: Ghost\ndescription: x\ndemo: ghost\n---\n'
                            '<!-- src: site/README -->\n<p>{{gen:democommands}}</p>\n')),
+            ('two counts of different sets on one page', 'one page, one count',
+             lambda: sub('pages/index.html', 'produces the utilities',
+                         'produces all {{fact:selfrebuild_utils}} utilities')),
             ('placeholder with no fact', 'has no fact',
              lambda: append('architecture.html', '\n<p>{{fact:no_such_fact}}</p>\n')),
             ('fact whose source is missing', 'source missing',
              lambda: sub('facts.py', "SELF = 'evidence/", "SELF = 'evidence/gone-")),
             ('non-ASCII byte in a source', 'non-ASCII', high_byte),
             ('source link gone from the header', 'no source link',
-             lambda: sub('templates/page.html', '<a class="src"',
-                         '<a class="notsrc"')),
+             lambda: sub('templates/page.html', '<a class="src',
+                         '<a class="notsrc')),
             ('source link pointing into a tree', 'points INTO a tree',
              lambda: sub('build.py', "r'/(blob|tree)/[^/]+/*$'",
                          "r'/(blobx|treex)/[^/]+/*$'")),

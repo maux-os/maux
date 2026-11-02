@@ -1,6 +1,7 @@
-/* maux site: set like a book, not styled like an app. No script beyond the
-   <video> element, except on a page that offers a second demo display, which
-   loads one small optional script. Standing choices: two faces, Spectral for
+/* maux site: set like a book, not styled like an app. The only script in
+   the chrome is GitHub's star-button widget; a page that offers a second
+   demo display loads one small optional script of its own, and /try/
+   loads the emulator. Standing choices: two faces, Spectral for
    prose and IBM Plex Mono for everything that belongs to the machine (brand,
    navigation, heading labels, table heads, man pages), each falling back to
    the system's own so a page opened from disk offline still reads; one accent
@@ -60,13 +61,25 @@ nav a[aria-current] { border-bottom-color: var(--accent); font-weight: bold; }
    site, and this one leaves it, so it is a bordered affordance set
    below the list rather than a word in it. The mark is GitHub's own,
    inlined -- a remote image would make every reader's browser call a
-   third party for a 15px icon. */
-.src { display: inline-flex; align-items: center; gap: 0.45em; margin-top: 10px;
+   third party for a 15px icon.
+
+   buttons.js (loaded at the end of the body) REPLACES this anchor with
+   GitHub's own star button in an iframe, so these rules are what a
+   reader sees before that script arrives and what they keep if it never
+   does: the same link, minus the star count. The iframe is sized by the
+   widget, so do not give .src a width here. */
+.src { display: inline-flex; align-items: center; gap: 0.45em;
   padding: 5px 9px; border: 2px solid var(--rule); font: 500 0.8rem/1 var(--mono);
   color: var(--fg); text-decoration: none; }
 .src:visited { color: var(--fg); }
 .src:hover, .src:focus-visible { border-color: var(--accent); color: var(--accent); }
 .src svg { display: block; flex: none; }
+/* the two offsite affordances, stacked at the foot of the chrome: the
+   star button and the coffee button are the same kind of thing (a link
+   that leaves, asking for something) and they sit together, below the
+   navigation, out of the reading path. */
+.offsite { display: flex; flex-direction: column; align-items: flex-start;
+  gap: 10px; margin-top: 16px; }
 
 main { max-width: var(--wide); margin: 0 auto; padding: var(--pt) var(--pr) 8px var(--pl); }
 /* prose keeps a book's measure; tables, films, galleries and man pages use the page */
@@ -232,7 +245,7 @@ footer.foot p { max-width: 52rem; }
   nav a { padding: 5px 0 5px 1.3rem; border-bottom: 0; position: relative; }
   nav a:hover { background: var(--code-bg); }
   nav a[aria-current]::before { content: ">"; position: absolute; left: 0; color: var(--accent); }
-  .src { align-self: flex-start; margin-top: 20px; }
+  .offsite { margin-top: auto; padding-top: 24px; }
   :root { --pt: 20px; --pr: 48px; --pl: 44px; }
   main { grid-area: main; width: 100%; max-width: none; margin: 0; }
   main > * { max-width: var(--wide); }
@@ -478,31 +491,18 @@ main > .band { max-width: none; }
   box-shadow: 0 0 0 3px #0a0806, 0 0 0 12px #241e18, 0 0 0 13px var(--accent), 0 14px 30px rgba(27,23,18,0.35);
 }
 .cards a strong { margin-top: 18px; }
-/* Buy Me a Coffee's own button, top right of the page. The positioning
-   context is NARROW-WIDTH ONLY: at >= 64rem the header is the left rail
-   and is `position: sticky` (see the rail block above), the button goes
-   static in its flex column, and a bare `.top { position: relative }`
-   here would silently out-specify the rail's sticky -- same one-class
-   weight, later in the file -- and set the whole rail scrolling. */
-@media (max-width: 63.99rem) {
-  /* and the button is OVER the header's own words unless the header
-     keeps its width clear: it is out of flow, so the navigation wraps
-     as though the right-hand 146px were empty and then runs under it.
-     Reserve the strip rather than trusting the nav to stay short. */
-  .top { position: relative; padding-right: 158px; }
-}
-.bmc { position: absolute; top: 50%; right: 16px; transform: translateY(-50%); line-height: 0; }
+/* Buy Me a Coffee's own button. It is IN FLOW, inside .offsite, at
+   every width -- it used to be absolutely positioned at the top right,
+   which cost a reserved 158px strip in the header (the nav wrapped
+   under an out-of-flow button without it) and a phone case to undo
+   that. Keep it in flow: the only thing that must not get
+   `position: relative` is .top itself, which is the rail's sticky at
+   >= 64rem and would start scrolling with the page. */
+.bmc { line-height: 0; }
 .bmc img { display: block; width: 130px; height: 36px; filter: sepia(0.4) saturate(0.8) hue-rotate(-10deg) brightness(0.96); }
 .bmc:hover img { filter: none; }
 @media (min-width: 64rem) {
   .top { display: flex; flex-direction: column; }
-  .bmc { position: static; transform: none; margin-top: auto; align-self: flex-start; }
-}
-/* On a phone that strip is a third of the screen, so the button comes
-   back into flow and stacks under the source link instead. */
-@media (max-width: 40rem) {
-  .top { padding-right: 16px; }
-  .bmc { position: static; transform: none; display: block; margin-top: 10px; }
 }
 .band { background: #0f0d0a; border-bottom: 1px solid var(--ph-rule); }
 .band .hero { background: linear-gradient(180deg, #2a241e 0%, #1c1813 60%, #15120e 100%); }
