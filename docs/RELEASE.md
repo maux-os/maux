@@ -157,7 +157,12 @@ a named emulator shutdown diagnostic.
 ## Publishing the site
 
 The website (docs/SITE.md) is published as a GitHub Pages tree from the
-`gh-pages` branch of `maux-os/maux`, at https://maux-os.github.io/maux/.
+`main` branch of `maux-os/maux-os.github.io`, at
+https://maux-os.github.io/. A repository named `<org>.github.io` is an
+ORG page and is served from the root; that is a second repository, and
+the source stays in `maux-os/maux`, which every `repo:` link points
+into. `maux-os/maux`'s own `gh-pages` keeps a redirect to the root, so
+the /maux/ links in the 1.0 release notes still land.
 The release disk is served from that tree as `maux-X.Y.Z.po`, because Pages
 sends `Access-Control-Allow-Origin: *` and the "Boot maux in Apple2TS" button
 on /get/ makes Apple2TS fetch the image from another origin. Nothing below
@@ -188,13 +193,13 @@ runs from `make release`; a person with push rights does the last step.
 
    ```sh
    cd build/pages
-   git init -q -b gh-pages && git add -A . && git add -f .nojekyll
+   git init -q -b main && git add -A . && git add -f .nojekyll
    git commit -q -m "maux X.Y.Z site"
-   git push --force git@github.com:maux-os/maux.git gh-pages
+   git push --force git@github.com:maux-os/maux-os.github.io.git main
    ```
 
-   Once, in the repository settings: Pages, source branch `gh-pages`, folder
-   `/` (root).
-6. Check: `curl -sI https://maux-os.github.io/maux/maux-X.Y.Z.po` shows 200,
+   No settings click: an `<org>.github.io` repository enables Pages from
+   `main` / root by itself.
+6. Check: `curl -sI https://maux-os.github.io/maux-X.Y.Z.po` shows 200,
    `Content-Length: 33554432` and `Access-Control-Allow-Origin: *`; then press
    the button on the live /get/ page.

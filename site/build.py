@@ -13,8 +13,9 @@ Placeholders in a page:
     {{gen:NAME}}     a generated block (see GEN below)
     {{file:PATH}}    a file of examples/, included verbatim (never retyped)
 Links: write them root-relative ("/architecture/"); the build rewrites every one
-to a path relative to the page, because the site is served from a
-sub-path (https://maux-os.github.io/maux/) and must also open from disk.
+to a path relative to the page: the site is served from the root of
+https://maux-os.github.io/ but must also open from disk, and from a
+sub-path under `make site-preview`.
 "repo:docs/X.md" in an href becomes a link into the release repository
 and must name a tracked file.
 

@@ -31,7 +31,13 @@ PAGES_MAX = 1 << 30           # "Published GitHub Pages sites may be no larger t
 # docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github
 GIT_WARN = 50 << 20           # warning above 50 MiB per file
 GIT_BLOCK = 100 << 20         # blocked above 100 MiB per file
-PAGES = 'https://maux-os.github.io/maux/'
+# The site is the ORG page, served from the root of its own repository,
+# not a project page under /maux/. A repo named <org>.github.io is what
+# makes that so; REPO (the source, which every repo: link points into)
+# is a different repository and stays where it is.
+PAGES = 'https://maux-os.github.io/'
+PAGES_REPO = 'maux-os/maux-os.github.io'
+PAGES_BRANCH = 'main'
 REPO = 'maux-os/maux'
 
 
@@ -189,12 +195,15 @@ def release(a):
              ', '.join(names), name, got[:12]))
     size_report(out)
     print('\nNOT RUN. To publish (needs push rights; one commit, so the 32 MB image\n'
-          'does not accumulate in gh-pages history):\n')
+          'does not accumulate in the site history):\n')
     print('  cd %s' % out)
-    print('  git init -q -b gh-pages && git add -A . && git add -f .nojekyll')
+    print('  git init -q -b %s && git add -A . && git add -f .nojekyll'
+          % PAGES_BRANCH)
     print('  git commit -q -m "maux %s site"' % v)
-    print('  git push --force git@github.com:%s.git gh-pages' % REPO)
-    print('  # once: repo Settings > Pages > Source: branch gh-pages, folder / (root)')
+    print('  git push --force git@github.com:%s.git %s'
+          % (PAGES_REPO, PAGES_BRANCH))
+    print('  # a repo named <org>.github.io is an org page: Pages enables')
+    print('  # itself from %s / root, no Settings click' % PAGES_BRANCH)
     print('  # then: curl -sI %s%s   (200, Content-Length %d, Access-Control-Allow-Origin: *)'
           % (PAGES, name, len(data)))
     return 0
