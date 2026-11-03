@@ -220,9 +220,13 @@ UTF-8 code point it cannot send to one `?` (`SevenBit` in backends.py;
 
 serbridge (S2) gains `SocketTransport` and runs `--exec` commands on a
 PTY (`pty.fork`), not pipes -- a shell on pipes has no job control and
-`vi` on the host would not work. `TERM` is exported as `dumb`: the maux
-console honours a subset of CSI, and `dumb` keeps the host from emitting
-what it cannot draw.
+`vi` on the host would not work. `TERM` is exported as **`vt102`**, the
+console's own target (docs/CONSOLE-VT102.md), and the pty's window size
+is set to the console geometry (`--cols`/`--rows`, 80x24). This line
+read `dumb` until 2026-09-11 and was stale from the day the PTY landed:
+`dumb` would tell a host curses program it has no cursor addressing, and
+the point of the PTY is that `vi` -- and anything else full-screen --
+works. `check-tip-vim` is the gate that says it does.
 
 ## 4. Order
 
